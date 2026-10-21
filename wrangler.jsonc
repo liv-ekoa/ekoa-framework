@@ -1,14 +1,14 @@
+// Cloudflare Workers config for ekoa-framework.org. Cloudflare builds the site with
+// `npm run build`, then `npx wrangler deploy` serves the dist/ folder.
+// Every unknown path falls back to index.html so the app's own routes work.
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ekoa-framework",
   "compatibility_date": "2026-05-19",
   "observability": {
     "enabled": true
   },
   "assets": {
+    "directory": "./dist",
     "not_found_handling": "single-page-application"
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
+  }
 }

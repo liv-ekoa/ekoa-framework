@@ -2,12 +2,114 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  scroll-behavior: smooth;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: 'tnum' 1;
+  }
+  /* Headlines use Cormorant Garamond, as in the Ekoa deck. Big headlines are italic;
+     smaller ones stay upright so cards and tables remain easy to scan. */
+  h1, h2, h3, h4 {
+    @apply font-display text-ink;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h1, h2 {
+    font-style: italic;
+  }
+  /* Cormorant defaults to old-style figures; use lining ones so "T1" never reads as "TI". */
+  h1, h2, h3, h4, .font-display {
+    font-feature-settings: 'lnum' 1, 'pnum' 1;
+  }
+  /* Cormorant has a small x-height; nudge small display text up so it reads at the
+     same size as the Karla around it. */
+  h3, h4, .font-display:not(h1):not(h2) {
+    font-size-adjust: 0.46;
+  }
+  ::selection {
+    background: #f5e6da;
+    color: #1e231b;
+  }
+  :focus-visible {
+    outline: 3px solid #3f6b77;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-body {
-  background-color: #F5F0E6;
-  font-family: 'Inter', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+@layer components {
+  /* The record tag: a field-specimen label with a punched hole and clipped corner.
+     It is the one bold shape in the system; everything else stays quiet. */
+  .tag-shape {
+    clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
+  }
+  .tag-hole {
+    @apply absolute rounded-full border-2 border-ink/25 bg-paper;
+    width: 14px;
+    height: 14px;
+    top: 14px;
+    right: 30px;
+  }
+  .field-input {
+    @apply w-full rounded-field border border-paper-line bg-white px-3 py-2 text-base text-ink placeholder:text-ink-mute/70 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/25;
+  }
+  /* Letter-spaced pill label, like "03 / THE FRAMEWORK" in the deck. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-ink/20 px-3.5 py-1 text-xs font-semibold uppercase tracking-label text-ink-soft;
+  }
+  .eyebrow-light {
+    @apply inline-flex items-center gap-2 rounded-full border border-paper/30 bg-paper/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-label text-paper backdrop-blur-sm;
+  }
+  .label-caps {
+    @apply font-sans text-xs font-bold uppercase not-italic tracking-label;
+    font-size-adjust: none;
+  }
+  .prose-ekoa p {
+    @apply mb-4 max-w-prose leading-relaxed text-ink-soft;
+  }
+  .prose-ekoa h2 {
+    @apply mb-3 mt-10 text-3xl;
+  }
+  .prose-ekoa h3 {
+    @apply mb-2 mt-6 text-xl;
+  }
+  .prose-ekoa ul {
+    @apply mb-4 max-w-prose list-disc space-y-1.5 pl-5 text-ink-soft;
+  }
+  .prose-ekoa ol {
+    @apply mb-4 max-w-prose list-decimal space-y-1.5 pl-5 text-ink-soft;
+  }
+  .hand-note {
+    @apply font-hand text-xl leading-tight text-clay-700;
+  }
+  /* Faint dotted grid, as on the deck's cream slides. */
+  .grain {
+    background-image: radial-gradient(rgba(30, 35, 27, 0.11) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  .print-break { break-before: page; }
+}
+
+.leaflet-container {
+  font-family: 'Karla Variable', Karla, system-ui, sans-serif;
+  background: #efeadf;
 }

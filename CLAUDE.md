@@ -1,59 +1,30 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude when working in this repository.
+
+## What this is
+
+Ekoa, the implementation network for student-led school sustainability, served at ekoa-framework.org. Public site plus a member app: projects move through the six-stage Ekoa cycle, end as Implementation Records (failures included), are peer-audited by the two Ekoa audit schools, and feed a school ranking. See README.md for the full map of modules.
 
 ## Commands
 
 ```bash
-npm run dev      # start dev server at http://localhost:5173
-npm run build    # production build → dist/
-npm run preview  # preview the production build locally
+npm install
+npm run dev        # http://localhost:5173, demo mode with fictional data when no Supabase keys are set
+npm run build      # type-check, then build to dist/
+npm run deploy     # build and deploy to Cloudflare by hand (normally Cloudflare builds from GitHub)
+npm run seed:sql   # regenerate supabase/seed.sql
 ```
 
 ## Stack
 
-- **React 18** + **Vite 5** — SPA bundled with Vite
-- **Tailwind CSS 3** — utility-first styling with custom design tokens
-- **React Router 6** — client-side routing (`BrowserRouter`)
-- **Lucide React** — icon library
+- React 18, TypeScript, Vite 5, Tailwind 3, React Router 6, lucide-react, Leaflet.
+- Supabase (Postgres with row-level security, magic-link auth, storage, edge functions). Without keys the app runs on an in-browser demo store with the same query API (`src/lib/demoStore.ts`).
+- Cloudflare Worker `ekoa-framework` serves `dist/` (see `wrangler.jsonc`). Pushing to `main` deploys the live site.
 
-## Custom design tokens (tailwind.config.js)
+## Rules that matter
 
-| Token | Value | Use |
-|---|---|---|
-| `cream` | `#F5F0E6` | page background |
-| `forest` | `#1C3A2A` | headings, nav, dark buttons |
-| `forest-600` | `#2D6644` | italic accent text, labels, icons |
-| `forest-800` | `#152B1F` | hover states |
-
-Fonts loaded from Google Fonts: **Playfair Display** (serif, headings + italic accents) and **Inter** (sans-serif, body).
-
-## Routes
-
-| Path | Component | Description |
-|---|---|---|
-| `/` | `src/pages/Home.jsx` | Full landing page with all sections |
-| `/join` | `src/pages/Join.jsx` | Application form |
-
-## Architecture
-
-All content lives on a single scrolling home page. Nav links use anchor IDs (`#mission`, `#how-it-works`, `#network`, `#about`) for smooth-scroll navigation. The only separate route is `/join`.
-
-```
-src/
-  App.jsx              BrowserRouter + route tree
-  pages/
-    Home.jsx           Hero, Problem, Solution, Quote, Join callout, About sections
-    Join.jsx           Application form with success state
-  components/
-    Navbar.jsx         Sticky nav, logo SVG, anchor links + Join CTA
-    Footer.jsx         Three-column footer, nav + get-involved links
-```
-
-## Deployment to GitHub Pages
-
-For GitHub Pages, switch `BrowserRouter` → `HashRouter` in `src/App.jsx` and set `base` in `vite.config.js`:
-
-```js
-export default defineConfig({ base: '/repo-name/', plugins: [react()] })
-```
+- The name is **Ekoa** everywhere. Do not reintroduce "GSIN".
+- Design tokens live in `tailwind.config.js` (cream paper, moss, sage, clay). Fonts are self-hosted in `src/fonts/`. The logo is `src/components/EkoaLogo.tsx`.
+- The Ekoa method (stages, gates, roles, tiers, metrics) is data in `src/lib/ekoa.ts`. Every read and write goes through `src/lib/api.ts`.
+- Security is enforced in the database (`supabase/migrations/*_security.sql`), and `supabase/tests/security_test.sql` must keep passing. The platform is built for minors: never weaken consent, cross-school or peer-audit rules.

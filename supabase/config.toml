@@ -1,0 +1,11 @@
+# Minimal Supabase CLI config. `supabase link --project-ref <ref>` then `supabase db push`.
+project_id = "ekoa"
+
+[functions.notify-application]
+verify_jwt = false   # called from the public Join page
+
+[functions.ai-draft]
+verify_jwt = true
+
+[functions.send-consent]
+verify_jwt = true
