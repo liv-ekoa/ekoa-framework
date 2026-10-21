@@ -3,10 +3,14 @@ dist/
 .DS_Store
 tmp/
 *.local
+.env
+.env.*
+!.env.example
+!.env.production
 
-# wrangler files
+# Cloudflare wrangler files
 .wrangler
 .dev.vars*
 !.dev.vars.example
-.env*
-!.env.example
+supabase/.temp
+supabase/.branches
