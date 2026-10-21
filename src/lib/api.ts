@@ -1,6 +1,5 @@
 // Every read and write the app makes goes through this file.
-import { db, must, supabase } from './db';
-import { uuid } from './demoStore';
+import { db, must, supabase, uuid } from './db';
 import { config } from './config';
 import { METRIC_LIBRARY, nextStage, templateByKey } from './ekoa';
 import type {
@@ -49,29 +48,33 @@ export async function inviteMember(
   actor: UUID,
 ) {
   const minor = input.age_band !== '18+';
-  const person = await must<Person>(
-    db.from('people').insert({
-      display_name: input.name, email: input.email.trim().toLowerCase(), age_band: input.age_band, is_minor: minor,
-      locale: 'en', consent_status: minor ? 'pending' : 'not_needed', auth_user_id: null,
-    }).select().single(),
-  );
-  await db.from('role_assignments').insert({
-    person_id: person.id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, term_start: today(), term_end: input.term_end, status: 'active',
+  // The id is made here because the new person is not readable until their role exists.
+  const id = uuid();
+  const { error } = await db.from('people').insert({
+    id, display_name: input.name.trim(), email: input.email.trim().toLowerCase(), age_band: input.age_band, is_minor: minor,
+    locale: 'en', consent_status: minor ? 'pending' : 'not_needed',
   });
+  if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa steward to add them to your school.' : error.message);
+  await must(db.from('role_assignments').insert({
+    person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, term_start: today(), term_end: input.term_end, status: 'active',
+  }));
   let consentToken: string | null = null;
   if (minor) {
-    consentToken = uuid().replace(/-/g, '').slice(0, 20);
-    await db.from('consent_records').insert({
-      person_id: person.id, guardian_name: input.guardian_name ?? '', guardian_email: input.guardian_email ?? '',
-      scope: { account: false, cross_school: false, photos: false, name_on_records: false }, method: 'email_link',
-      terms_version: config.termsVersion, token: consentToken, granted_at: null, withdrawn_at: null,
-    });
+    // The database makes the token.
+    const rec = await must<{ token: string }>(
+      db.from('consent_records').insert({
+        person_id: id, guardian_name: input.guardian_name?.trim() ?? '', guardian_email: input.guardian_email?.trim().toLowerCase() ?? '',
+        scope: { account: false, cross_school: false, photos: false, name_on_records: false }, method: 'email_link', terms_version: config.termsVersion,
+      }).select('token').single(),
+    );
+    consentToken = rec.token;
   }
-  await audit(actor, `invited ${input.role}`, 'people', person.id);
-  if (supabase && consentToken) {
-    // Emails the guardian their consent link. Ignored if the function is not deployed yet.
-    await supabase.functions.invoke('send-consent', { body: { person_id: person.id } }).catch(() => undefined);
+  await audit(actor, `invited ${input.role}`, 'people', id);
+  if (consentToken) {
+    // Emails the guardian their consent link once the send-consent function is deployed.
+    await supabase.functions.invoke('send-consent', { body: { person_id: id } }).catch(() => undefined);
   }
+  const person = await getPerson(id);
   return { person, consentToken };
 }
 
@@ -83,44 +86,23 @@ export async function addRole(orgId: UUID, personId: UUID, role: RoleKey, localT
   await audit(actor, `added role ${role}`, 'role_assignments', personId);
 }
 
-const getConsentByToken = (token: string) => must<ConsentRecord | null>(db.from('consent_records').select('*').eq('token', token).maybeSingle());
 export const listConsents = () => must<ConsentRecord[]>(db.from('consent_records').select('*'));
 
-/** Guardians are not signed in: with Supabase these go through two narrow database functions. */
+/** Guardians are not signed in, so consent goes through two narrow database functions. */
 export async function lookupConsent(token: string): Promise<{ firstName: string; scope: ConsentRecord['scope']; granted: boolean } | null> {
-  if (supabase) {
-    const { data, error } = await supabase.rpc('consent_lookup', { p_token: token });
-    if (error) throw new Error(error.message);
-    const row = (Array.isArray(data) ? data[0] : data) as { first_name: string; scope: ConsentRecord['scope']; granted: boolean } | undefined;
-    return row ? { firstName: row.first_name, scope: row.scope, granted: row.granted } : null;
-  }
-  const rec = await getConsentByToken(token);
-  if (!rec) return null;
-  const person = await getPerson(rec.person_id);
-  return { firstName: person.display_name.split(' ')[0], scope: rec.scope, granted: !!rec.granted_at };
+  const { data, error } = await supabase.rpc('consent_lookup', { p_token: token });
+  if (error) throw new Error(error.message);
+  const row = (Array.isArray(data) ? data[0] : data) as { first_name: string; scope: ConsentRecord['scope']; granted: boolean } | undefined;
+  return row ? { firstName: row.first_name, scope: row.scope, granted: row.granted } : null;
 }
 
 export async function grantConsent(token: string, guardianName: string, scope: ConsentRecord['scope']) {
-  if (supabase) {
-    const { error } = await supabase.rpc('grant_consent', { p_token: token, p_guardian_name: guardianName, p_scope: scope });
-    if (error) throw new Error(error.message.includes('invalid') ? 'This consent link is not valid. Ask the school for a new one.' : error.message);
-    return;
-  }
-  const rec = await getConsentByToken(token);
-  if (!rec) throw new Error('This consent link is not valid. Ask the school for a new one.');
-  await must(db.from('consent_records').update({ guardian_name: guardianName, scope, granted_at: nowIso(), withdrawn_at: null }).eq('id', rec.id));
-  await must(db.from('people').update({ consent_status: scope.account ? 'granted' : 'pending' }).eq('id', rec.person_id));
-  await audit(null, 'guardian consent recorded', 'consent_records', rec.id);
+  const { error } = await supabase.rpc('grant_consent', { p_token: token, p_guardian_name: guardianName, p_scope: scope });
+  if (error) throw new Error(error.message.includes('invalid') ? 'This consent link is not valid. Ask the school for a new one.' : error.message);
 }
-export async function withdrawConsent(personId: UUID) {
-  if (supabase) {
-    const { error } = await supabase.rpc('withdraw_my_consent');
-    if (error) throw new Error(error.message);
-    return;
-  }
-  await must(db.from('consent_records').update({ withdrawn_at: nowIso() }).eq('person_id', personId));
-  await must(db.from('people').update({ consent_status: 'withdrawn' }).eq('id', personId));
-  await audit(personId, 'consent withdrawn', 'consent_records', personId);
+export async function withdrawConsent() {
+  const { error } = await supabase.rpc('withdraw_my_consent');
+  if (error) throw new Error(error.message);
 }
 
 // ---------------- Cohorts ----------------
@@ -150,8 +132,8 @@ export async function createProject(
     }).select().single(),
   );
   if (t) {
-    await db.from('tasks').insert(t.tasks.map((k) => ({ project_id: project.id, title: k.title, owner_role: k.owner, status: 'todo', due_on: null })));
-    await db.from('project_metrics').insert(t.metrics.map((m) => ({ project_id: project.id, metric_code: m, baseline: null, target: null })));
+    await must(db.from('tasks').insert(t.tasks.map((k) => ({ project_id: project.id, title: k.title, owner_role: k.owner, status: 'todo', due_on: null }))));
+    await must(db.from('project_metrics').insert(t.metrics.map((m) => ({ project_id: project.id, metric_code: m, baseline: null, target: null }))));
   }
   await audit(actor, 'created project', 'projects', project.id);
   return project;
@@ -159,7 +141,8 @@ export async function createProject(
 
 export const listGates = (projectId: UUID) => must<StageGate[]>(db.from('stage_gates').select('*').eq('project_id', projectId));
 export async function signGate(project: Project, stage: StageKey, personId: UUID, checklist: Record<string, boolean>) {
-  await db.from('stage_gates').insert({ project_id: project.id, stage, checklist, signed_by: personId, signed_at: nowIso() });
+  // The database checks who may sign, stamps the signer, and only then lets the stage move on.
+  await must(db.from('stage_gates').insert({ project_id: project.id, stage, checklist, signed_by: personId, signed_at: nowIso() }));
   const next = nextStage(stage);
   if (next) await updateProject(project.id, { stage: next });
   await audit(personId, `signed gate: ${stage}`, 'stage_gates', project.id);
@@ -201,7 +184,7 @@ export async function createProposal(project: Project, title: string, ask: strin
   const proposal = await must<Proposal>(
     db.from('proposals').insert({ project_id: project.id, title, ask, submitted_at: nowIso(), current_step_id: steps[0].id, decision: 'pending', decided_at: null }).select().single(),
   );
-  await db.from('approval_events').insert({ proposal_id: proposal.id, step_id: steps[0].id, entered_at: nowIso(), decided_at: null, decision: 'pending', notes: '' });
+  await must(db.from('approval_events').insert({ proposal_id: proposal.id, step_id: steps[0].id, entered_at: nowIso(), decided_at: null, decision: 'pending', notes: '' }));
   await audit(actor, 'submitted proposal', 'proposals', proposal.id);
   return proposal;
 }
@@ -217,7 +200,7 @@ export async function decideStep(proposal: Proposal, decision: 'passed' | 'retur
   if (decision === 'passed') {
     const next = steps[idx + 1];
     if (next) {
-      await db.from('approval_events').insert({ proposal_id: proposal.id, step_id: next.id, entered_at: nowIso(), decided_at: null, decision: 'pending', notes: '' });
+      await must(db.from('approval_events').insert({ proposal_id: proposal.id, step_id: next.id, entered_at: nowIso(), decided_at: null, decision: 'pending', notes: '' }));
       await must(db.from('proposals').update({ current_step_id: next.id }).eq('id', proposal.id));
     } else {
       await must(db.from('proposals').update({ decision: 'approved', decided_at: nowIso(), current_step_id: null }).eq('id', proposal.id));
@@ -226,7 +209,7 @@ export async function decideStep(proposal: Proposal, decision: 'passed' | 'retur
     await must(db.from('proposals').update({ decision: 'rejected', decided_at: nowIso(), current_step_id: null }).eq('id', proposal.id));
   } else {
     // Returned: back to the first step for resubmission.
-    await db.from('approval_events').insert({ proposal_id: proposal.id, step_id: steps[0].id, entered_at: nowIso(), decided_at: null, decision: 'pending', notes: 'Resubmitted after changes' });
+    await must(db.from('approval_events').insert({ proposal_id: proposal.id, step_id: steps[0].id, entered_at: nowIso(), decided_at: null, decision: 'pending', notes: 'Resubmitted after changes' }));
     await must(db.from('proposals').update({ current_step_id: steps[0].id }).eq('id', proposal.id));
   }
   await audit(actor, `approval step ${decision}`, 'proposals', proposal.id);
@@ -280,13 +263,10 @@ export const updateObstacle = (id: UUID, patch: Partial<Obstacle>) => must(db.fr
 export const listRecords = () => must<ImplementationRecord[]>(db.from('records').select('*').order('updated_at', { ascending: false }));
 export const getRecord = (id: UUID) => must<ImplementationRecord>(db.from('records').select('*').eq('id', id).single());
 /** Public pages read a view that drops the school and city from anonymised records. */
-export const listPublicRecords = async () =>
-  supabase
-    ? must<ImplementationRecord[]>(db.from('public_records').select('*').order('published_at', { ascending: false }))
-    : (await listRecords()).filter((r) => r.status === 'published' && r.visibility === 'public');
+export const listPublicRecords = () => must<ImplementationRecord[]>(db.from('public_records').select('*').order('published_at', { ascending: false }));
 export const getPublicRecord = async (id: UUID) => {
-  const r = supabase ? await must<ImplementationRecord | null>(db.from('public_records').select('*').eq('id', id).maybeSingle()) : await getRecord(id);
-  if (!r || r.status !== 'published' || r.visibility !== 'public') throw new Error('not public');
+  const r = await must<ImplementationRecord | null>(db.from('public_records').select('*').eq('id', id).maybeSingle());
+  if (!r) throw new Error('not public');
   return r;
 };
 export async function saveRecord(row: Partial<ImplementationRecord> & { org_id: UUID }) {
@@ -305,14 +285,14 @@ export async function adaptRecord(rec: ImplementationRecord, orgId: UUID, differ
   const project = await createProject(orgId, { title: `${rec.title} (adapted)`, category: rec.category, template_key: null, adapted_from_record_id: rec.id, problem: '' }, actor);
   await updateProject(project.id, { solution: `Adapted from “${rec.title}”. ${rec.intervention}` });
   for (const o of rec.outcomes) await setProjectMetric(project.id, o.metric_code, {});
-  await db.from('adaptations').insert({ source_record_id: rec.id, project_id: project.id, org_id: orgId, differences, notes, result: null });
+  await must(db.from('adaptations').insert({ source_record_id: rec.id, project_id: project.id, org_id: orgId, differences, notes, result: null }));
   await audit(actor, 'adapted record', 'records', rec.id);
   return project;
 }
 
 // ---------------- Verifications ----------------
 export const listVerifications = () => must<Verification[]>(db.from('verifications').select('*').order('created_at', { ascending: false }));
-/** The same rules the database enforces, checked first so demo mode behaves like the real thing. */
+/** The database enforces these rules too; checking first gives clearer messages. */
 export async function requestVerification(row: Omit<Verification, 'id' | 'created_at' | 'status'>) {
   if (!row.verifier_org) throw new Error('Choose who verifies.');
   if (row.verifier_org === row.requested_by_org) throw new Error('A school cannot audit its own records.');
@@ -323,24 +303,11 @@ export async function requestVerification(row: Omit<Verification, 'id' | 'create
   if (open) throw new Error(`A T${row.requested_tier} request for this record is already open.`);
   return must(db.from('verifications').insert({ ...row, status: 'requested' }));
 }
-export async function completeVerification(v: Verification, verified: boolean, notes: string, actor: UUID) {
+export async function completeVerification(v: Verification, verified: boolean, notes: string) {
   if (notes.trim().length < 3) throw new Error(verified ? 'Note what you checked.' : 'Give the school a reason.');
-  if (supabase) {
-    const { error } = await supabase.rpc('complete_verification', { p_id: v.id, p_verified: verified, p_notes: notes });
-    if (error) throw new Error(error.message);
-    return;
-  }
-  if (!config.isDemo) throw new Error('Not connected');
-  const roles = await listRolesForPerson(actor);
-  const can = (r: RoleKey[]) => roles.some((x) => x.org_id === v.verifier_org && r.includes(x.role) && (x.status === 'active' || x.status === 'outgoing')) || roles.some((x) => x.role === 'steward');
-  if (v.requested_tier === 3 && !can(['auditor', 'faculty_liaison'])) throw new Error('Only an auditor at the Ekoa audit school can complete a T3 peer audit.');
-  if (v.requested_tier === 4 && !can(['partner', 'faculty_liaison'])) throw new Error('Only the partner organisation can complete T4 verification.');
-  await must(db.from('verifications').update({ status: verified ? 'verified' : 'declined', notes }).eq('id', v.id));
-  if (verified) {
-    const rec = await getRecord(v.record_id);
-    await must(db.from('records').update({ tier: Math.max(rec.tier, v.requested_tier), outcomes: rec.outcomes.map((o) => ({ ...o, tier: Math.max(o.tier, v.requested_tier) })) }).eq('id', rec.id));
-  }
-  await audit(actor, verified ? `verified record T${v.requested_tier}` : 'declined verification', 'records', v.record_id);
+  // Runs in the database: auditors verify another school's record without write access to it.
+  const { error } = await supabase.rpc('complete_verification', { p_id: v.id, p_verified: verified, p_notes: notes });
+  if (error) throw new Error(error.message);
 }
 
 // ---------------- Policies ----------------
@@ -357,12 +324,8 @@ export const listClauses = () => must<PolicyClause[]>(db.from('policy_clauses').
 export const listAmendments = () => must<PolicyAmendment[]>(db.from('policy_amendments').select('*').order('adopted_on', { ascending: false }));
 export const addAmendment = (row: Omit<PolicyAmendment, 'id'>) => must(db.from('policy_amendments').insert(row));
 export async function bumpClauseAdoptions(ids: UUID[]) {
-  if (supabase) {
-    await supabase.rpc('bump_clause_adoptions', { p_ids: ids });
-    return;
-  }
-  const all = await listClauses();
-  for (const c of all.filter((x) => ids.includes(x.id))) await must(db.from('policy_clauses').update({ adoption_count: c.adoption_count + 1 }).eq('id', c.id));
+  const { error } = await supabase.rpc('bump_clause_adoptions', { p_ids: ids });
+  if (error) throw new Error(error.message);
 }
 
 // ---------------- Evidence ----------------
@@ -383,33 +346,22 @@ export async function stripExif(file: File, maxSide = 1600): Promise<Blob> {
 export async function uploadEvidence(orgId: UUID, projectId: UUID | null, file: File, caption: string, containsPeople: boolean, consentChecked: boolean) {
   if (containsPeople && !consentChecked) throw new Error('Photos showing people need confirmed guardian consent. Choose a photo of the bins or the site instead.');
   const clean = await stripExif(file);
-  let storage_path: string | null = null;
-  let data_url: string | null = null;
-  if (supabase) {
-    storage_path = `${orgId}/${uuid()}.jpg`;
-    const { error } = await supabase.storage.from('evidence').upload(storage_path, clean, { contentType: 'image/jpeg' });
-    if (error) throw new Error(error.message);
-  } else if (clean.size < 400_000) {
-    data_url = await new Promise<string>((res) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result as string);
-      r.readAsDataURL(clean);
-    });
-  }
+  // Files sit in a private bucket, in a folder named after the school.
+  const storage_path = `${orgId}/${uuid()}.jpg`;
+  const { error } = await supabase.storage.from('evidence').upload(storage_path, clean, { contentType: 'image/jpeg' });
+  if (error) throw new Error(error.message);
   return must<Evidence>(
     db.from('evidence').insert({
-      org_id: orgId, project_id: projectId, file_name: file.name, file_type: 'image/jpeg', data_url, storage_path,
+      org_id: orgId, project_id: projectId, file_name: file.name, file_type: 'image/jpeg', data_url: null, storage_path,
       contains_people: containsPeople, consent_checked: consentChecked, exif_stripped: true, caption,
     }).select().single(),
   );
 }
+/** Signed links last an hour, so evidence never sits at a public address. */
 export async function evidenceUrl(e: Evidence): Promise<string | null> {
-  if (e.data_url) return e.data_url;
-  if (supabase && e.storage_path) {
-    const { data } = await supabase.storage.from('evidence').createSignedUrl(e.storage_path, 3600);
-    return data?.signedUrl ?? null;
-  }
-  return null;
+  if (!e.storage_path) return e.data_url;
+  const { data } = await supabase.storage.from('evidence').createSignedUrl(e.storage_path, 3600);
+  return data?.signedUrl ?? null;
 }
 
 // ---------------- Handover ----------------
@@ -443,21 +395,18 @@ export function screenText(text: string): string | null {
 
 export async function addPost(thread: Thread, author: Person, body: string, meta: { role?: string; org?: string } = {}) {
   const hit = screenText(body);
-  // With Supabase, a database trigger fills the author fields and screens the text again server-side.
-  const post = await must<Post>(
+  // A database trigger fills the author fields and screens the text again. A held post cannot be
+  // read back by its author, so it is inserted without asking for the row.
+  const id = uuid();
+  await must(
     db.from('posts').insert({
-      thread_id: thread.id, person_id: author.id, body, created_at: nowIso(), flagged: !!hit, hidden: !!hit,
+      id, thread_id: thread.id, person_id: author.id, body, flagged: !!hit, hidden: !!hit,
       author_name: author.display_name, author_role: meta.role ?? '', author_org: meta.org ?? '', author_is_minor: author.is_minor,
-    }).select().single(),
+    }),
   );
-  if (hit && !supabase) {
-    await db.from('safeguarding_reports').insert({
-      reporter_person_id: null, reporter_contact: 'Automatic flag', subject_ref: `Post in “${thread.title}”`, category: 'privacy',
-      details: `Post held because it looked like it contained a ${hit}.`, status: 'new', assigned_to: 'Ekoa safeguarding lead',
-      actions: [{ at: nowIso(), note: `Held by filter (${hit}).` }],
-    });
-  }
-  return { post, held: hit };
+  const back = await must<{ hidden: boolean } | null>(db.from('posts').select('hidden').eq('id', id).maybeSingle());
+  const held = !back || back.hidden ? hit ?? 'contact detail' : null;
+  return { held };
 }
 export async function createThread(row: Pick<Thread, 'kind' | 'title' | 'circle_id' | 'org_id' | 'record_id'> & { org_b?: UUID | null }, author: Person, body: string, meta: { role?: string; org?: string } = {}) {
   const t = await must<Thread>(db.from('threads').insert({ org_b: null, ...row, created_by: author.id, created_at: nowIso(), status: 'open' }).select().single());
@@ -480,10 +429,8 @@ export const saveEvent = (row: Omit<EventItem, 'id'>) => must(db.from('events').
 export async function submitApplication(row: Pick<Application, 'name' | 'email' | 'organisation' | 'country' | 'role' | 'message' | 'has_lead' | 'lead_plan'>) {
   // Insert only: the public can create an application but never read the table.
   await must(db.from('applications').insert({ ...row, status: 'new', notes: '' }));
-  if (supabase) {
-    // Optional: notify stewards. Ignored if the function is not deployed yet.
-    await supabase.functions.invoke('notify-application', { body: row }).catch(() => undefined);
-  }
+  // Emails the stewards once the notify-application function is deployed.
+  await supabase.functions.invoke('notify-application', { body: row }).catch(() => undefined);
 }
 export const listApplications = () => must<Application[]>(db.from('applications').select('*').order('created_at', { ascending: false }));
 export const updateApplication = (id: UUID, patch: Partial<Application>) => must(db.from('applications').update(patch).eq('id', id));
@@ -494,39 +441,8 @@ export interface RankRow {
   verified_records: number; audited_records: number; adopting_schools: number; adoptions_that_worked: number;
   score: number; position: number;
 }
-const OUTCOME_POINTS: Record<string, number> = { worked: 10, partly: 6, did_not_work: 4, too_early: 0 };
-/** Same formula as the public_school_ranking view in the database. */
-export function computeRanking(orgs: Organisation[], records: ImplementationRecord[], adaptations: Adaptation[], projects: Project[]): RankRow[] {
-  const eligible = (r: ImplementationRecord) => r.status === 'published' && r.visibility === 'public' && !r.anonymised && r.tier >= 2;
-  const rows = orgs
-    .filter((o) => o.org_type === 'school' && o.public_visible)
-    .map((o) => {
-      const recs = records.filter((r) => r.org_id === o.id && eligible(r));
-      const points = recs.reduce((s, r) => s + (OUTCOME_POINTS[r.outcome_class] ?? 0) * (r.tier >= 3 ? 1.5 : 1), 0);
-      const mine = new Set(records.filter((r) => r.org_id === o.id && r.status === 'published' && r.visibility === 'public' && !r.anonymised).map((r) => r.id));
-      const ads = adaptations
-        .filter((a) => mine.has(a.source_record_id))
-        .map((a) => ({ a, org: a.org_id ?? projects.find((p) => p.id === a.project_id)?.org_id }))
-        .filter((x) => x.org && x.org !== o.id);
-      const adopters = new Set(ads.map((x) => x.org)).size;
-      const worked = ads.filter((x) => x.a.result === 'worked').length;
-      return {
-        org_id: o.id, name: o.name, country: o.country, city: o.city,
-        verified_records: recs.length, audited_records: recs.filter((r) => r.tier >= 3).length,
-        adopting_schools: adopters, adoptions_that_worked: worked,
-        score: points + 8 * adopters + 4 * worked, position: 0,
-      };
-    })
-    .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  rows.forEach((r, i) => { r.position = i > 0 && rows[i - 1].score === r.score ? rows[i - 1].position : i + 1; });
-  return rows;
-}
-export async function listSchoolRanking(): Promise<RankRow[]> {
-  if (supabase) return must<RankRow[]>(db.from('public_school_ranking').select('*').order('position'));
-  const [orgs, records, adaptations, projects] = await Promise.all([listOrgs(), listRecords(), listAdaptations(), listProjects()]);
-  return computeRanking(orgs, records, adaptations, projects);
-}
+/** Read from the public_school_ranking view, which holds the formula. */
+export const listSchoolRanking = () => must<RankRow[]>(db.from('public_school_ranking').select('*').order('position'));
 
 // ---------------- Safeguarding ----------------
 export async function submitConcern(row: Pick<SafeguardingReport, 'reporter_person_id' | 'reporter_contact' | 'subject_ref' | 'category' | 'details'>) {

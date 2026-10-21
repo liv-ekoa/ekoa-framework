@@ -219,3 +219,111 @@ select t('anon reads the ranking', (select count(*) from public_school_ranking) 
 select t('ranking: 10 for a verified worked record + 8 for one adopting school', (select score = 18 from public_school_ranking where org_id='11111111-0000-0000-0000-000000000002'));
 select t('ranking leaves out anonymised-only schools', (select count(*) from public_school_ranking where org_id='11111111-0000-0000-0000-000000000001') = 0);
 reset role;
+
+-- Direct function calls: visitors get only the guardian consent pair
+set role anon; select set_config('request.jwt.claim.sub','',false);
+do $$ begin perform public.is_steward(); perform t('anon cannot call role helpers', false);
+exception when insufficient_privilege then perform t('anon cannot call role helpers', true); end $$;
+do $$ begin perform public.complete_verification(gen_random_uuid(), true, 'x'); perform t('anon cannot call complete_verification', false);
+exception when insufficient_privilege then perform t('anon cannot call complete_verification', true); end $$;
+select t('anon still reads public organisations', (select count(*) from organisations where public_visible) >= 2);
+select t('anon can look up a consent link', (select count(*) from consent_lookup('tok-c')) = 1);
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+do $$ begin perform public.guard_record(); perform t('nobody calls trigger functions directly', false);
+exception when insufficient_privilege then perform t('nobody calls trigger functions directly', true); end $$;
+reset role;
+
+-- New people: consent cannot be preset, and earlier sign-ins are linked
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+insert into people (display_name, email, age_band, is_minor, consent_status) values ('Preset Minor','preset@x.org','13-15',true,'granted');
+reset role;
+select t('a minor cannot be created with consent already granted', (select consent_status = 'pending' from people where email='preset@x.org'));
+insert into auth.users (id, email) values ('aaaaaaaa-0000-0000-0000-0000000000ff','early.bird@x.org');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+insert into people (display_name, email, age_band, is_minor) values ('Early Bird','Early.Bird@x.org','18+',false);
+reset role;
+select t('someone who signed in before being invited is linked', (select auth_user_id = 'aaaaaaaa-0000-0000-0000-0000000000ff' from people where email='early.bird@x.org'));
+
+-- Project stages follow signed gates
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+do $$ begin update projects set stage='measure' where id='33333333-0000-0000-0000-000000000001'; perform t('a project cannot skip stages', false);
+exception when others then perform t('a project cannot skip stages', true); end $$;
+update projects set stage='design' where id='33333333-0000-0000-0000-000000000001';
+select t('a signed gate moves the project on', (select stage = 'design' from projects where id='33333333-0000-0000-0000-000000000001'));
+do $$ begin update projects set stage='implement' where id='33333333-0000-0000-0000-000000000001'; perform t('no stage change without its gate', false);
+exception when others then perform t('no stage change without its gate', true); end $$;
+insert into projects (org_id, title, category, stage) values ('11111111-0000-0000-0000-000000000001','Sneaky','Waste','measure');
+select t('new projects start at Identify', (select stage = 'identify' from projects where title='Sneaky'));
+reset role;
+
+-- The public views are read-only: they run with the owner's rights, so writes through them would skip row security
+set role anon; select set_config('request.jwt.claim.sub','',false);
+do $$ begin update public_records set title = 'changed' where true; perform t('visitors cannot change records through the public view', false);
+exception when insufficient_privilege then perform t('visitors cannot change records through the public view', true); end $$;
+do $$ begin delete from public_records where true; perform t('visitors cannot delete records through the public view', false);
+exception when insufficient_privilege then perform t('visitors cannot delete records through the public view', true); end $$;
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+do $$ begin update public_records set title = 'changed' where true; perform t('members cannot change records through the public view', false);
+exception when insufficient_privilege then perform t('members cannot change records through the public view', true); end $$;
+reset role;
+
+-- Roles: liaisons build their team, never network roles; adult roles need adults
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+do $$ begin insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-00000000000a','11111111-0000-0000-0000-000000000001','steward'); perform t('a liaison cannot make themselves a steward', false);
+exception when others then perform t('a liaison cannot make themselves a steward', true); end $$;
+do $$ begin update role_assignments set role = 'steward' where person_id = '22222222-0000-0000-0000-00000000000a'; perform t('a liaison cannot turn a role into steward', false);
+exception when others then perform t('a liaison cannot turn a role into steward', true); end $$;
+do $$ begin insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-00000000000b','11111111-0000-0000-0000-000000000001','faculty_liaison'); perform t('a student cannot be made faculty liaison', false);
+exception when others then perform t('a student cannot be made faculty liaison', true); end $$;
+do $$ begin insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-00000000000b','11111111-0000-0000-0000-000000000001','auditor'); perform t('auditors only at audit schools', false);
+exception when others then perform t('auditors only at audit schools', true); end $$;
+reset role;
+select t('liaison is still not a steward', (select count(*) from role_assignments where person_id = '22222222-0000-0000-0000-00000000000a' and role = 'steward') = 0);
+
+-- Consent status changes only through the guardian
+insert into people (id, display_name, email, age_band, is_minor, consent_status) values ('22222222-0000-0000-0000-0000000000a1','Waiting Minor','waiting@x.org','13-15',true,'pending'),('22222222-0000-0000-0000-0000000000a2','Young Adult','young@x.org','18+',false,'not_needed');
+insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-0000000000a1','11111111-0000-0000-0000-000000000001','implementation_team'),('22222222-0000-0000-0000-0000000000a2','11111111-0000-0000-0000-000000000001','implementation_team');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+do $$ begin update people set consent_status = 'not_needed' where id = '22222222-0000-0000-0000-0000000000a1'; perform t('a liaison cannot waive a minor''s consent', false);
+exception when others then perform t('a liaison cannot waive a minor''s consent', true); end $$;
+do $$ begin update people set age_band = '18+', is_minor = false, consent_status = 'not_needed' where id = '22222222-0000-0000-0000-0000000000a1'; perform t('a liaison cannot waive consent by changing the age band', false);
+exception when others then perform t('a liaison cannot waive consent by changing the age band', true); end $$;
+update people set age_band = '16-17', is_minor = true where id = '22222222-0000-0000-0000-0000000000a2';
+reset role;
+select t('recording someone as a minor puts them back to waiting for consent', (select consent_status = 'pending' from people where id = '22222222-0000-0000-0000-0000000000a2'));
+
+-- School boundaries
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+do $$ begin update organisations set audit_school = true where id = '11111111-0000-0000-0000-000000000001'; perform t('a liaison cannot make their school an audit school', false);
+exception when others then perform t('a liaison cannot make their school an audit school', true); end $$;
+update organisations set city = 'Faridabad, Sector 21' where id = '11111111-0000-0000-0000-000000000001';
+select t('a liaison can edit their school profile', (select city = 'Faridabad, Sector 21' from organisations where id = '11111111-0000-0000-0000-000000000001'));
+do $$ begin insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-00000000000d','11111111-0000-0000-0000-000000000001','alumni'); perform t('a liaison cannot pull in another school''s student', false);
+exception when others then perform t('a liaison cannot pull in another school''s student', true); end $$;
+insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-00000000000b','11111111-0000-0000-0000-000000000001','ekoa_rep');
+select t('a liaison can give their own student a second role', (select count(*) from role_assignments where person_id = '22222222-0000-0000-0000-00000000000b' and role = 'ekoa_rep') = 1);
+insert into consent_records (person_id, guardian_email, scope, terms_version, token, granted_at) values ('22222222-0000-0000-0000-0000000000a1','g@x.org','{"account":true,"cross_school":true}','2026-10','guessable', now());
+reset role;
+select t('a new consent record starts ungranted with a database token', (select granted_at is null and token <> 'guessable' and scope ->> 'cross_school' = 'false' from consent_records where person_id = '22222222-0000-0000-0000-0000000000a1'));
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+do $$ begin insert into audit_log (actor_person_id, action, entity) values (null, 'fake system entry', 'x'); perform t('nobody writes anonymous audit entries', false);
+exception when others then perform t('nobody writes anonymous audit entries', true); end $$;
+reset role;
+
+-- Moderation removes, never rewrites
+insert into posts (id, thread_id, person_id, body) select '55555555-0000-0000-0000-000000000099', id, '22222222-0000-0000-0000-00000000000b', 'Original words' from threads limit 1;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+do $$ begin update posts set body = 'Words they never wrote' where id = '55555555-0000-0000-0000-000000000099'; perform t('moderators cannot rewrite a post', false);
+exception when others then perform t('moderators cannot rewrite a post', true); end $$;
+update posts set body = '[Removed by a moderator]' where id = '55555555-0000-0000-0000-000000000099';
+reset role;
+select t('moderators can remove a post''s text', (select body = '[Removed by a moderator]' from posts where id = '55555555-0000-0000-0000-000000000099'));
+
+-- Un-anonymising a published record is the liaison's call
+update records set status = 'published', visibility = 'public', anonymised = true, tier = 2 where id = '44444444-0000-0000-0000-000000000001';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+do $$ begin update records set anonymised = false where id = '44444444-0000-0000-0000-000000000001'; perform t('a student cannot name the school on a published anonymised record', false);
+exception when others then perform t('a student cannot name the school on a published anonymised record', true); end $$;
+reset role;

@@ -4,18 +4,17 @@ The implementation network for student-led school sustainability. Schools run pr
 
 This codebase follows the build outline (“Ekoa Platform — Detailed Build Outline”). Every module in that outline, M1 to M13, is here.
 
-## See it working in two minutes (demo mode)
+## Run it on your computer
 
 You need [Node.js 20 or newer](https://nodejs.org).
 
 ```bash
 npm install
+cp .env.production .env.local   # or point .env.local at a separate test project
 npm run dev
 ```
 
-Open http://localhost:5173. Click **Sign in** and pick anyone in the fictional pilot cohort: a Project Lead, a Faculty Liaison, the Ekoa steward, a partner, a peer auditor at one of the audit schools, or a student still waiting for guardian consent. Each role sees a different app.
-
-Demo data lives only in your browser. **Settings → Reset demo data** starts it again.
+Open http://localhost:5173. There is no demo data: you sign in with a magic link sent to your email, and you see only what your role allows. A new account with no role sees a notice until a steward or a school's faculty liaison adds them.
 
 ## What changed in the October 2026 update
 
@@ -46,27 +45,44 @@ Demo data lives only in your browser. **Settings → Reset demo data** starts it
 | M11 AI assist | `src/lib/ai.ts`, `supabase/functions/ai-draft` |
 | M12 Safeguarding | `src/components/ReportConcern.tsx`, post screening in `src/lib/api.ts` and the database trigger `screen_post` |
 | M13 Steward console | `src/pages/app/Steward.tsx`, `PartnerDesk.tsx`, `AuditDesk.tsx` |
-| Ranking | `src/pages/public/Ranking.tsx`, `computeRanking` in `src/lib/api.ts`, view `public_school_ranking` |
+| Ranking | `src/pages/public/Ranking.tsx`, view `public_school_ranking` in the security migration |
 | Budgets | `src/lib/budget.ts`, budget panel in `project/PlanTab.tsx`, `BudgetBox` in `RecordDetail.tsx` |
 
 The method itself — stages, gate checklists, roles, obstacle taxonomy, metric library, templates — is data in `src/lib/ekoa.ts`. Change the method there.
 
-Every read and write goes through `src/lib/api.ts`. In demo mode it talks to an in-browser store (`src/lib/demoStore.ts`); with Supabase keys it talks to your database. Pages never know the difference.
+Every read and write goes through `src/lib/api.ts`, straight to the database.
 
-## Connect a real database (Supabase)
+## The database (Supabase)
 
-1. Create a project at [supabase.com](https://supabase.com). Choose the **Mumbai** or **Singapore** region.
-2. In **SQL Editor**, run these files in order:
-   1. `supabase/migrations/20261008000001_schema.sql`
-   2. `supabase/migrations/20261008000002_security.sql`
-   3. `supabase/seed.sql` (metric library, circles, policy clauses, and the two audit schools)
-   4. `supabase/bootstrap-steward.sql` — edit the names and emails first. Stewards must be adults.
+The live database is the Supabase project **ekoa** (ref `gpwsedgicmpkxjqashbn`, Mumbai region), in the Supabase organisation **Ekoa**. Its address and publishable key are in `.env.production`; both are meant to be public, because row-level security decides what each person can read or change.
 
-   Or with the Supabase CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`, then run the last two files.
-3. **Authentication → Providers → Email**: keep email sign-in on (magic links). **Authentication → URL configuration**: set the Site URL to your domain and add `http://localhost:5173` as a redirect URL.
-4. Copy `.env.example` to `.env.local` and paste the project URL and anon key from **Project settings → API**.
-5. Restart `npm run dev`. The sign-in page now emails a link instead of showing demo people.
-6. Peer audit: Shiv Nadar School, Faridabad and Green School, Bali have both confirmed, and the seed adds them as active, public audit schools. Invite each school's faculty liaison; the liaison then invites their auditors with the **Peer Auditor** role under **My school → People**.
+Already done on that project:
+
+1. `supabase/migrations/` applied in order:
+   - `…0001_schema` and `…0002_security`: tables, row-level security, guard triggers, consent and audit functions, the evidence bucket.
+   - `…0003_function_grants`: visitors can call only the guardian consent pair; trigger functions cannot be called directly.
+   - `…0004_hardening`: minors always start with consent pending; projects move one stage at a time, after the gate is signed.
+   - `…0005_view_grants`: the two public views are read-only.
+   - `…0006_roles_and_consent`: adult roles need adults; only stewards give steward or partner roles; consent changes only through the guardian's link.
+   - `…0007_school_boundaries`: only stewards change a school's type or audit status; liaisons cannot pull in another school's people; consent records start empty; moderators remove posts but cannot rewrite them; the audit log always names who acted.
+2. `supabase/seed.sql`: the metric library, circles, policy clause library, the Founding Cohort, the Ekoa Stewards organisation, and the two audit schools, Shiv Nadar School, Faridabad and Green School, Bali.
+3. The private `evidence` storage bucket, with photos filed under each school's id.
+
+Still to do, by a person signed in to Supabase:
+
+1. **First stewards.** Edit the names and emails in `supabase/bootstrap-steward.sql`, then run it in **SQL Editor**. Stewards must be adults; one should be the safeguarding lead. They then sign in on the site with those emails.
+2. **Authentication → URL Configuration.** Site URL `https://ekoa-framework.org`. Redirect URLs `https://ekoa-framework.org/**` and `http://localhost:5173/**`.
+3. **Authentication → Emails → SMTP settings.** Supabase's built-in mailer only delivers to members of the Supabase team and only a few emails an hour, so sign-in links to schools need your own email service (for example Resend, from `hello@ekoagsin.org`). Enter its SMTP details there.
+4. In the steward console, **Schools → Invite faculty liaison** for each school. Liaisons then invite their Project Lead, team and peer auditors under **My school → People**.
+
+The live project's migration history has different version numbers from the files here (they were applied from Claude's Supabase connection on 21 October 2026, the security file in four parts and the last file in three). Before using `npx supabase db push` against it, line the history up with these files (this changes only the history table, not the database):
+
+```bash
+npx supabase migration repair --status reverted 20261021153254 20261021153357 20261021153631 20261021153708 20261021153800 20261021154203 20261021154440 20261021155654 20261021160216 20261021160607 20261021160621 20261021160655
+npx supabase migration repair --status applied 20261008000001 20261008000002 20261008000003 20261008000004 20261008000005 20261008000006 20261008000007
+```
+
+To set up a fresh project instead (for testing): create it, run the files in `supabase/migrations/` in order in **SQL Editor** (or `npx supabase link --project-ref <ref>` then `npx supabase db push`), then `supabase/seed.sql` and `supabase/bootstrap-steward.sql`, and put its URL and publishable key in `.env.local`.
 
 ### Server functions (optional but recommended)
 
@@ -82,7 +98,7 @@ npx supabase secrets set ANTHROPIC_API_KEY=...   # only for AI drafting
 - `send-consent` emails guardians their consent link when a liaison invites a student.
 - `ai-draft` drafts record text from project facts. It never sends names or contact details. Set `ANTHROPIC_MODEL` to a current model from the Anthropic docs if the default is retired.
 
-Without them the app still works: applications are saved, consent links can be copied from **My school → People**, and record drafts are composed from project data.
+Until they are deployed the app still works: applications are saved and stewards see them in the console, liaisons copy each guardian's consent link from **My school → People** and send it themselves, and record drafts are composed from project data.
 
 ## Put it on ekoa-framework.org (Cloudflare)
 
@@ -93,7 +109,7 @@ The site lives in the GitHub repository `liv-ekoa/ekoa-framework`, which is conn
 
 Cloudflare runs `npm run build` and then `npx wrangler deploy`, which serves the `dist/` folder using `wrangler.jsonc`. Every unknown path falls back to `index.html`, so the app's own routes work.
 
-To connect the database, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as **build variables** in the Worker's build settings in Cloudflare, then rebuild. Leave them out, or set `VITE_DEMO=true`, to publish the demo instead.
+The build reads the database address and publishable key from `.env.production`, so nothing needs setting in Cloudflare. Build variables set in Cloudflare with the same names would override it.
 
 To deploy by hand from your own computer instead: `npm run deploy` (asks you to sign in to Cloudflare the first time).
 
@@ -105,11 +121,12 @@ The platform is built for minors, so these are launch requirements, not extras:
 - [ ] Each pilot school has a faculty liaison and has signed the participation and safeguarding agreement.
 - [ ] Qualified counsel in India and Indonesia has reviewed the consent page and data handling (DPDP Act 2023; Indonesia PDP Law No. 27 of 2022).
 - [ ] Adults with access to students have completed their country’s background check.
-- [ ] The security tests pass on your database (below).
+- [ ] Sign-in emails go through your own email service (see **The database** above).
+- [ ] The security tests pass (below).
 
 ## Security tests
 
-`supabase/tests/security_test.sql` checks 55 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the ranking: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run it on a throwaway local Postgres after `supabase/tests/supabase_stubs.sql` and the migrations; every line should print PASS.
+`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the ranking: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
 
 ## Scripts
 
@@ -120,10 +137,12 @@ The platform is built for minors, so these are launch requirements, not extras:
 | `npm run preview` | Serve the built site locally |
 | `npm run typecheck` | Type-check only |
 | `npm run seed:sql` | Regenerate `supabase/seed.sql` from `src/lib/ekoa.ts` and `src/lib/clauses.ts` |
+| `npm run test:db` | Run the database security tests on a local PostgreSQL |
+| `npm run deploy` | Build and deploy to Cloudflare by hand |
 
 ## Built, and not yet built
 
-Built: everything in modules M1 to M13 at pilot depth, demo mode, the full database with row-level security, three server functions.
+Built: everything in modules M1 to M13 at pilot depth, the live database with row-level security, three server functions (written, not yet deployed).
 
 Next, in rough order of need:
 - Semantic search: the `records.embedding` column (pgvector) is ready; the Library currently uses plain-language keyword matching.

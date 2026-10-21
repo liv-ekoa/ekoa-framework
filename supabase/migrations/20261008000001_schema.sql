@@ -2,8 +2,8 @@
 -- Run the migrations in order (CLI: `supabase db push`, or paste each file into the SQL editor).
 -- Every table that holds school data carries the school's id so row-level security can separate schools.
 
-create extension if not exists pgcrypto;
-create extension if not exists vector;
+create extension if not exists pgcrypto with schema extensions;
+create extension if not exists vector with schema extensions;
 
 -- ---------------------------------------------------------------- Organisations and people
 create table public.organisations (
@@ -49,7 +49,7 @@ create table public.consent_records (
   scope jsonb not null default '{"account": false, "cross_school": false, "photos": false, "name_on_records": false}',
   method text not null default 'email_link' check (method in ('email_link', 'paper_upload')),
   terms_version text not null,
-  token text not null unique default encode(gen_random_bytes(18), 'hex'),
+  token text not null unique default encode(extensions.gen_random_bytes(18), 'hex'),
   granted_at timestamptz,
   withdrawn_at timestamptz,
   created_at timestamptz not null default now()
@@ -285,7 +285,7 @@ create table public.records (
   ai_drafted boolean not null default false,
   status text not null default 'draft' check (status in ('draft', 'in_review', 'published')),
   published_at timestamptz,
-  embedding vector(1536),
+  embedding extensions.vector(1536),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

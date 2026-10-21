@@ -40,7 +40,7 @@ export default function Steward() {
         { key: 'audit', label: 'Audit log' },
       ]} />
       {tab === 'applications' && <Applications apps={data.apps} reload={reload} />}
-      {tab === 'schools' && <Schools d={data} />}
+      {tab === 'schools' && <Schools d={data} reload={reload} />}
       {tab === 'moderation' && <Moderation d={data} reload={reload} />}
       {tab === 'safeguarding' && <Safeguarding reports={data.reports} reload={reload} />}
       {tab === 'campaigns' && <CampaignsAdmin d={data} reload={reload} />}
@@ -100,7 +100,7 @@ function Applications({ apps, reload }: { apps: Application[]; reload: () => voi
             )}
             <Field label="Steward notes" id="ap-n"><Textarea id="ap-n" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
             <Field label="Status" id="ap-s"><Select id="ap-s" value={sel.status} onChange={(e) => setSel({ ...sel, status: e.target.value as Application['status'] })}>{STAGES_APP.map((s) => <option key={s} value={s}>{APP_LABEL[s]}</option>)}</Select></Field>
-            {sel.status === 'onboarded' && <Notice tone="sky">Saving creates a school workspace in onboarding status. Then invite its faculty liaison from the school’s People tab.</Notice>}
+            {sel.status === 'onboarded' && <Notice tone="sky">Saving creates a school workspace in onboarding status. Then invite its faculty liaison from the Schools tab.</Notice>}
             <ErrorNote>{act.error}</ErrorNote>
             <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => {
               const before = apps.find((a) => a.id === sel.id);
@@ -121,9 +121,11 @@ function Applications({ apps, reload }: { apps: Application[]; reload: () => voi
 
 type D = { schools: Awaited<ReturnType<typeof loadSchool>>[]; orgs: Awaited<ReturnType<typeof api.listOrgs>>; posts: Awaited<ReturnType<typeof api.listPosts>>; threads: Awaited<ReturnType<typeof api.listThreads>>; people: Awaited<ReturnType<typeof api.listPeople>>; campaigns: Awaited<ReturnType<typeof api.listCampaigns>>; twins: Awaited<ReturnType<typeof api.listTwins>> };
 
-function Schools({ d }: { d: D }) {
+function Schools({ d, reload }: { d: D; reload: () => void }) {
+  const [inviteFor, setInviteFor] = useState<{ id: string; name: string } | null>(null);
   return (
     <div className="space-y-4">
+      {inviteFor && <InviteLiaison org={inviteFor} onClose={() => setInviteFor(null)} onDone={() => { setInviteFor(null); reload(); }} />}
       {d.schools.map((s) => {
         const act = s.projects.filter((p) => p.status === 'active' && p.stage !== 'identify');
         const comp = act.length ? act.reduce((a, p) => a + completeness(p.id, s.measurements, p.starts_on), 0) / act.length : 0;
@@ -132,7 +134,11 @@ function Schools({ d }: { d: D }) {
         return (
           <article key={s.org.id} className="rounded-panel border border-paper-line bg-white p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div><h2 className="font-display text-lg font-semibold">{s.org.name}</h2><p className="text-sm text-ink-mute">{s.org.city}, {s.org.country}. {s.org.status}. Liaison: {liaison?.person.display_name ?? 'none'}.</p></div>
+              <div>
+                <h2 className="font-display text-lg font-semibold">{s.org.name}{s.org.audit_school && <Badge tone="leaf" className="ml-2 align-middle">Audit school</Badge>}</h2>
+                <p className="text-sm text-ink-mute">{[s.org.city, s.org.country].filter(Boolean).join(', ')}. {s.org.status}. Liaison: {liaison?.person.display_name ?? 'none'}.</p>
+                {!liaison && <Button size="sm" variant="dark" className="mt-2" onClick={() => setInviteFor({ id: s.org.id, name: s.org.name })}>Invite faculty liaison</Button>}
+              </div>
               <div className="w-48 text-xs text-ink-mute"><p className="mb-1">Weeks with data: {act.length ? `${Math.round(comp * 100)}%` : '—'}</p><Meter value={comp} label="completeness" tone={comp >= 0.85 ? 'leaf' : 'clay'} /></div>
             </div>
             <p className="mt-2 text-sm text-ink-soft">{s.projects.length} projects, {s.records.filter((r) => r.status === 'published').length} published records, {s.members.length} members, {s.handovers.length} handover packets.</p>
@@ -141,6 +147,30 @@ function Schools({ d }: { d: D }) {
         );
       })}
     </div>
+  );
+}
+
+/** The faculty liaison is an adult staff member who owns the school's records and invites everyone else. */
+function InviteLiaison({ org, onClose, onDone }: { org: { id: string; name: string }; onClose: () => void; onDone: () => void }) {
+  const auth = useAuth();
+  const act = useAction();
+  const [f, setF] = useState({ name: '', email: '', title: '' });
+  return (
+    <Modal open onClose={onClose} title={`Faculty liaison for ${org.name}`}>
+      <div className="space-y-4">
+        <p className="text-sm text-ink-soft">A teacher or staff member, never a student. They sign in with this email and then invite the school’s Project Lead and team.</p>
+        <Field label="Full name" id="il-n"><Input id="il-n" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label="School email" id="il-e"><Input id="il-e" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+        <Field label="Their title at the school (optional)" id="il-t" hint="For example Sustainability Coordinator."><Input id="il-t" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
+        <ErrorNote>{act.error}</ErrorNote>
+        <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => {
+          if (f.name.trim().length < 3) throw new Error('Add their full name.');
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) throw new Error('Add a valid email address.');
+          await api.inviteMember(org.id, { name: f.name, email: f.email, age_band: '18+', role: 'faculty_liaison', term_end: null, local_title: f.title }, auth.person!.id);
+          onDone();
+        })}>Invite</Button>
+      </div>
+    </Modal>
   );
 }
 

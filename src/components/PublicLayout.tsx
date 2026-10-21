@@ -109,7 +109,7 @@ export function PublicLayout() {
           </div>
         </div>
         <div className="border-t border-paper/10">
-          <p className="mx-auto max-w-page px-4 py-4 text-xs text-paper/80 sm:px-6">© {new Date().getFullYear()} Ekoa.{config.isDemo && ' Running in demo mode with fictional schools and people.'}</p>
+          <p className="mx-auto max-w-page px-4 py-4 text-xs text-paper/80 sm:px-6">© {new Date().getFullYear()} Ekoa.</p>
         </div>
       </footer>
     </div>

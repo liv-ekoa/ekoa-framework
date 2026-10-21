@@ -66,7 +66,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 create or replace function public.is_admin_context() returns boolean
-language sql stable as $$
+language sql stable set search_path = public as $$
   -- True for the SQL editor, migrations and the service-role key; false for signed-in users and visitors.
   select coalesce(nullif(current_setting('role', true), 'none'), current_user) not in ('anon', 'authenticated')
 $$;

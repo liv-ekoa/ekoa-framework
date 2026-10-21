@@ -36,8 +36,8 @@ export default function PartnerDesk() {
                     <p className="text-sm text-ink-soft">Requested tier: <strong>T{v.requested_tier}</strong> by {data.orgs.find((o) => o.id === v.requested_by_org)?.name}, {relative(v.created_at)}. {v.notes}</p>
                     <Textarea aria-label="Verification notes" rows={3} placeholder="What you checked and what you found" value={notes[v.id] ?? ''} onChange={(e) => setNotes({ ...notes, [v.id]: e.target.value })} />
                     <div className="flex flex-wrap gap-2">
-                      <Button busy={act.busy} onClick={() => act.run(async () => { if (!notes[v.id]?.trim()) throw new Error('Note what you checked.'); await api.completeVerification(v, true, notes[v.id], auth.person!.id); reload(); })}>Verify as T{v.requested_tier}</Button>
-                      <Button variant="ghost" busy={act.busy} onClick={() => act.run(async () => { if (!notes[v.id]?.trim()) throw new Error('Give the school a reason.'); await api.completeVerification(v, false, notes[v.id], auth.person!.id); reload(); })}>Decline with reason</Button>
+                      <Button busy={act.busy} onClick={() => act.run(async () => { if (!notes[v.id]?.trim()) throw new Error('Note what you checked.'); await api.completeVerification(v, true, notes[v.id]); reload(); })}>Verify as T{v.requested_tier}</Button>
+                      <Button variant="ghost" busy={act.busy} onClick={() => act.run(async () => { if (!notes[v.id]?.trim()) throw new Error('Give the school a reason.'); await api.completeVerification(v, false, notes[v.id]); reload(); })}>Decline with reason</Button>
                     </div>
                   </div>
                 </div>

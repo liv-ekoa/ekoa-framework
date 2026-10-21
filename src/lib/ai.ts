@@ -1,6 +1,5 @@
-// Record drafting. With Supabase connected it calls the `ai-draft` Edge Function
-// (which holds the model API key on the server). In demo mode, or if the function
-// is not deployed, it composes a draft from the project's own data.
+// Record drafting. Calls the `ai-draft` Edge Function (which holds the model API key on the
+// server). If the function is not deployed, it composes a draft from the project's own data.
 import { supabase } from './db';
 import { STAGES, metricByCode, obstacleLabel } from './ekoa';
 import { seriesFor, formatMetric } from './metrics';
@@ -11,7 +10,6 @@ import type { ImplementationRecord } from './types';
 
 export async function draftRecord(b: ProjectBundle): Promise<Partial<ImplementationRecord>> {
   const local = composeLocally(b);
-  if (!supabase) return local;
   try {
     // Only project facts are sent, never student names or contact details.
     const { data, error } = await supabase.functions.invoke('ai-draft', {
