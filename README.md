@@ -18,7 +18,7 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 
 ## What changed in the October 2026 update
 
-- **New look.** Colours, fonts and the homepage come from the Ekoa deck: cream paper, moss and sage greens, terracotta accent, Cormorant Garamond headlines and Karla text. The lizard photo is `public/img/` (recoloured to the palette). Fonts are self-hosted in `src/fonts/`. All colour tokens are in `tailwind.config.js`.
+- **New look.** Colours, fonts and the homepage come from the Ekoa deck: cream paper, moss and sage greens, terracotta accent, Cormorant Garamond headlines and Karla text. The gecko photo is in `public/img/`, in its natural colours. Fonts are self-hosted in `src/fonts/`. All colour tokens are in `tailwind.config.js`.
 - **EKOA meaning.** Education, Knowledge transfer, Outcomes and observation, Adoption and administration, on Home, How it works, About and the footer (`EKOA_LETTERS` in `src/lib/ekoa.ts`).
 - **No sustainability head needed.** The role is now **Project Lead**, any student. The minimum team is one teacher (Faculty Liaison) and one student. Members can carry their school's own title, hold several roles, or co-lead. The Join form asks whether the school has a lead. The Implement gate asks for the next Project Lead to be named.
 - **Peer audit.** T3 audits come only from the two Ekoa audit schools, Shiv Nadar School, Faridabad and Green School, Bali, never from the school being audited. Auditors work from **More → Audit desk** and see numbers and evidence, never people. Enforced in the database (`guard_verification_request`, `complete_verification`).
