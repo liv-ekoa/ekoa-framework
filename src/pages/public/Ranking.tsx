@@ -7,11 +7,11 @@ import { LinkButton, Loading, cx } from '@/components/ui';
 
 export const SCORE_RULES: [string, string][] = [
   ['Each verified record that worked', '10 points'],
+  ['Each other school that adapted one of your models', '+ 8 points'],
   ['Each verified record that partly worked', '6 points'],
   ['Each verified record that did not work, with its lessons', '4 points'],
-  ['Peer-audited (T3) or partner-verified (T4) records', '× 1.5'],
-  ['Each other school that adapted one of your models', '+ 8 points'],
   ['Each of those adaptations that worked', '+ 4 more'],
+  ['Peer-audited (T3) or partner-verified (T4) records', '× 1.5'],
 ];
 
 export default function Ranking() {
