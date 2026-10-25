@@ -45,6 +45,7 @@ const Steward = lazy(() => import('./pages/app/Steward'));
 const PartnerDesk = lazy(() => import('./pages/app/PartnerDesk'));
 const AuditDesk = lazy(() => import('./pages/app/AuditDesk'));
 const Connections = lazy(() => import('./pages/app/Connections'));
+const FundingGuide = lazy(() => import('./pages/app/FundingGuide'));
 const Settings = lazy(() => import('./pages/app/Settings'));
 
 export default function App() {
@@ -93,6 +94,7 @@ export default function App() {
           <Route path="steward" element={<Steward />} />
           <Route path="partner" element={<PartnerDesk />} />
           <Route path="audit" element={<AuditDesk />} />
+          <Route path="funding" element={<FundingGuide />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Route>

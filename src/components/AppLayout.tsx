@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, HandHelping, Home, Landmark, LogOut, Menu, Network,
-  Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
+  PiggyBank, Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { ReportConcern } from './ReportConcern';
@@ -27,6 +27,7 @@ const TABS: NavItem[] = [
 ];
 const MORE: NavItem[] = [
   { to: '/app/audit', label: 'Audit desk', icon: ClipboardCheck, show: auditor },
+  { to: '/app/funding', label: 'Fund your project', icon: PiggyBank, show: inSchool },
   { to: '/app/metrics', label: 'Metrics', icon: Gauge, show: inSchool },
   { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
   { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
