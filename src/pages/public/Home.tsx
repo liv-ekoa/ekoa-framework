@@ -58,11 +58,9 @@ export default function Home() {
       <section className="px-3 pt-3 sm:px-6 sm:pt-5">
         <div className="relative mx-auto flex min-h-[600px] max-w-[1320px] overflow-hidden rounded-[28px] bg-moss sm:min-h-[640px]">
           <img
-            src="/img/lizard-1600.webp"
-            srcSet="/img/lizard-900.webp 900w, /img/lizard-1600.webp 1600w"
-            sizes="(min-width: 1320px) 1320px, 100vw"
+            src="/img/gecko-hero.jpg"
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-[72%_center]"
+            className="absolute inset-0 h-full w-full object-cover object-[70%_53%]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-shadow/85 via-shadow/50 to-shadow/5" aria-hidden />
           <div className="pointer-events-none absolute inset-3 rounded-[20px] border border-paper/25 sm:inset-4" aria-hidden />
