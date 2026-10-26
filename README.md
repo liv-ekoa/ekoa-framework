@@ -1,5 +1,7 @@
 # Ekoa
 
+> **This is the `preview` branch:** the site on fictional data for review before launch. See [PREVIEW.md](PREVIEW.md). Never merge it into `main`.
+
 The implementation network for student-led school sustainability. Schools run projects through the six-stage Ekoa cycle, and every project ends as an Implementation Record — failures included — that another school can find, adapt and measure against.
 
 This codebase follows the build outline (“Ekoa Platform — Detailed Build Outline”). Every module in that outline, M1 to M13, is here.

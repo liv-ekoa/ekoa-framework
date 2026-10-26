@@ -10,7 +10,7 @@ import { Badge, Button, Checkbox, Empty, ErrorNote, Field, Input, Notice, Panel 
 function Thumb({ e }: { e: Evidence }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => { void evidenceUrl(e).then(setUrl); }, [e]);
-  return url ? <img src={url} alt={e.caption} className="aspect-[4/3] w-full rounded-field object-cover" /> : <div className="flex aspect-[4/3] w-full items-center justify-center rounded-field bg-paper-deep text-ink-mute"><ImageOff className="h-6 w-6" aria-label="Preview unavailable" /></div>;
+  return url ? <img src={url} alt={e.caption} className="aspect-[4/3] w-full rounded-field object-cover" /> : <div className="flex aspect-[4/3] w-full items-center justify-center rounded-field bg-paper-deep text-ink-mute"><ImageOff className="h-6 w-6" aria-label="Preview unavailable in demo" /></div>;
 }
 
 export function EvidenceTab({ b, canEdit, onChange }: { b: ProjectBundle; canEdit: boolean; onChange: () => void }) {

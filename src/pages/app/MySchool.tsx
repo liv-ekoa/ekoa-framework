@@ -128,8 +128,8 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
           <div className="space-y-4">
             <Notice tone="leaf">Invitation created. The account stays switched off until the guardian gives consent.</Notice>
             <Field label="Send this link to the guardian" id="cl"><Input id="cl" readOnly value={link} onFocus={(e) => e.target.select()} /></Field>
-            <p className="text-sm text-ink-mute">Send it from your school email. Only the guardian should open it: it is how they give or refuse consent.</p>
-            <div className="flex gap-2"><Button onClick={() => void navigator.clipboard?.writeText(link)}><Copy className="h-4 w-4" /> Copy link</Button></div>
+            <p className="text-sm text-ink-mute">With Supabase connected, the guardian also receives it by email automatically.</p>
+            <div className="flex gap-2"><Button onClick={() => void navigator.clipboard?.writeText(link)}><Copy className="h-4 w-4" /> Copy link</Button><Link to={link.replace(window.location.origin, '')} className="self-center text-sm font-bold underline">Open it (demo)</Link></div>
           </div>
         ) : (
           <div className="space-y-4">

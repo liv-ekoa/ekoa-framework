@@ -1,6 +1,8 @@
 import { Download } from 'lucide-react';
 import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { config } from '@/lib/config';
+import { resetDemo } from '@/lib/demoStore';
 import { useAction, useData } from '@/lib/hooks';
 import { download } from '@/lib/csv';
 import { roleTitle } from '@/lib/ekoa';
@@ -40,7 +42,7 @@ export default function Settings() {
                   ))}
                 </ul>
                 <p className="mt-3 text-xs text-ink-mute">Recorded {fmtDate(c.granted_at)}. Your guardian can change this at any time through the school.</p>
-                <Button size="sm" variant="danger" className="mt-4" busy={act.busy} onClick={() => act.run(async () => { await api.withdrawConsent(); await auth.refresh(); })}>Withdraw consent and pause my account</Button>
+                <Button size="sm" variant="danger" className="mt-4" busy={act.busy} onClick={() => act.run(async () => { await api.withdrawConsent(p.id); await auth.refresh(); })}>Withdraw consent and pause my account</Button>
               </>
             ) : <Notice tone="clay">Consent has not been recorded yet.</Notice>}
           </Panel>
@@ -50,6 +52,12 @@ export default function Settings() {
           <Button variant="ghost" className="mt-3" onClick={() => download(`my-ekoa-data.json`, JSON.stringify({ person: p, roles: auth.roles, measurements: data.ms, posts: data.posts, consent: c }, null, 2), 'application/json')}><Download className="h-4 w-4" /> Download my data</Button>
           <p className="mt-3 text-xs text-ink-mute">When you leave your school, your personal data is deleted or anonymised unless you choose to stay on as alumni.</p>
         </Panel>
+        {config.isDemo && (
+          <Panel title="Demo mode">
+            <p className="text-sm text-ink-soft">Everything here is fictional and stored only in this browser. Reset to the original pilot data at any time.</p>
+            <Button variant="ghost" className="mt-3" onClick={() => { resetDemo(); window.location.href = '/signin'; }}>Reset demo data</Button>
+          </Panel>
+        )}
       </div>
       <ErrorNote>{act.error}</ErrorNote>
     </div>

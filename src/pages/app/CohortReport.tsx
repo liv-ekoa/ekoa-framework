@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Printer, Send } from 'lucide-react';
 import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { config } from '@/lib/config';
 import { useAction, useData } from '@/lib/hooks';
 import { loadSchool, type SchoolData } from '@/lib/bundle';
 import { METRIC_LIBRARY, OBSTACLE_TAXONOMY, metricByCode } from '@/lib/ekoa';
@@ -96,7 +97,7 @@ export default function CohortReport({ publicView = false }: { publicView?: bool
     const pub = await api.getPublishedReport(SLUG);
     if (publicView) {
       if (pub) return { r: pub.data as ReportData, published: pub.published_at, live: false };
-      return { r: null, published: null, live: false };
+      return config.isDemo ? { r: await compile(), published: null, live: true } : { r: null, published: null, live: false };
     }
     return { r: await compile(), published: pub?.published_at ?? null, live: true };
   }, [publicView]);
@@ -123,7 +124,7 @@ export default function CohortReport({ publicView = false }: { publicView?: bool
             {!publicView && auth.isSteward && <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.publishReport(SLUG, 'Ekoa Implementation Report 01', r, auth.person!.id); await reload(); })}><Send className="h-4 w-4" /> Publish this version</Button>}
             {data.published && <span className="text-sm text-ink-mute">Public version from {fmtDate(data.published)}</span>}
           </div>
-          {data.live && <div className="mt-4"><Notice tone="clay">Live draft compiled from cohort data on {fmtDate(r.compiled_at)}. School names follow each school’s privacy choice.</Notice></div>}
+          {data.live && <div className="mt-4"><Notice tone="clay">Live draft compiled from pilot data on {fmtDate(r.compiled_at)}. School names follow each school’s privacy choice.</Notice></div>}
           <ErrorNote>{act.error}</ErrorNote>
         </header>
 

@@ -8,6 +8,7 @@ import { Logo } from './Logo';
 import { ReportConcern } from './ReportConcern';
 import { useAuth } from '@/lib/auth';
 import { roleTitle } from '@/lib/ekoa';
+import { config } from '@/lib/config';
 import { Avatar, Loading, cx } from './ui';
 
 type Auth = ReturnType<typeof useAuth>;
@@ -138,7 +139,7 @@ export function AppLayout() {
                   </div>
                   <ReportConcern />
                   <button onClick={() => void auth.signOut()} className="flex items-center gap-1.5 text-sm font-bold text-ink-soft hover:text-ink">
-                    <LogOut className="h-4 w-4" /> Sign out
+                    <LogOut className="h-4 w-4" /> {config.isDemo ? 'Switch demo person' : 'Sign out'}
                   </button>
                 </div>
               )}
@@ -160,13 +161,18 @@ export function AppLayout() {
                 <div className="min-w-0"><p className="truncate text-sm font-bold">{auth.person.display_name}</p><p className="truncate text-xs text-ink-mute">{myRoles.join(', ') || 'Member'}</p></div>
               </div>
               <ReportConcern />
-              <button onClick={() => void auth.signOut()} className="flex items-center gap-1.5 text-sm font-bold text-ink-soft"><LogOut className="h-4 w-4" /> Sign out</button>
+              <button onClick={() => void auth.signOut()} className="flex items-center gap-1.5 text-sm font-bold text-ink-soft"><LogOut className="h-4 w-4" /> {config.isDemo ? 'Switch demo person' : 'Sign out'}</button>
             </div>
           </div>
           <button className="flex-1 bg-ink/40" onClick={() => setDrawer(false)} aria-label="Close menu" />
         </div>
       )}
 
+      {config.isDemo && (
+        <div className="no-print border-b border-clay/30 bg-clay-50 px-4 py-1.5 text-center text-xs text-ink sm:px-8">
+          Preview: fictional schools and people, saved only in this browser. <Link to="/signin" className="font-bold underline">Switch person</Link> to see another role.
+        </div>
+      )}
       <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-14">
         <Outlet />
       </main>

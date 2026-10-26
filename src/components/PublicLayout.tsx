@@ -41,6 +41,9 @@ export function PublicLayout() {
   }, [loc.pathname, loc.hash]);
   return (
     <div className="flex min-h-screen flex-col">
+      <p className="bg-clay-700 px-4 py-2 text-center text-xs font-bold text-white sm:text-sm">
+        Preview with fictional schools and people. Nothing here is saved to Ekoa. <Link to="/signin" className="underline">Sign in</Link> to step into any role.
+      </p>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-field focus:bg-white focus:px-3 focus:py-2">Skip to content</a>
       <header className="sticky top-0 z-40 border-b border-paper-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-page items-center justify-between gap-6 px-4 py-3 sm:px-6">
@@ -109,7 +112,7 @@ export function PublicLayout() {
           </div>
         </div>
         <div className="border-t border-paper/10">
-          <p className="mx-auto max-w-page px-4 py-4 text-xs text-paper/80 sm:px-6">© {new Date().getFullYear()} Ekoa.</p>
+          <p className="mx-auto max-w-page px-4 py-4 text-xs text-paper/80 sm:px-6">© {new Date().getFullYear()} Ekoa.{config.isDemo && ' This is the preview, with fictional schools and people.'}</p>
         </div>
       </footer>
     </div>

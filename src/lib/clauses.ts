@@ -1,4 +1,4 @@
-// Starting content for the policy clause library, written into supabase/seed.sql by scripts/generate-seed-sql.ts.
+// Starting content shared by the demo seed and the production seed SQL.
 // Clauses are written from the School Sustainability & Continuity Policy prepared for the first collaborating school.
 
 export const POLICY_CLAUSES: [string, string, string][] = [
