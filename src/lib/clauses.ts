@@ -16,6 +16,13 @@ export const POLICY_CLAUSES: [string, string, string][] = [
   ['workshops', 'Workshops and events', 'The school runs practical workshops for parents and community members on composting, waste reduction, gardening and energy efficiency.'],
   ['climate_cafes', 'Climate Cafés', 'Regular informal sessions give parents and caregivers a space to discuss sustainability and feed home perspectives back into school practice.'],
   ['review', 'Review', 'The policy is reviewed every year by the Student Sustainability Board and the Faculty Liaison, and amendments are recorded.'],
+  ['waste', 'Waste reduction, segregation and composting', 'The school sorts waste at source into at least recyclables, organics and residual, with labelled bins in classrooms, the canteen and common areas. Food and garden waste is composted on site or by an approved partner. A baseline waste audit is repeated each year and the school sets a diversion target from it.'],
+  ['plastics', 'Single-use plastics', 'The school phases out single-use plastic items it controls, such as bottles, cutlery, straws and packaging in the canteen and at events. Refill points are provided and progress is counted each term.'],
+  ['energy', 'Energy use and renewables', 'The school meters its electricity, publishes monthly use per student, and sets a reduction target. Lights and equipment are switched off when rooms are empty, and renewable sources are considered for every major upgrade.'],
+  ['water', 'Water conservation', 'The school reads its water meters weekly, reports leaks within one working day, and fits low-flow fittings when replacing taps and toilets. Rainwater harvesting and reuse are assessed for each new building or renovation.'],
+  ['procurement', 'Sustainable procurement', 'When buying stationery, furniture, food and cleaning products, the school prefers durable, repairable, recycled or locally sourced options and asks suppliers to reduce packaging. Purchases above an agreed value are checked against this clause before approval.'],
+  ['curriculum', 'Sustainability in teaching and staff training', 'Each year group includes at least one sustainability topic or project linked to the subjects it studies. New teachers receive an onboarding booklet on the school’s sustainability policies, and all staff are offered training each year.'],
+  ['safeguarding', 'Safety and wellbeing in sustainability work', 'Sustainability activities are risk-assessed and supervised by an adult. Student photos and personal details are shared only with consent from the student and, for minors, a parent or guardian.'],
 ];
 
 export const CIRCLES: [string, string, string][] = [
