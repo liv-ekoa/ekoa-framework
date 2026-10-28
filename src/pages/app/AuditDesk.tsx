@@ -48,7 +48,7 @@ export default function AuditDesk() {
       if (verified && !CHECKS.every((c) => t[c.key])) throw new Error('Tick all four checks before raising the record to T3, or decline with a reason.');
       if (!text) throw new Error(verified ? 'Note what you checked and what you found.' : 'Give the school a reason, so they can fix it.');
       const checked = CHECKS.filter((c) => t[c.key]).map((c) => c.key).join(', ');
-      await api.completeVerification(v, verified, `${text}${checked ? ` (Checked: ${checked}.)` : ''}`, auth.person!.id);
+      await api.completeVerification(v, verified, `${text}${checked ? ` (Checked: ${checked}.)` : ''}`);
       reload();
     });
 

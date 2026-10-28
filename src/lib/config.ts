@@ -3,6 +3,7 @@
 export const config = {
   supabaseUrl: '',
   supabaseAnonKey: '',
+  configured: true,
   isDemo: true,
   contactEmail: (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? 'hello@ekoagsin.org',
   termsVersion: '2026-10',

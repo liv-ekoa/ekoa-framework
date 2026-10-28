@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, MessagesSquare, Users } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { CalendarDays, Handshake, MessagesSquare, Users } from 'lucide-react';
 import * as api from '@/lib/api';
 import { authorMeta, useAuth } from '@/lib/auth';
 import { useAction, useData } from '@/lib/hooks';
-import { loadSchool } from '@/lib/bundle';
 import { metricByCode } from '@/lib/ekoa';
-import { seriesFor, formatMetric } from '@/lib/metrics';
 import { fmtDate, fmtDateTime, plural, relative } from '@/lib/format';
 import { BarList } from '@/components/Chart';
-import { Badge, Button, Checkbox, Empty, ErrorNote, Field, Input, LinkButton, Loading, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
+import { Badge, Button, Checkbox, Empty, ErrorNote, Field, Input, Loading, Meter, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
 import type { EventItem } from '@/lib/types';
 
-type Tab = 'circles' | 'twin' | 'campaigns' | 'events' | 'requests';
+const Connections = lazy(() => import('./Connections'));
+
+type Tab = 'circles' | 'connections' | 'collaborators' | 'campaigns' | 'events' | 'requests';
 
 export default function Network() {
   const auth = useAuth();
@@ -22,18 +22,20 @@ export default function Network() {
   if (!data) return <Loading />;
   const inSchool = auth.activeOrg?.org_type === 'school';
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'circles', label: 'Circles' },
-    ...(inSchool ? [{ key: 'twin' as Tab, label: 'Twin school' }] : []),
+    { key: 'circles', label: 'Wall' },
+    { key: 'connections', label: 'Connections' },
+    ...(inSchool ? [{ key: 'collaborators' as Tab, label: 'Possible collaborators' }] : []),
     { key: 'campaigns', label: 'Campaigns' },
     { key: 'events', label: 'Events' },
     { key: 'requests', label: 'Partner requests' },
   ];
   return (
     <div>
-      <PageHeader title="Wall" lead="Circles, your twin school, campaigns and events. Group spaces only: teachers can see every thread, and contact details are blocked automatically." actions={<LinkButton to="/app/connections" variant="ghost">See your connections</LinkButton>} />
+      <PageHeader title="Network" lead="The Wall, your connections and schools you could work with, in one place. Group spaces only: teachers can see every thread, and anything unsafe is hidden the moment it is posted or reported." />
       <Tabs label="Network sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={tabs} />
       {tab === 'circles' && <Circles d={data} reload={reload} />}
-      {tab === 'twin' && <TwinSchool d={data} />}
+      {tab === 'connections' && <Suspense fallback={<Loading />}><Connections embedded /></Suspense>}
+      {tab === 'collaborators' && <Collaborators d={data} reload={reload} />}
       {tab === 'campaigns' && <Campaigns d={data} reload={reload} />}
       {tab === 'events' && <Events d={data} reload={reload} />}
       {tab === 'requests' && <Requests d={data} reload={reload} />}
@@ -42,10 +44,10 @@ export default function Network() {
 }
 
 async function loadAll() {
-  const [circles, members, threads, posts, twins, orgs, campaigns, parts, events, consents] = await Promise.all([
-    api.listCircles(), api.listCircleMembers(), api.listThreads(), api.listPosts(), api.listTwins(), api.listOrgs(), api.listCampaigns(), api.listCampaignParticipants(), api.listEvents(), api.listConsents(),
+  const [circles, members, threads, posts, orgs, campaigns, parts, events, consents] = await Promise.all([
+    api.listCircles(), api.listCircleMembers(), api.listThreads(), api.listPosts(), api.listOrgs(), api.listCampaigns(), api.listCampaignParticipants(), api.listEvents(), api.listConsents(),
   ]);
-  return { circles, members, threads, posts, twins, orgs, campaigns, parts, events, consents };
+  return { circles, members, threads, posts, orgs, campaigns, parts, events, consents };
 }
 type D = Awaited<ReturnType<typeof loadAll>>;
 
@@ -63,11 +65,11 @@ function Circles({ d, reload }: { d: D; reload: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [held, setHeld] = useState(false);
+  const [held, setHeld] = useState<string | null>(null);
   const act = useAction();
   return (
     <div className="space-y-6">
-      {held && <Notice tone="clay">Your post was held for review because it looked like it contained contact details. A steward will check it.</Notice>}
+      {held && <Notice tone="clay">{held}</Notice>}
       {!allowed && <Notice tone="clay">Your guardian has not allowed cross-school circles. You can read your own school’s spaces only. Ask your faculty liaison if this should change.</Notice>}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {[...d.circles].sort((a, b) => d.members.filter((m) => m.circle_id === b.id).length - d.members.filter((m) => m.circle_id === a.id).length).map((c) => {
@@ -102,7 +104,7 @@ function Circles({ d, reload }: { d: D; reload: () => void }) {
             if (!title.trim() || !body.trim()) throw new Error('Add a title and a first post.');
             const res = await api.createThread({ kind: 'circle', circle_id: open, org_id: auth.activeOrg?.id ?? null, record_id: null, title: title.trim() }, auth.person!, body.trim(), authorMeta(auth));
             setOpen(null); setTitle(''); setBody('');
-            setHeld(!!res.held);
+            setHeld(res.held);
             reload();
           })}>Post thread</Button>
         </div>
@@ -111,54 +113,54 @@ function Circles({ d, reload }: { d: D; reload: () => void }) {
   );
 }
 
-function TwinSchool({ d }: { d: D }) {
+/** Schools whose policies look like yours: the closer the policies, the more you can borrow from
+ *  each other. Worked out in the database from shared clauses, shared sections and shared wording. */
+function Collaborators({ d, reload }: { d: D; reload: () => void }) {
   const auth = useAuth();
+  const nav = useNavigate();
   const me = auth.activeOrg!;
-  const twin = d.twins.find((t) => t.org_a === me.id || t.org_b === me.id);
-  const twinOrg = twin ? d.orgs.find((o) => o.id === (twin.org_a === me.id ? twin.org_b : twin.org_a)) : undefined;
-  const { data } = useData(async () => (twinOrg ? { mine: await loadSchool(me.id), theirs: await loadSchool(twinOrg.id) } : null), [twinOrg?.id, me.id]);
-  if (!twin || !twinOrg) return <Empty title="No twin school yet">Stewards pair schools with similar or contrasting contexts. Ask your steward for a twin.</Empty>;
+  const allowed = useCrossSchoolAllowed(d);
+  const act = useAction();
+  const { data, error } = useData(() => api.collaboratorSuggestions(me.id), [me.id]);
+  if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!data) return <Loading />;
-  const latestBy = (s: Awaited<ReturnType<typeof loadSchool>>) => {
-    const out: Record<string, number> = {};
-    for (const t of s.targets) {
-      const ser = seriesFor(t.project_id, t.metric_code, s.measurements, s.targets);
-      if (ser.latest !== null) out[t.metric_code] = ser.latest;
-    }
-    return out;
-  };
-  const a = latestBy(data.mine);
-  const b = latestBy(data.theirs);
-  const shared = Object.keys(a).filter((k) => k in b);
-  const thread = d.threads.find((t) => t.kind === 'twin' && !t.record_id && [t.org_id, t.org_b].includes(me.id) && [t.org_id, t.org_b].includes(twinOrg.id));
+  const canStart = allowed && auth.has(['project_lead', 'ekoa_rep', 'faculty_liaison', 'board_member']);
+  const threadWith = (orgId: string) => d.threads.find((t) => t.kind === 'twin' && !t.record_id && [t.org_id, t.org_b].includes(me.id) && [t.org_id, t.org_b].includes(orgId));
   return (
-    <div className="space-y-6">
-      <Panel title={`${me.name} and ${twinOrg.name}`} action={thread && <Link to={`/app/network/thread/${thread.id}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-leaf-600"><MessagesSquare className="h-4 w-4" />Twin space</Link>}>
-        <p className="text-ink-soft">{twin.note}</p>
-        <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-          {[me, twinOrg].map((o) => (
-            <div key={o.id} className="rounded-field bg-paper p-4">
-              <p className="font-bold">{o.name}</p>
-              <p className="text-ink-mute">{o.city}, {o.country}. {o.student_count?.toLocaleString('en-GB')} students. {o.climate_zone}. Budget {o.context_profile?.budget_band}.</p>
-            </div>
-          ))}
-        </div>
-      </Panel>
-      <Panel title="Shared metrics, latest values">
-        {shared.length ? (
-          <div className="space-y-6">
-            {shared.map((code) => {
-              const def = metricByCode(code);
-              return (
-                <div key={code}>
-                  <p className="mb-2 font-bold">{def?.name} <span className="font-normal text-ink-mute">({def?.unit}; {def?.higher_is_better ? 'higher' : 'lower'} is better)</span></p>
-                  <BarList items={[{ label: me.name, value: a[code], tone: 'leaf' }, { label: twinOrg.name, value: b[code], tone: 'clay' }]} format={(v) => formatMetric(code, v)} max={def?.unit.startsWith('%') ? 100 : undefined} />
-                </div>
-              );
-            })}
-          </div>
-        ) : <p className="text-sm text-ink-mute">You do not share a metric yet. Shared metrics appear here once both schools log the same one.</p>}
-      </Panel>
+    <div className="space-y-5">
+      <Notice tone="sky">
+        <span className="inline-flex items-start gap-2"><Handshake className="mt-0.5 h-4 w-4 shrink-0" />
+          These schools have policies most like yours: the same clauses from the library, the same sections and the same wording. Every school sees the same match, so they see your school here too. Only the match and the headings you share are shown, never another school’s policy text.
+        </span>
+      </Notice>
+      {!data.length && <Empty title="No close matches yet">Matches appear once your school and others have a policy in Governance. The more of your policy you write, the better the matches.</Empty>}
+      <div className="grid gap-4 md:grid-cols-2">
+        {data.map((c) => {
+          const t = threadWith(c.org_id);
+          return (
+            <article key={c.org_id} className="flex flex-col gap-3 rounded-panel border border-paper-line bg-white p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0"><h2 className="font-display text-lg font-semibold">{c.name}</h2><p className="text-sm text-ink-mute">{[c.city, c.country].filter(Boolean).join(', ')}</p></div>
+                <span className="shrink-0 text-right"><span className="block font-display text-2xl font-semibold tabular-nums">{Math.round(c.score * 100)}%</span><span className="text-xs text-ink-mute">policy match</span></span>
+              </div>
+              <Meter value={c.score} label={`${c.name} policy match`} />
+              {c.shared_clauses.length > 0 && <div><p className="label-caps mb-1.5 text-ink-mute">Clauses you both use</p><div className="flex flex-wrap gap-1.5">{c.shared_clauses.map((x) => <Badge key={x} tone="leaf">{x}</Badge>)}</div></div>}
+              {c.shared_sections.length > 0 && <p className="text-sm text-ink-soft"><span className="font-bold">Sections you both cover:</span> {c.shared_sections.join(', ')}.</p>}
+              {c.shared_terms.length > 0 && <p className="text-sm text-ink-soft"><span className="font-bold">Shared words:</span> {c.shared_terms.join(', ')}.</p>}
+              <div className="mt-auto flex flex-wrap gap-2 pt-1">
+                {t ? <Link to={`/app/network/thread/${t.id}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-leaf-600"><MessagesSquare className="h-4 w-4" />Open your conversation</Link>
+                  : canStart ? <Button size="sm" busy={act.busy} onClick={() => act.run(async () => {
+                    const res = await api.createThread({ kind: 'twin', circle_id: null, org_id: me.id, org_b: c.org_id, record_id: null, title: `${me.name} and ${c.name}: working together` }, auth.person!, `Hello from ${me.name}. Our policies look alike, so we would like to compare notes on what is working for you.`, authorMeta(auth));
+                    reload();
+                    nav(`/app/network/thread/${res.thread.id}`);
+                  })}>Start a conversation</Button>
+                  : <p className="text-xs text-ink-mute">{allowed ? 'Your Project Lead, Ekoa Representative or teacher can start a conversation.' : 'Conversations with other schools need your guardian’s cross-school consent.'}</p>}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <ErrorNote>{act.error}</ErrorNote>
     </div>
   );
 }

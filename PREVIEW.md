@@ -7,12 +7,25 @@ launch. It never connects to the real database: everything you do is kept in you
 ## How to look around
 
 1. Open the preview link (see below).
-2. Click **Sign in**. Instead of an email box you get a list of people. Pick one to see Ekoa as
-   that role: a Project Lead or Implementation Team member (students), a Faculty Liaison
-   (teacher), the Ekoa steward, a partner, a peer auditor, or a student still waiting for
-   guardian consent.
+2. Click **Sign in**. Choose **Sign in as a school** or **Independent student**. No email is
+   sent: type any email to sign in at once (a new email lets you try joining as an independent
+   student), or pick a person from the list below the form: a Project Lead or Implementation Team
+   member (students), a Faculty Liaison (teacher), the Ekoa steward, a partner, a peer auditor,
+   an independent student, or a student still waiting for guardian consent.
 3. **Switch person** in the coloured bar at the top of the app takes you back to the list.
 4. **Settings → Reset demo data** puts everything back to the start.
+
+## What to try from the October feedback
+
+- **Blocking inappropriate posts.** As any student, post something rude on the Wall: it is hidden
+  at once. As Ritu Malhotra (Aravalli's faculty liaison), open My school → Safety to remove it or
+  restore it. Any post, photo or policy link has a Report button that hides it immediately.
+- **Possible collaborators** replace twin schools: Network → Possible collaborators.
+- **Helpful links** on a policy: Governance → open a policy.
+- **Network** now holds the Wall and Connections; **Projects** holds Metrics.
+- **Governance** and **Funding** are on the top bar. Funding starts from each project's budget.
+- **Independent students:** sign in as Diya Sharma, or join with a new email. As Noor Kapoor
+  (steward), Steward console → Students assigns them, and school-listed students, to a role.
 
 ## Where the preview link is
 

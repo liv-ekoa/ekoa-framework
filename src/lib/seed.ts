@@ -530,19 +530,20 @@ export function buildSeed(): Record<string, Row[]> {
   post(t3, sneha, 'Before we try composting again, we want to know how to keep it from going anaerobic in heavy rain.', -9);
   post(t3, lena, 'Cover the drums, add dry leaves at roughly 2 parts brown to 1 part green, and turn twice a week. We can run a group call for your team.', -8);
 
-  const t4 = thread({ id: id('t4'), kind: 'twin', org_id: aravalli.id, org_b: ubud.id, title: 'Aravalli Valley × Ubud Hills twin space', created_by: kabir.id, created_at: ts(-60) });
+  const t4 = thread({ id: id('t4'), kind: 'twin', org_id: aravalli.id, org_b: ubud.id, title: 'Aravalli Valley and Ubud Hills: working together', created_by: kabir.id, created_at: ts(-60) });
   post(t4, made, 'Our segregation accuracy is holding at 84%. How is your contamination trend?', -20);
   post(t4, kabir, 'Down to 12%. Would you peer-audit our next sample for T3?', -19);
   post(t4, made, 'T3 audits go to Shiv Nadar or Green School now, so request it from the record page. Happy to look over your sample sheet before you send it.', -18);
 
   const t5 = thread({ id: id('t5'), kind: 'circle', circle_id: circles.waste.id, title: 'Who has a cheap platform scale that works?', created_by: lucas.id, created_at: ts(-3) });
   post(t5, lucas, 'Looking for a scale under USD 50 that handles 30 kg bins.', -3);
-  post(t5, made, 'Message me on 98xxxxxx21 and I can share the model.', -2, { flagged: true, hidden: true });
+  const held = post(t5, made, 'Message me on 98xxxxxx21 and I can share the model.', -2, { flagged: true, hidden: true, flag_reason: 'contact' });
+  add('content_flags', { id: id('fl'), target_kind: 'post', target_id: held.id, org_id: ubud.id, reason: 'contact', source: 'filter', reporter_person_id: null, excerpt: held.body, note: '', status: 'open', decided_by: null, decided_at: null, created_at: ts(-2, 15) });
+  const mean = post(t5, meher, 'You guys are such losers, just guess the weight.', -1, { flagged: true, hidden: true, flag_reason: 'bullying' });
+  add('content_flags', { id: id('fl'), target_kind: 'post', target_id: mean.id, org_id: aravalli.id, reason: 'bullying', source: 'filter', reporter_person_id: null, excerpt: mean.body, note: '', status: 'open', decided_by: null, decided_at: null, created_at: ts(-1, 15) });
 
 
-  // ---------- Twins, campaigns, events ----------
-  add('twins', { id: id('u0'), org_a: aravalli.id, org_b: ubud.id, note: 'Similar canteen-led waste; very different climates and contractors.' });
-  add('twins', { id: id('u1'), org_a: lakeside.id, org_b: viva.id, note: 'Both low-budget with municipal collection.' });
+  // ---------- Campaigns, events ----------
 
   const cw = add('campaigns', { id: id('v0'), name: 'Canteen Waste Month', description: 'Four weeks, one metric: grams of food waste per meal served. Ranked by improvement, not by size.', starts_on: day(20), ends_on: day(48), metric_code: 'canteen_waste_per_meal', protocol: 'Weigh plate and kitchen food waste every school day; divide by meals served.', sponsor: 'Compost Commons' });
   for (const o of [aravalli, ubud, tampines]) add('campaign_participants', { id: id('v1'), campaign_id: cw.id, org_id: o.id, baseline: null, latest: null });
@@ -564,6 +565,10 @@ export function buildSeed(): Record<string, Row[]> {
   const section = (c: Row) => ({ key: c.section + '-' + c.id.slice(-4), title: c.title, body: c.body, clause_id: c.id });
   add('policies', { id: id('y0'), org_id: aravalli.id, title: 'School Sustainability & Continuity Policy', version: 2, status: 'internal_review', sections: clauseRows.slice(0, 10).map(section), adopted_at: null, updated_at: ts(-4) });
   const ubPolicy = add('policies', { id: id('y1'), org_id: ubud.id, title: 'Sustainability & Continuity Policy', version: 3, status: 'amended', sections: clauseRows.map(section), adopted_at: ts(-160), updated_at: ts(-40) });
+  const avPolicy = T.policies.find((x) => x.org_id === aravalli.id)!;
+  add('policies', { id: id('y4'), org_id: lakeside.id, title: 'Green School Policy', version: 1, status: 'draft', sections: clauseRows.slice(4, 12).map(section), adopted_at: null, updated_at: ts(-9) });
+  add('policy_links', { id: id('yl'), policy_id: avPolicy.id, org_id: aravalli.id, url: 'https://docs.google.com/document/d/aravalli-compost-rota/edit', title: 'Compost sampling rota, this term', note: 'Who weighs the sample each fortnight. Edit it if you swap a slot.', added_by: kabir.id, added_by_name: kabir.display_name, hidden: false, created_at: ts(-8) });
+  add('policy_links', { id: id('yl'), policy_id: avPolicy.id, org_id: aravalli.id, url: 'https://docs.google.com/spreadsheets/d/aravalli-vendor-terms/edit', title: 'Event vendor packaging terms (draft)', note: '', added_by: ritu.id, added_by_name: ritu.display_name, hidden: false, created_at: ts(-3) });
   add('policy_amendments', { id: id('y2'), policy_id: ubPolicy.id, summary: 'Added the six-seat staggered board.', adopted_on: day(-120) });
   add('policy_amendments', { id: id('y3'), policy_id: ubPolicy.id, summary: 'Required unannounced audits for all segregation data.', adopted_on: day(-40) });
 
@@ -589,10 +594,39 @@ export function buildSeed(): Record<string, Row[]> {
     signed_out_at: null, signed_in_at: null, signed_liaison_at: null, term_switch_on: day(40), created_at: ts(-3),
   });
 
+  // ---------- Independent students ----------
+  const indie = (name: string, email: string, age: string, consent: string, school: string, city: string) => {
+    const p = person(name, email, age, consent);
+    const o = add('organisations', { id: id('ai'), name: `${name} (independent)`, org_type: 'independent', country: 'India', city, school_name: school, lat: null, lng: null, curriculum: null, student_count: null, grade_range: null, climate_zone: null, context_profile: null, status: 'active', public_visible: false, anonymised_label: null });
+    add('role_assignments', { id: id('d0'), person_id: p.id, org_id: o.id, role: 'project_lead', seat: null, local_title: 'Independent student', term_start: day(-10), term_end: null, status: 'active' });
+    return { p, o };
+  };
+  const diya = indie('Diya Sharma', 'diya@student.example', '16-17', 'granted', 'Sunrise Public School', 'Gurugram');
+  add('consent_records', { id: id('cr'), person_id: diya.p.id, guardian_name: 'Anil Sharma', guardian_email: 'anil.sharma@family.example', scope: { account: true, cross_school: false, photos: true, name_on_records: false }, method: 'email_link', terms_version: '2026-10', token: id('tk'), granted_at: ts(-9), withdrawn_at: null });
+  const bottles = add('projects', {
+    id: id('g9'), org_id: diya.o.id, title: 'Water bottle refill station for the senior block', category: 'Waste', stage: 'identify', status: 'active',
+    owner_role: 'project_lead', template_key: null, starts_on: day(-8), ends_on: null, adapted_from_record_id: null,
+    problem: 'A three-day count found 410 plastic water bottles thrown away in the senior block.',
+    solution: 'Ask the school to install one filtered refill station and track bottle counts for six weeks.',
+    monitoring_plan: [{ metric_code: 'single_use_plastic', who: 'project_lead', frequency: 'Weekly' }], risks: [], updated_at: ts(-2),
+  });
+  add('budget_pathways', { id: id('bp'), project_id: bottles.id, source_type: 'sponsor', amount: 18500, currency: 'INR', approver: 'School principal', status: 'planned', rigidity_notes: '' });
+  add('budget_lines', { id: id('bl'), project_id: bottles.id, category: 'equipment', item: 'Filtered refill station', planned: 16000, actual: null, currency: 'INR', note: 'Quote from a local supplier' });
+  add('budget_lines', { id: id('bl'), project_id: bottles.id, category: 'printing', item: 'Posters for the launch', planned: 2500, actual: null, currency: 'INR', note: '' });
+  const kian = indie('Kian Patel', 'kian@student.example', '13-15', 'pending', 'Green Valley School', 'Pune');
+  add('consent_records', { id: id('cr'), person_id: kian.p.id, guardian_name: 'Rhea Patel', guardian_email: 'rhea.patel@family.example', scope: { account: false, cross_school: false, photos: false, name_on_records: false }, method: 'email_link', terms_version: '2026-10', token: id('tk'), granted_at: null, withdrawn_at: null });
+
+  add('budget_pathways', { id: id('bp'), project_id: compost.id, source_type: 'school_budget', amount: 14500, currency: 'INR', approver: 'Bursar', status: 'approved', rigidity_notes: '' });
+  add('budget_lines', { id: id('bl'), project_id: compost.id, category: 'equipment', item: 'Three compost drums', planned: 9000, actual: 9400, currency: 'INR', note: '' });
+  add('budget_lines', { id: id('bl'), project_id: compost.id, category: 'equipment', item: 'Platform scale, 30 kg', planned: 3500, actual: 3500, currency: 'INR', note: '' });
+  add('budget_lines', { id: id('bl'), project_id: compost.id, category: 'printing', item: 'Bin signs for the canteen', planned: 2000, actual: null, currency: 'INR', note: '' });
+
   // ---------- Steward data ----------
   const app = (name: string, email: string, org: string, country: string, r: string, msg: string, status: string, at: number, hasLead = '', leadPlan = '') =>
     add('applications', { id: id('aa'), name, email, organisation: org, country, role: r, message: msg, has_lead: hasLead, lead_plan: leadPlan, status, notes: '', created_at: ts(at) });
   app('Thandi Mokoena', 'thandi@harbourview.example', 'Harbourview College', 'South Africa', 'School / School Network', 'We run an eco club of 40 students and want help with continuity after Grade 12s leave.', 'new', -1, 'eco_club', 'Our eco club president would be Project Lead, with Ms Naidoo (Geography) as faculty liaison.');
+  Object.assign(T.applications[T.applications.length - 1], { kind: 'school', org_id: null, student_emails: ['lwazi.d@harbourview.example', 'amahle.n@harbourview.example', 'sipho.k@harbourview.example'] });
+  add('applications', { id: id('aa'), name: ritu.display_name, email: ritu.email, organisation: aravalli.name, country: 'India', role: 'Faculty liaison', message: 'Please add these 2 students to Aravalli Valley School.', has_lead: 'yes', lead_plan: '', status: 'new', notes: '', kind: 'students', org_id: aravalli.id, student_emails: ['ishaan.v@aravalli.example', 'tara.b@aravalli.example'], created_at: ts(-1, 9) });
   app('Joseph Kamau', 'joseph@nairobigreen.example', 'Nairobi Green Academy', 'Kenya', 'Sustainability Coordinator / Eco Club', 'Interested in the waste pilot for next term.', 'contacted', -6);
   app('Bea Santos', 'bea.santos@example.com', 'Quezon City Science High', 'Philippines', 'Student Leader', 'I lead our school’s climate club and want to join a circle.', 'new', -2, 'no', 'Nobody leads it yet. I would lead and ask our chemistry teacher to be the liaison.');
   app('Pema Sherpa', 'pema@riversalive.example', 'Rivers Alive', 'Nepal', 'Climate-focused NGO / Partner', 'We could support water audits in schools in the Kathmandu valley.', 'call_booked', -11);

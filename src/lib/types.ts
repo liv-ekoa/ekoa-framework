@@ -2,7 +2,8 @@
 
 export type UUID = string;
 
-export type OrgType = 'school' | 'partner' | 'ekoa';
+/** independent: the private workspace of a student who joined Ekoa without their school. */
+export type OrgType = 'school' | 'partner' | 'ekoa' | 'independent';
 export type AgeBand = '13-15' | '16-17' | '18+';
 export type ConsentStatus = 'not_needed' | 'pending' | 'granted' | 'withdrawn';
 
@@ -54,6 +55,8 @@ export interface Organisation {
   anonymised_label: string | null;
   /** Ekoa audit schools carry out T3 peer audits of other schools' records. */
   audit_school: boolean;
+  /** For an independent student's workspace: the school they attend, which is not on Ekoa yet. */
+  school_name?: string;
   created_at: string;
 }
 
@@ -128,6 +131,8 @@ export interface Post {
   created_at: string;
   flagged: boolean;
   hidden: boolean;
+  /** Why the safety filter hid it, if it did. */
+  flag_reason?: string | null;
 }
 
 export interface MonitoringItem { metric_code: string; who: RoleKey; frequency: string }
@@ -373,6 +378,8 @@ export interface Evidence {
   consent_checked: boolean;
   exif_stripped: boolean;
   caption: string;
+  /** Hidden from students while a teacher reviews a report about it. */
+  hidden?: boolean;
   created_at: string;
 }
 
@@ -422,7 +429,49 @@ export interface EventItem {
   recorded: boolean;
 }
 
-export interface Twin { id: UUID; org_a: UUID; org_b: UUID; note: string }
+/** Anything reported, or caught by the safety filter. It is hidden at once until an adult decides. */
+export interface ContentFlag {
+  id: UUID;
+  target_kind: 'post' | 'evidence' | 'policy_link' | 'upload';
+  target_id: UUID;
+  org_id: UUID | null;
+  reason: 'self_harm' | 'violence' | 'hate' | 'sexual' | 'bullying' | 'contact' | 'other';
+  source: 'filter' | 'report';
+  reporter_person_id: UUID | null;
+  excerpt: string;
+  note: string;
+  status: 'open' | 'removed' | 'restored';
+  decided_by: UUID | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
+/** A helpful link (a Google Doc, a template, an article) added to a school's policy by any member. */
+export interface PolicyLink {
+  id: UUID;
+  policy_id: UUID;
+  org_id: UUID;
+  url: string;
+  title: string;
+  note: string;
+  added_by: UUID | null;
+  added_by_name: string;
+  hidden: boolean;
+  created_at: string;
+}
+
+/** Another school whose policy is like yours, from public.collaborator_suggestions. */
+export interface CollaboratorSuggestion {
+  org_id: UUID;
+  name: string;
+  city: string;
+  country: string;
+  /** 0 to 1. */
+  score: number;
+  shared_clauses: string[];
+  shared_sections: string[];
+  shared_terms: string[];
+}
 
 export interface Application {
   id: UUID;
@@ -437,6 +486,12 @@ export interface Application {
   lead_plan: string;
   status: 'new' | 'contacted' | 'call_booked' | 'agreement_sent' | 'onboarded' | 'declined';
   notes: string;
+  /** school: a school registering; students: a school's liaison sending more student emails. */
+  kind?: 'school' | 'students' | 'other';
+  /** The school, once it exists on Ekoa. */
+  org_id?: UUID | null;
+  /** Student emails the school listed, for Ekoa admins to give roles to. */
+  student_emails?: string[];
   created_at: string;
 }
 

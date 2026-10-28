@@ -42,7 +42,7 @@ export default function Settings() {
                   ))}
                 </ul>
                 <p className="mt-3 text-xs text-ink-mute">Recorded {fmtDate(c.granted_at)}. Your guardian can change this at any time through the school.</p>
-                <Button size="sm" variant="danger" className="mt-4" busy={act.busy} onClick={() => act.run(async () => { await api.withdrawConsent(p.id); await auth.refresh(); })}>Withdraw consent and pause my account</Button>
+                <Button size="sm" variant="danger" className="mt-4" busy={act.busy} onClick={() => act.run(async () => { await api.withdrawConsent(); await auth.refresh(); })}>Withdraw consent and pause my account</Button>
               </>
             ) : <Notice tone="clay">Consent has not been recorded yet.</Notice>}
           </Panel>

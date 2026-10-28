@@ -1,11 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from './db';
-import { config } from './config';
-import { getOrg, listPeople, listRolesForPerson } from './api';
+import { getOrg, listRolesForPerson } from './api';
 import type { Organisation, Person, RoleAssignment, RoleKey, UUID } from './types';
 import { ROLES } from './ekoa';
 
-const DEMO_KEY = 'ekoa-demo-person';
 const ORG_KEY = 'ekoa-active-org';
 
 interface AuthState {
@@ -15,8 +13,12 @@ interface AuthState {
   orgs: Organisation[];
   activeOrg: Organisation | null;
   setActiveOrg: (id: UUID) => void;
-  signInAs: (personId: UUID) => Promise<void>;
-  sendMagicLink: (email: string) => Promise<void>;
+  /** Email the sign-in link. `next` is the page to open after signing in. */
+  sendMagicLink: (email: string, next?: string) => Promise<void>;
+  /** The signed-in email, even before an Ekoa account exists for it. */
+  authEmail: string | null;
+  /** The active workspace is an independent student's, not a school's. */
+  isIndependent: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   /** Role checks scoped to the active organisation unless an org id is given. */
@@ -51,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<RoleAssignment[]>([]);
   const [orgs, setOrgs] = useState<Organisation[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<UUID | null>(safeGet(ORG_KEY));
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
 
   const loadPerson = useCallback(async (p: Person | null) => {
     if (!p) {
@@ -61,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const rs = (await listRolesForPerson(p.id)).filter((r) => r.status !== 'alumni' || r.role === 'alumni');
     const orgIds = [...new Set(rs.map((r) => r.org_id))];
-    const os = await Promise.all(orgIds.map((id) => getOrg(id)));
+    // A school may be unreadable, for example to a student still waiting for guardian consent.
+    const os = (await Promise.all(orgIds.map((id) => getOrg(id).catch(() => null)))).filter((o): o is Organisation => !!o);
     setPerson(p);
     setRoles(rs);
     setOrgs(os);
@@ -71,17 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      if (config.isDemo) {
-        const id = safeGet(DEMO_KEY);
-        const people = id ? await listPeople() : [];
-        await loadPerson(people.find((p) => p.id === id) ?? null);
-      } else if (supabase) {
-        const { data } = await supabase.auth.getUser();
-        if (data.user) {
-          const { data: p } = await supabase.from('people').select('*').eq('auth_user_id', data.user.id).maybeSingle();
-          await loadPerson((p as Person) ?? null);
-        } else await loadPerson(null);
-      }
+      const { data } = await supabase.auth.getUser();
+      setAuthEmail(data.user?.email ?? null);
+      if (data.user) {
+        const { data: p } = await supabase.from('people').select('*').eq('auth_user_id', data.user.id).maybeSingle();
+        await loadPerson((p as Person) ?? null);
+      } else await loadPerson(null);
     } finally {
       setLoading(false);
     }
@@ -89,10 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refresh();
-    if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange(() => void refresh());
-      return () => data.subscription.unsubscribe();
-    }
+    // Deferred so the auth client finishes its own work before we query again.
+    const { data } = supabase.auth.onAuthStateChange(() => { setTimeout(() => void refresh(), 0); });
+    return () => data.subscription.unsubscribe();
   }, [refresh]);
 
   const value = useMemo<AuthState>(() => {
@@ -113,22 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActiveOrgId(id);
         safeSet(ORG_KEY, id);
       },
-      signInAs: async (personId) => {
-        safeSet(DEMO_KEY, personId);
-        safeSet(ORG_KEY, null);
-        setActiveOrgId(null);
-        await refresh();
-      },
-      sendMagicLink: async (email) => {
-        if (!supabase) throw new Error('Sign-in by email works once Supabase is connected. Use a demo account for now.');
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/app`, shouldCreateUser: true } });
+      sendMagicLink: async (email, next = '/app') => {
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}${next}`, shouldCreateUser: true } });
         if (error) throw new Error(error.message);
       },
       signOut: async () => {
-        safeSet(DEMO_KEY, null);
-        if (supabase) await supabase.auth.signOut();
+        safeSet(ORG_KEY, null);
+        await supabase.auth.signOut();
         await loadPerson(null);
       },
+      authEmail,
+      isIndependent: activeOrg?.org_type === 'independent',
       refresh,
       has,
       isSteward: current.some((r) => r.role === 'steward'),
@@ -136,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdult: person?.age_band === '18+',
       needsConsent: !!person?.is_minor && person.consent_status !== 'granted',
     };
-  }, [loading, person, roles, orgs, activeOrgId, refresh, loadPerson]);
+  }, [loading, person, roles, orgs, activeOrgId, authEmail, refresh, loadPerson]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
