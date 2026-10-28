@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { PublicLayout } from './components/PublicLayout';
 import { AppLayout } from './components/AppLayout';
 import { Loading } from './components/ui';
@@ -17,6 +17,7 @@ const About = lazy(() => import('./pages/public/About'));
 const Safeguarding = lazy(() => import('./pages/public/Safeguarding'));
 const Contact = lazy(() => import('./pages/public/Contact'));
 const SignIn = lazy(() => import('./pages/public/SignIn'));
+const JoinStudent = lazy(() => import('./pages/public/JoinStudent'));
 const GuardianConsent = lazy(() => import('./pages/public/GuardianConsent'));
 const WaitingConsent = lazy(() => import('./pages/public/WaitingConsent'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
@@ -28,7 +29,6 @@ const Projects = lazy(() => import('./pages/app/Projects'));
 const NewProject = lazy(() => import('./pages/app/NewProject'));
 const ProjectWorkspace = lazy(() => import('./pages/app/project/ProjectWorkspace'));
 const QuickLog = lazy(() => import('./pages/app/QuickLog'));
-const Metrics = lazy(() => import('./pages/app/Metrics'));
 const Kiosk = lazy(() => import('./pages/app/Kiosk'));
 const Library = lazy(() => import('./pages/app/Library'));
 const RecordView = lazy(() => import('./pages/app/RecordView'));
@@ -44,9 +44,16 @@ const MySchool = lazy(() => import('./pages/app/MySchool'));
 const Steward = lazy(() => import('./pages/app/Steward'));
 const PartnerDesk = lazy(() => import('./pages/app/PartnerDesk'));
 const AuditDesk = lazy(() => import('./pages/app/AuditDesk'));
-const Connections = lazy(() => import('./pages/app/Connections'));
 const FundingGuide = lazy(() => import('./pages/app/FundingGuide'));
 const Settings = lazy(() => import('./pages/app/Settings'));
+
+/** Old addresses for pages that are now part of another page. Keeps any ?tab= in the link. */
+function Moved({ to, extra }: { to: string; extra: Record<string, string> }) {
+  const { search } = useLocation();
+  const q = new URLSearchParams(search);
+  for (const [k, v] of Object.entries(extra)) q.set(k, v);
+  return <Navigate replace to={`${to}?${q.toString()}`} />;
+}
 
 export default function App() {
   return (
@@ -63,6 +70,7 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
           <Route path="join" element={<Join />} />
+          <Route path="join/student" element={<JoinStudent />} />
           <Route path="about" element={<About />} />
           <Route path="safeguarding" element={<Safeguarding />} />
           <Route path="contact" element={<Contact />} />
@@ -78,13 +86,13 @@ export default function App() {
           <Route path="projects/new" element={<NewProject />} />
           <Route path="projects/:id" element={<ProjectWorkspace />} />
           <Route path="log" element={<QuickLog />} />
-          <Route path="metrics" element={<Metrics />} />
+          <Route path="metrics" element={<Moved to="/app/projects" extra={{ view: 'metrics' }} />} />
           <Route path="library" element={<Library />} />
           <Route path="library/:id" element={<RecordView />} />
           <Route path="records/:id/edit" element={<RecordEditor />} />
           <Route path="network" element={<Network />} />
           <Route path="network/thread/:id" element={<ThreadView />} />
-          <Route path="connections" element={<Connections />} />
+          <Route path="connections" element={<Moved to="/app/network" extra={{ tab: 'connections' }} />} />
           <Route path="governance" element={<Governance />} />
           <Route path="governance/policy/:id" element={<PolicyEditor />} />
           <Route path="handover" element={<Handover />} />

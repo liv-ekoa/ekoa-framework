@@ -7,6 +7,7 @@ import { useAction, useData } from '@/lib/hooks';
 import { fmtDate } from '@/lib/format';
 import type { Policy, PolicySection } from '@/lib/types';
 import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, Panel, Textarea, cx } from '@/components/ui';
+import { PolicyLinks } from '@/components/PolicyLinks';
 
 const FLOW: Policy['status'][] = ['draft', 'internal_review', 'approved', 'adopted'];
 const LABEL: Record<Policy['status'], string> = { draft: 'Draft', internal_review: 'Internal review', approved: 'Approved', adopted: 'Adopted', amended: 'Adopted and amended' };
@@ -116,6 +117,7 @@ export default function PolicyEditor() {
               <Button variant="quiet" onClick={() => setP({ ...p, sections: [...p.sections, { key: `custom-${Date.now()}`, title: 'New section', body: '', clause_id: null }] })}>Add a blank section</Button>
             </div>
           )}
+          <PolicyLinks policyId={p.id} orgId={p.org_id} />
         </div>
 
         <aside className="no-print space-y-4">

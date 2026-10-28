@@ -1,18 +1,125 @@
 import { useState } from 'react';
-import { ExternalLink, Printer } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Check, Copy, ExternalLink, Printer } from 'lucide-react';
+import * as api from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { useData } from '@/lib/hooks';
+import { summariseBudget } from '@/lib/budget';
+import { currencyFor, metricByCode } from '@/lib/ekoa';
 import { ALL_COUNTRIES, FUNDING_ROLES, FUNDING_STEPS, PAYING_RULES, PLATFORM_QUESTIONS, PROJECT_SUMMARY, ROUTES, guideFor } from '@/lib/funding';
-import { Badge, Button, Field, Notice, PageHeader, Panel, Select } from '@/components/ui';
+import type { BudgetLine, BudgetPathway, Organisation, Project, ProjectMetric } from '@/lib/types';
+import { Badge, Button, Empty, Field, LinkButton, Loading, Notice, PageHeader, Panel, Select, Textarea, cx } from '@/components/ui';
+
+/** The funding ask, written from what the team already put in the project. Gaps are left as [prompts]. */
+function fundingAsk(org: Organisation, p: Project, lines: BudgetLine[], targets: ProjectMetric[]): string {
+  const school = org.org_type === 'independent' ? org.school_name || '[your school]' : org.name;
+  const cur = lines[0]?.currency ?? currencyFor(org.country);
+  const total = lines.reduce((n, l) => n + l.planned, 0);
+  const fmt = (n: number) => `${cur} ${Math.round(n).toLocaleString('en-GB')}`;
+  const budget = lines.length
+    ? [...lines.map((l) => `- ${l.item}: ${fmt(l.planned)}${l.note ? ` (${l.note})` : ''}`), `Total: ${fmt(total)}`].join('\n')
+    : '[Add your budget lines in the Plan tab of the project]';
+  const shown = targets.length
+    ? targets.map((t) => {
+        const m = metricByCode(t.metric_code);
+        const unit = m?.unit ?? '';
+        return `- ${m?.name ?? t.metric_code}: ${t.baseline !== null ? `from ${t.baseline} ` : ''}${t.target !== null ? `to ${t.target} ` : ''}${unit}`.trim();
+      }).join('\n')
+    : '[Name the Ekoa metric and the target]';
+  return [
+    `${p.title}, ${school}`,
+    '',
+    'The problem',
+    p.problem.trim() || '[Two sentences with one number from your own baseline measurement]',
+    '',
+    'What we will do',
+    p.solution.trim() || '[Three to five concrete steps and who does them]',
+    '',
+    'Who we are',
+    `Students at ${school}, supported by [the teacher who holds the account].`,
+    '',
+    'The budget',
+    budget,
+    '',
+    'How we will show it worked',
+    shown,
+    'We will publish the result on our Ekoa Implementation Record, even if it falls short.',
+    '',
+    'What happens to extra money',
+    '[Decide this before you launch]',
+  ].join('\n');
+}
+
+/** Every project starts with its budget. This turns a budget into a funding ask. */
+function ProjectBudgets({ org }: { org: Organisation }) {
+  const [params, setParams] = useSearchParams();
+  const [copied, setCopied] = useState(false);
+  const { data } = useData(async () => {
+    const [projects, lines, pathways, targets] = await Promise.all([api.listProjects(org.id), api.listBudgetLines(), api.listBudgets(), api.listProjectMetrics()]);
+    return { projects: projects.filter((p) => p.status !== 'ended' && p.status !== 'completed'), lines, pathways, targets };
+  }, [org.id]);
+  if (!data) return <Panel title="Your projects’ budgets"><Loading /></Panel>;
+  if (!data.projects.length)
+    return <Panel title="Your projects’ budgets"><Empty title="No open projects yet" action={<LinkButton to="/app/projects/new" variant="dark">Start a project</LinkButton>}>Every project starts with its budget. Start one, add its budget in the Plan tab, and it appears here.</Empty></Panel>;
+  const chosen = data.projects.find((p) => p.id === params.get('project')) ?? null;
+  const linesOf = (id: string) => data.lines.filter((l) => l.project_id === id);
+  const pathOf = (id: string): BudgetPathway[] => data.pathways.filter((b) => b.project_id === id);
+  const ask = chosen ? fundingAsk(org, chosen, linesOf(chosen.id), data.targets.filter((t) => t.project_id === chosen.id)) : '';
+  return (
+    <Panel title="Your projects’ budgets" id="ask">
+      <p className="mb-4 text-sm text-ink-soft">Every project starts with its budget. Pick one to turn it into a funding ask you can paste into any platform below.</p>
+      <ul className="grid gap-3 md:grid-cols-2">
+        {data.projects.map((p) => {
+          const lines = linesOf(p.id);
+          const paths = pathOf(p.id);
+          const sum = summariseBudget(paths, lines, currencyFor(org.country));
+          const none = !lines.length && !sum.zeroCost;
+          return (
+            <li key={p.id} className={cx('rounded-field border p-3', chosen?.id === p.id ? 'border-moss bg-moss/5' : 'border-paper-line bg-white')}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <Link to={`/app/projects/${p.id}`} className="font-bold hover:underline">{p.title}</Link>
+                {sum.zeroCost ? <Badge tone="leaf">Zero-cost</Badge> : none ? <Badge tone="clay">No budget yet</Badge> : <Badge tone="sky">{sum.currency} {Math.round(sum.planned).toLocaleString('en-GB')}</Badge>}
+              </div>
+              <p className="mt-1 text-sm text-ink-soft">{none ? 'Add the budget lines first: what you will buy, and what each costs.' : sum.text}</p>
+              {paths[0] && !sum.zeroCost && <p className="mt-1 text-xs text-ink-mute">Funding status: {paths[0].status}</p>}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {none
+                  ? <LinkButton size="sm" variant="ghost" to={`/app/projects/${p.id}?tab=plan`}>Add the budget</LinkButton>
+                  : !sum.zeroCost && <Button size="sm" variant={chosen?.id === p.id ? 'dark' : 'ghost'} onClick={() => { setCopied(false); setParams({ project: p.id }, { replace: true }); }}>Write the funding ask</Button>}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {chosen && (
+        <div className="mt-5 border-t border-paper-line pt-4">
+          <Field label={`Funding ask for ${chosen.title}`} id="fa" hint="Written from your project plan. Replace anything in [brackets], and have your teacher read it before it goes public. First names or roles only for anyone under 18.">
+            <Textarea id="fa" rows={16} readOnly value={ask} className="font-mono text-sm" />
+          </Field>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" onClick={async () => { try { await navigator.clipboard.writeText(ask); setCopied(true); } catch { setCopied(false); } }}>{copied ? <><Check className="h-4 w-4" aria-hidden /> Copied</> : <><Copy className="h-4 w-4" aria-hidden /> Copy the ask</>}</Button>
+            <LinkButton size="sm" variant="ghost" to={`/app/projects/${chosen.id}?tab=plan`}>Edit the budget</LinkButton>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
 
 export default function FundingGuide() {
-  const [country, setCountry] = useState('');
+  const auth = useAuth();
+  const org = auth.activeOrg;
+  const [country, setCountry] = useState(org && ALL_COUNTRIES.includes(org.country) ? org.country : '');
   const guide = guideFor(country);
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Fund your project"
-        lead="Some projects need money and some students have none. This packet helps your team raise funds in your own country. Ekoa does not collect or hold the money."
+        title="Funding"
+        lead="Some projects need money and some students have none. Start from your project’s budget, then find where to raise the money in your country. Ekoa does not collect or hold the money."
         actions={<Button variant="quiet" onClick={() => window.print()}><Printer className="h-4 w-4" aria-hidden /> Print the packet</Button>}
       />
+
+      {org && <ProjectBudgets org={org} />}
 
       <Notice tone="clay">
         Ekoa is built for minors. A teacher or another adult should hold any fundraising account, and no student under 18 should be named or photographed without guardian consent.

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { submitApplication } from '@/lib/api';
+import { parseEmails, submitApplication } from '@/lib/api';
+import { Link } from 'react-router-dom';
 import { useAction } from '@/lib/hooks';
 import { Button, ErrorNote, Field, Input, Select, Textarea, cx } from '@/components/ui';
 import type { Application } from '@/lib/types';
@@ -21,7 +22,7 @@ const LOOKING = [
 ];
 
 export default function Join() {
-  const [f, setF] = useState({ name: '', email: '', organisation: '', country: '', role: '', message: '', has_lead: '' as Application['has_lead'], lead_plan: '' });
+  const [f, setF] = useState({ name: '', email: '', organisation: '', country: '', role: '', message: '', has_lead: '' as Application['has_lead'], lead_plan: '', students: '' });
   const [sent, setSent] = useState(false);
   const act = useAction();
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
@@ -32,7 +33,10 @@ export default function Join() {
       if (!f.name.trim()) throw new Error('Add your full name.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) throw new Error('Add an email address we can reply to.');
       if (f.has_lead === 'no' && !f.lead_plan.trim()) throw new Error('Tell us who could lead: one teacher and one student is enough.');
-      await submitApplication({ ...f, email: f.email.trim().toLowerCase() });
+      const student_emails = parseEmails(f.students);
+      if (student_emails.length > 500) throw new Error('Send up to 500 student emails at a time.');
+      const { students: _s, ...rest } = f;
+      await submitApplication({ ...rest, email: f.email.trim().toLowerCase(), kind: 'school', org_id: null, student_emails });
       setSent(true);
     });
   };
@@ -96,7 +100,10 @@ export default function Join() {
         <Field label="Message" id="j-msg" hint="Tell us about your work and how you would like to collaborate.">
           <Textarea id="j-msg" value={f.message} onChange={set('message')} rows={5} />
         </Field>
-        <p className="text-xs text-ink-mute">Students under 18: ask a teacher to apply on behalf of your school. We only use these details to reply to you.</p>
+        <Field label="Student emails (optional)" id="j-stu" hint={`The students who will use Ekoa, one per line or separated by commas. The Ekoa team gives each one a role when your school is set up.${parseEmails(f.students).length ? ` ${parseEmails(f.students).length} found.` : ''}`}>
+          <Textarea id="j-stu" value={f.students} onChange={set('students')} rows={4} placeholder={'asha.k@school.edu\nrohan.m@school.edu'} />
+        </Field>
+        <p className="text-xs text-ink-mute">This form is for schools and organisations. A student can also <Link to="/join/student" className="font-bold underline">join on their own</Link> before their school is on Ekoa. We only use these details to reply to you.</p>
         <ErrorNote>{act.error}</ErrorNote>
         <Button type="submit" variant="dark" size="lg" busy={act.busy} className="w-full">Submit application</Button>
       </form>
