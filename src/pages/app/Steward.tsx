@@ -7,10 +7,10 @@ import { loadSchool, schoolAlerts } from '@/lib/bundle';
 import { METRIC_LIBRARY, metricByCode } from '@/lib/ekoa';
 import { completeness } from '@/lib/metrics';
 import { fmtDate, fmtDateTime, relative } from '@/lib/format';
-import type { Application, MetricDefinition, SafeguardingReport } from '@/lib/types';
+import type { Application, LibraryPolicySubmission, MetricDefinition, SafeguardingReport } from '@/lib/types';
 import { Badge, Button, Empty, ErrorNote, Field, Input, Loading, Meter, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
 
-type Tab = 'applications' | 'schools' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
+type Tab = 'applications' | 'policies' | 'schools' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
 const STAGES_APP: Application['status'][] = ['new', 'contacted', 'call_booked', 'agreement_sent', 'onboarded', 'declined'];
 const APP_LABEL: Record<Application['status'], string> = { new: 'New', contacted: 'Contacted', call_booked: 'Call booked', agreement_sent: 'Agreement sent', onboarded: 'Onboarded', declined: 'Declined' };
 
@@ -19,9 +19,9 @@ export default function Steward() {
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'applications';
   const { data, reload } = useData(async () => {
-    const [apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics] = await Promise.all([api.listApplications(), api.listOrgs(), api.listReports(), api.listPosts(), api.listThreads(), api.listPeople(), api.listAudit(), api.listCampaigns(), api.listTwins(), api.listMetricDefs()]);
+    const [apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics, policies] = await Promise.all([api.listApplications(), api.listOrgs(), api.listReports(), api.listPosts(), api.listThreads(), api.listPeople(), api.listAudit(), api.listCampaigns(), api.listTwins(), api.listMetricDefs(), api.listPolicySubmissions().catch(() => [] as LibraryPolicySubmission[])]);
     const schools = await Promise.all(orgs.filter((o) => o.org_type === 'school').map((o) => loadSchool(o.id)));
-    return { apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics, schools };
+    return { apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics, schools, policies };
   });
   if (!auth.isSteward) return <Empty title="Stewards only">This console is for the Ekoa core team.</Empty>;
   if (!data) return <Loading />;
@@ -32,6 +32,7 @@ export default function Steward() {
       <PageHeader title="Steward console" lead="Applications, school health, moderation and safeguarding for the whole network." />
       <Tabs label="Console sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[
         { key: 'applications', label: 'Applications', count: data.apps.filter((a) => a.status === 'new').length },
+        { key: 'policies', label: 'Library policies', count: data.policies.filter((p) => p.status === 'pending').length },
         { key: 'schools', label: 'Schools' },
         { key: 'moderation', label: 'Moderation', count: held.length },
         { key: 'safeguarding', label: 'Safeguarding', count: openReports.length },
@@ -40,6 +41,7 @@ export default function Steward() {
         { key: 'audit', label: 'Audit log' },
       ]} />
       {tab === 'applications' && <Applications apps={data.apps} reload={reload} />}
+      {tab === 'policies' && <LibraryPolicies items={data.policies} reload={reload} />}
       {tab === 'schools' && <Schools d={data} reload={reload} />}
       {tab === 'moderation' && <Moderation d={data} reload={reload} />}
       {tab === 'safeguarding' && <Safeguarding reports={data.reports} reload={reload} />}
@@ -302,5 +304,33 @@ function MetricsAdmin({ metrics, reload }: { metrics: MetricDefinition[]; reload
       </Modal>
       <p className="mt-3 text-sm text-ink-mute">Updated {fmtDate(new Date().toISOString())}. Units never change once data exists; add a new metric instead.</p>
     </>
+  );
+}
+
+function LibraryPolicies({ items, reload }: { items: LibraryPolicySubmission[]; reload: () => void }) {
+  const act = useAction();
+  const pending = items.filter((p) => p.status === 'pending');
+  if (!items.length) return <Empty title="No policies submitted yet">When a member adds a policy to the Library it waits here for your review.</Empty>;
+  const review = (id: string, status: 'approved' | 'rejected') => act.run(async () => { await api.reviewPolicy(id, status); reload(); });
+  return (
+    <div className="space-y-4">
+      <Notice tone="sky">Open each link before approving. Approved policies appear on the public Library with the link you see here. Check the link goes to the policy itself and that the summary is accurate and suitable for a school audience.</Notice>
+      <ErrorNote>{act.error}</ErrorNote>
+      {pending.length === 0 && <p className="text-sm text-ink-mute">Nothing waiting for review.</p>}
+      <ul className="space-y-3">
+        {items.map((p) => (
+          <li key={p.id} className="rounded-panel border border-paper-line bg-white p-4">
+            <div className="flex flex-wrap items-center gap-2"><Badge tone={p.status === 'approved' ? 'leaf' : p.status === 'rejected' ? 'lesson' : 'clay'}>{p.status}</Badge><span className="text-xs text-ink-mute">{p.topic} · {p.school_name} · {fmtDate(p.created_at)}</span></div>
+            <h3 className="mt-2 font-display text-lg font-semibold">{p.title}</h3>
+            <p className="mt-1 text-sm text-ink-soft">{p.summary}</p>
+            <p className="mt-2 break-all text-sm"><a href={p.url} target="_blank" rel="noreferrer" className="underline">{p.url}</a></p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {p.status !== 'approved' && <Button size="sm" variant="dark" busy={act.busy} onClick={() => review(p.id, 'approved')}>Approve</Button>}
+              {p.status !== 'rejected' && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => review(p.id, 'rejected')}>{p.status === 'approved' ? 'Remove from Library' : 'Reject'}</Button>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
