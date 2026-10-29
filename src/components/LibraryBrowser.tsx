@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { COST_BANDS } from '@/lib/budget';
 import { Search } from 'lucide-react';
-import { CATEGORIES, OBSTACLE_TAXONOMY, OUTCOMES } from '@/lib/ekoa';
+import { CATEGORIES, OBSTACLE_TAXONOMY, OUTCOMES, isLiveRecord } from '@/lib/ekoa';
 import { similarity } from '@/lib/context';
 import type { ContextProfile, ImplementationRecord, Organisation, OutcomeClass } from '@/lib/types';
 import { RecordTag } from './RecordTag';
@@ -44,6 +44,7 @@ export function searchScore(r: ImplementationRecord, q: string) {
 
 export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: { records: ImplementationRecord[]; orgs: Organisation[]; myContext?: ContextProfile | null; hrefBase: string; myOrgId?: string }) {
   const [q, setQ] = useState('');
+  const [status, setStatus] = useState<'' | 'live' | 'completed'>('');
   const [cat, setCat] = useState('');
   const [outcome, setOutcome] = useState<'' | OutcomeClass>('');
   const [budget, setBudget] = useState('');
@@ -57,6 +58,7 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
 
   const results = useMemo(() => {
     const list = records
+      .filter((r) => !status || (status === 'live') === isLiveRecord(r))
       .filter((r) => (!cat || r.category === cat) && (!outcome || r.outcome_class === outcome) && (!budget || !!COST_BANDS.find((b) => b.key === budget)?.test(r.budget_amount_usd ?? 0)))
       .filter((r) => (!climate || r.context.climate_zone === climate) && (!obstacle || r.obstacles.some((o) => o.category === obstacle)) && r.tier >= tier)
       .map((r) => ({ r, score: searchScore(r, q), sim: r.org_id === myOrgId ? -1 : similarity(myContext, r.context) }))
@@ -65,9 +67,9 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
     else if (sort === 'recent') list.sort((a, b) => (b.r.published_at ?? b.r.updated_at).localeCompare(a.r.published_at ?? a.r.updated_at));
     else list.sort((a, b) => b.score - a.score);
     return list;
-  }, [records, q, cat, outcome, budget, climate, obstacle, tier, sort, myContext]);
+  }, [records, q, status, cat, outcome, budget, climate, obstacle, tier, sort, myContext]);
 
-  const active = [cat, outcome, budget, climate, obstacle].filter(Boolean).length + (tier ? 1 : 0);
+  const active = [status, cat, outcome, budget, climate, obstacle].filter(Boolean).length + (tier ? 1 : 0);
 
   return (
     <div className="space-y-5">
@@ -82,6 +84,11 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
         />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+        <Select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as '' | 'live' | 'completed')}>
+          <option value="">Live and completed</option>
+          <option value="live">Live projects</option>
+          <option value="completed">Completed</option>
+        </Select>
         <Select aria-label="Category" value={cat} onChange={(e) => setCat(e.target.value)}>
           <option value="">All categories</option>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
@@ -117,7 +124,7 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-mute">
         <span>{results.length} {results.length === 1 ? 'record' : 'records'}</span>
         {active > 0 && (
-          <button className="font-bold text-ink-soft underline" onClick={() => { setCat(''); setOutcome(''); setBudget(''); setClimate(''); setObstacle(''); setTier(0); }}>
+          <button className="font-bold text-ink-soft underline" onClick={() => { setStatus(''); setCat(''); setOutcome(''); setBudget(''); setClimate(''); setObstacle(''); setTier(0); }}>
             Clear {active} {active === 1 ? 'filter' : 'filters'}
           </button>
         )}
