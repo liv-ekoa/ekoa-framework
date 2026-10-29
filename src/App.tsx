@@ -7,6 +7,7 @@ import { Loading } from './components/ui';
 // Public site
 import Home from './pages/public/Home';
 const Mission = lazy(() => import('./pages/public/Mission'));
+const PolicyLibrary = lazy(() => import('./pages/public/PolicyLibrary'));
 const HowItWorks = lazy(() => import('./pages/public/HowItWorks'));
 const NetworkMap = lazy(() => import('./pages/public/NetworkMap'));
 const PublicLibrary = lazy(() => import('./pages/public/PublicLibrary'));
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="network" element={<NetworkMap />} />
           <Route path="library" element={<PublicLibrary />} />
           <Route path="library/:id" element={<PublicRecord />} />
+          <Route path="policies" element={<PolicyLibrary />} />
           <Route path="ranking" element={<Ranking />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
