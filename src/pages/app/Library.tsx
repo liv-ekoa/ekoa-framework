@@ -3,15 +3,14 @@ import { listOrgs, listRecords } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useData } from '@/lib/hooks';
 import { OBSTACLE_TAXONOMY, OUTCOMES, obstacleLabel } from '@/lib/ekoa';
-import { LibraryBrowser } from '@/components/LibraryBrowser';
-import { PolicyShelf } from '@/components/PolicyShelf';
 import { POLICY_LIBRARY } from '@/lib/policyLibrary';
+import { LibraryBrowser } from '@/components/LibraryBrowser';
 import { RecordTag } from '@/components/RecordTag';
 import { BarList } from '@/components/Chart';
 import { Badge, Empty, Loading, PageHeader, Panel, Tabs } from '@/components/ui';
 import type { ImplementationRecord } from '@/lib/types';
 
-type Tab = 'records' | 'failures' | 'patterns' | 'policies';
+type Tab = 'records' | 'failures' | 'patterns';
 
 export default function Library() {
   const auth = useAuth();
@@ -27,11 +26,10 @@ export default function Library() {
   return (
     <div>
       <PageHeader title="Library" lead="Every published record in the network, ranked by how similar the school is to yours. Failures are filed alongside successes." />
-      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }, { key: 'policies', label: 'Policies', count: POLICY_LIBRARY.length }]} />
-      {tab === 'records' && <LibraryBrowser records={data.records} orgs={data.orgs} myContext={auth.activeOrg?.context_profile} myOrgId={auth.activeOrg?.id} hrefBase="/app/library" />}
+      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
+      {tab === 'records' && <LibraryBrowser records={data.records} orgs={data.orgs} myContext={auth.activeOrg?.context_profile} myOrgId={auth.activeOrg?.id} hrefBase="/app/library" policies={POLICY_LIBRARY} />}
       {tab === 'failures' && <FailureLedger records={failures} orgs={data.orgs} />}
       {tab === 'patterns' && <Patterns records={data.published} />}
-      {tab === 'policies' && <PolicyShelf />}
     </div>
   );
 }

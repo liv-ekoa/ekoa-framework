@@ -34,6 +34,7 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
       <span className={cx('absolute inset-y-0 left-0 w-1.5', band[r.outcome_class])} aria-hidden />
       <span className="tag-hole" aria-hidden />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pr-10 text-xs text-ink-mute">
+        <span className="rounded-tag bg-paper-deep px-2 py-0.5 font-bold text-ink-soft">Project</span>
         <span className="font-bold tabular-nums text-ink-soft">{catalogue(r)}</span>
         <span>{r.category}</span>
         {r.status !== 'published' && <span className="font-bold text-sky">{r.status === 'in_review' ? 'In review' : 'Draft'}</span>}
