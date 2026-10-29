@@ -1,3 +1,5 @@
+import type { LibraryPolicy } from './types';
+
 // Published school sustainability policies, shown in the Library with a short summary and a link to the full original.
 // Summaries are written in our own words; the full text stays with the school that wrote it.
 
@@ -23,4 +25,18 @@ export const POLICY_LIBRARY: PolicyEntry[] = [
   { title: 'Biodiversity: part of the system', school: 'Green School Bali', topic: 'Biodiversity', category: 'Biodiversity', summary: 'Students survey and record the species on campus, and the census guides building and regeneration.', url: `${GS}/pledges/biodiversity` },
   { title: 'Building and play', school: 'Green School Bali', topic: 'Buildings', category: 'Policy & governance', summary: 'Protect green space when building, use local and sustainable materials, reuse structures, and include nature-based play and productive gardens.', url: `${GS}/pledges/building-play` },
   { title: 'Family sustainability guide', school: 'Green School Bali', topic: 'Community', category: 'Policy & governance', summary: 'A parent-written guide to living sustainably alongside the school, kept up to date by the community.', url: `${GS}/sustainability-guide` },
+];
+
+/** Starter policies from the code, then policies members added and a steward approved. */
+export const allPolicies = (added: LibraryPolicy[]): PolicyEntry[] => [
+  ...added.map((p) => ({ title: p.title, school: p.school_name, topic: p.topic, category: p.category, summary: p.summary, url: p.url })),
+  ...POLICY_LIBRARY,
+];
+
+export const POLICY_TOPICS: { topic: string; category: string }[] = [
+  { topic: 'Waste', category: 'Waste' }, { topic: 'Energy', category: 'Energy' }, { topic: 'Water', category: 'Water' },
+  { topic: 'Food', category: 'Food' }, { topic: 'Biodiversity', category: 'Biodiversity' },
+  { topic: 'Procurement', category: 'Policy & governance' }, { topic: 'Transport', category: 'Policy & governance' },
+  { topic: 'Buildings', category: 'Policy & governance' }, { topic: 'Teaching and training', category: 'Policy & governance' },
+  { topic: 'Safety and wellbeing', category: 'Policy & governance' }, { topic: 'Other', category: 'Policy & governance' },
 ];

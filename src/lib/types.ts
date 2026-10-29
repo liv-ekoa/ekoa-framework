@@ -480,3 +480,21 @@ export interface Session {
   orgs: Organisation[];
   activeOrgId: UUID | null;
 }
+
+/** A policy members add to the Library. Visitors see approved ones through a view that omits who submitted them. */
+export interface LibraryPolicy {
+  id: UUID;
+  title: string;
+  school_name: string;
+  topic: string;
+  category: string;
+  summary: string;
+  url: string;
+  created_at: string;
+}
+export interface LibraryPolicySubmission extends LibraryPolicy {
+  submitted_by: UUID;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: UUID | null;
+  reviewed_at: string | null;
+}
