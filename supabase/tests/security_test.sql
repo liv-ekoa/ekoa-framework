@@ -398,7 +398,19 @@ set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000
 select t('a school sees schools with similar policies', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000001') where org_id = '11111111-0000-0000-0000-000000000002') = 1);
 select t('the shared clauses are named', (select cardinality(shared_clauses) >= 3 from collaborator_suggestions('11111111-0000-0000-0000-000000000001') where org_id = '11111111-0000-0000-0000-000000000002'));
 select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('a student without cross-school consent gets no suggestions', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000002')) = 0);
+reset role;
+update consent_records set scope = '{"account":true,"cross_school":true,"photos":false,"name_on_records":false}' where token = 'tok-d';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
 select t('the match works both ways', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000002') where org_id = '11111111-0000-0000-0000-000000000001') = 1);
+reset role;
+update organisations set public_visible = false where id = '11111111-0000-0000-0000-000000000001';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('a school that is not public is not suggested to others', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000002')) = 0);
+reset role;
+update organisations set public_visible = true where id = '11111111-0000-0000-0000-000000000001';
+update consent_records set scope = '{"account":true,"cross_school":false,"photos":false,"name_on_records":false}' where token = 'tok-d';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
 select t('nobody can ask on behalf of another school', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000001')) = 0);
 reset role;
 
@@ -452,4 +464,19 @@ do $$ begin insert into threads (kind, title, org_id, org_b, created_by) values 
 exception when others then perform t('or start one', true); end $$;
 select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
 select t('a student with cross-school consent can join the conversation', (select count(*) from threads where id = '77777777-0000-0000-0000-000000000003') = 1);
+reset role;
+
+-- Review fixes: phone numbers, guardian emails, moved photos
+select t('a date is not a phone number', public.moderation_hit('Weighed the bins on 22 10 2026 at 3') is null);
+select t('a long number list from a measurement is not a phone number', public.moderation_hit('Weights 12 34 56 in kg') is null);
+select t('a real phone number is still held', public.moderation_hit('call me on 98765 43210') = 'contact');
+do $$ begin insert into consent_records (person_id, guardian_email, terms_version) values ('22222222-0000-0000-0000-00000000000b', 'Student.A@x.org', '2026-10'); perform t('a student cannot be their own guardian', false);
+exception when others then perform t('a student cannot be their own guardian', true); end $$;
+
+insert into evidence (id, org_id, file_name, file_type, storage_path) values ('88888888-0000-0000-0000-000000000009','11111111-0000-0000-0000-000000000001','moved.jpg','image/jpeg','99999999-0000-0000-0000-000000000009/moved.jpg');
+insert into storage.objects (bucket_id, name) values ('evidence', '99999999-0000-0000-0000-000000000009/moved.jpg');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+select t('a photo moved to a school from an old workspace folder is readable by that school', (select count(*) from storage.objects where name = '99999999-0000-0000-0000-000000000009/moved.jpg') = 1);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('and not by another school', (select count(*) from storage.objects where name = '99999999-0000-0000-0000-000000000009/moved.jpg') = 0);
 reset role;
