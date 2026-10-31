@@ -9,29 +9,26 @@ import { AREA_LABEL, areaOf, type Area } from '@/lib/modelPolicies';
 import type { PublicPolicy } from '@/lib/types';
 import { Badge, Button, Empty, ErrorNote, Input, Loading, Notice, Select, cx } from './ui';
 
-/** Every adopted policy in the network, and the Ekoa model policies. Updates itself: a policy
+/** Every adopted policy in the network. Updates itself: a policy
  *  appears here the moment its school adopts it, and amendments show straight away. */
 export function PolicyLibrary({ hrefBase }: { hrefBase: string }) {
   const { data, error } = useData(() => api.listPublicPolicies());
   const [q, setQ] = useState('');
   const [area, setArea] = useState<Area | ''>('');
-  const [who, setWho] = useState<'all' | 'schools' | 'models'>('all');
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (data ?? [])
-      .map((p) => ({ p, area: areaOf(p.sections) }))
+      .map((p) => ({ p, area: areaOf(p) }))
       .filter(({ p, area: a }) =>
         (!area || a === area) &&
-        (who === 'all' || (who === 'models' ? p.is_model : !p.is_model)) &&
         (!needle || `${p.title} ${p.school} ${p.country} ${p.sections.map((s) => `${s.title} ${s.body}`).join(' ')}`.toLowerCase().includes(needle)))
-      .sort((a, b) => Number(a.p.is_model) - Number(b.p.is_model) || b.p.updated_at.localeCompare(a.p.updated_at));
-  }, [data, q, area, who]);
+      .sort((a, b) => b.p.updated_at.localeCompare(a.p.updated_at));
+  }, [data, q, area]);
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!data) return <Loading />;
-  const schools = data.filter((p) => !p.is_model).length;
   return (
     <div>
-      <div className="no-print grid gap-3 sm:grid-cols-[1fr_12rem_12rem]">
+      <div className="no-print grid gap-3 sm:grid-cols-[1fr_14rem]">
         <label className="relative block">
           <span className="sr-only">Search policies</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mute" aria-hidden />
@@ -41,14 +38,9 @@ export function PolicyLibrary({ hrefBase }: { hrefBase: string }) {
           <option value="">Every area</option>
           {(Object.keys(AREA_LABEL) as Area[]).map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}
         </Select>
-        <Select aria-label="Whose policies" value={who} onChange={(e) => setWho(e.target.value as typeof who)}>
-          <option value="all">Schools and model policies</option>
-          <option value="schools">Schools’ policies ({schools})</option>
-          <option value="models">Ekoa model policies</option>
-        </Select>
       </div>
       <p className="mt-3 text-sm text-ink-mute">{list.length} {list.length === 1 ? 'policy' : 'policies'}. A school’s policy appears here as soon as the school adopts it.</p>
-      {list.length ? (
+      {!data.length ? <div className="mt-6"><Empty title="The first policies are on their way">Schools’ adopted sustainability policies appear here as soon as they are added.</Empty></div> : list.length ? (
         <ul className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {list.map(({ p, area: a }) => (
             <li key={p.id}>
@@ -97,7 +89,7 @@ export function PolicyDetail({ id, backTo }: { id: string; backTo: string }) {
       <Link to={backTo} className="no-print inline-flex items-center gap-1 text-sm font-bold text-ink-soft hover:text-ink"><ArrowLeft className="h-4 w-4" aria-hidden /> All policies</Link>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Badge tone={p.is_model ? 'clay' : 'leaf'}>{p.is_model ? 'Ekoa model policy' : p.status === 'amended' ? 'Adopted and amended' : 'Adopted'}</Badge>
-        <Badge>{AREA_LABEL[areaOf(p.sections)]}</Badge>
+        <Badge>{AREA_LABEL[areaOf(p)]}</Badge>
       </div>
       <h1 className="mt-3 text-3xl font-bold sm:text-4xl">{p.title}</h1>
       <p className="mt-2 text-ink-soft">{p.is_model ? 'Written by the Ekoa team as a starting point. Copy it, then change it to fit your school.' : [p.school, p.city, p.country].filter(Boolean).join(', ')}</p>

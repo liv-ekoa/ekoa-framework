@@ -463,3 +463,18 @@ exception when others then perform t('visitors cannot read the policies table it
 do $$ begin update public_policies set title = 'x'; perform t('the library cannot be written to', false);
 exception when others then perform t('the library cannot be written to', true); end $$;
 reset role;
+
+-- Admins add a school's real adopted policy; a school member cannot add one for another school
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a5',false);
+insert into policies (id, org_id, title, status, adopted_at, sections) values ('66666666-0000-0000-0000-0000000000a1', '11111111-0000-0000-0000-000000000002', 'B waste policy', 'adopted', now(), '[{"key":"s1","title":"Purpose","body":"Less waste.","clause_id":null}]');
+select t('an admin can add an adopted policy for any school', (select count(*) from policies where id = '66666666-0000-0000-0000-0000000000a1') = 1);
+reset role;
+set role anon; select set_config('request.jwt.claim.sub','',false);
+select t('which is public in the library at once', (select count(*) from public_policies where id = '66666666-0000-0000-0000-0000000000a1') = 1);
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+do $$ begin insert into policies (org_id, title, status) values ('11111111-0000-0000-0000-000000000002', 'Fake', 'adopted'); perform t('a student cannot add a policy for another school', false);
+exception when others then perform t('a student cannot add a policy for another school', true); end $$;
+delete from policies where id = '66666666-0000-0000-0000-0000000000a1';
+reset role;
+select t('or delete one', (select count(*) from policies where id = '66666666-0000-0000-0000-0000000000a1') = 1);

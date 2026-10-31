@@ -35,7 +35,7 @@ const MORE: NavItem[] = [
   { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
   { to: '/app/reports', label: 'Reports', icon: FileBarChart, show: (a) => inSchool(a) || a.isSteward },
   { to: '/ranking', label: 'School ranking', icon: Trophy, show: () => true },
-  { to: '/app/steward', label: 'Steward console', icon: ShieldCheck, show: (a) => a.isSteward },
+  { to: '/app/steward', label: 'Admin console', icon: ShieldCheck, show: (a) => a.isSteward },
   { to: '/app/partner', label: 'Partner desk', icon: HandHelping, show: (a) => a.isPartner },
   { to: '/app/settings', label: 'Settings', icon: Settings, show: () => true },
 ];

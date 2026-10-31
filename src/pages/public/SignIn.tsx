@@ -82,7 +82,7 @@ const SHOWS: Record<string, string> = {
   implementation_team: 'Logs measurements and works on tasks.',
   faculty_liaison: 'The one adult a school needs: verifies data, signs every gate, decides on hidden posts in My school, Safety.',
   approver: 'Decides on proposals in the approval chain.',
-  steward: 'Ekoa admin: applications, student roles, moderation and safeguarding.',
+  steward: 'Ekoa admin: schools, student roles, the Policy library, peer audits, moderation and safeguarding.',
   partner: 'Verification requests and partner help threads.',
   auditor: 'Peer-audits other schools’ records for tier T3 from the Audit desk.',
   board_member: 'Holds a staggered board seat; incoming Project Lead.',
@@ -97,11 +97,14 @@ function Personas() {
     return { people, roles, orgs };
   });
   if (!data) return <Loading />;
+  // Admins appear once, under Ekoa admins; their peer-audit roles are part of the admin account.
+  const admins = new Set(data.roles.filter((r) => r.role === 'steward').map((r) => r.person_id));
+  const auditFor = (pid: string) => data.roles.filter((r) => r.person_id === pid && r.role === 'auditor').map((r) => data.orgs.find((o) => o.id === r.org_id)?.name).filter(Boolean).join(', ');
   const groups = data.orgs.map((o) => ({
     org: o,
-    people: data.roles.filter((r) => r.org_id === o.id && r.status !== 'incoming' && r.role !== 'alumni').map((r) => ({ role: r, person: data.people.find((p) => p.id === r.person_id)! })).filter((x) => x.person),
+    people: data.roles.filter((r) => r.org_id === o.id && r.status !== 'incoming' && r.role !== 'alumni' && !(admins.has(r.person_id) && r.role !== 'steward')).map((r) => ({ role: r, person: data.people.find((p) => p.id === r.person_id)! })).filter((x) => x.person),
   })).filter((g) => g.people.length);
-  const order = ['Aravalli Valley School', 'Ekoa Stewards', 'Compost Commons', 'Ubud Hills Academy', 'Lakeside Secondary', 'Tampines Green Secondary', 'Escola Viva Paulista'];
+  const order = ['Ekoa Admins', 'Aravalli Valley School', 'Compost Commons', 'Ubud Hills Academy', 'Lakeside Secondary', 'Tampines Green Secondary', 'Escola Viva Paulista'];
   const rank = (n: string) => (order.indexOf(n) < 0 ? 99 : order.indexOf(n));
   groups.sort((a, b) => rank(a.org.name) - rank(b.org.name));
   const go = async (email: string) => { await auth.sendMagicLink(email); await auth.refresh(); nav('/app'); };
@@ -113,7 +116,7 @@ function Personas() {
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         {groups.map((g) => (
           <section key={g.org.id} className="rounded-panel border border-paper-line bg-white p-4">
-            <h3 className="font-display text-lg font-semibold">{g.org.org_type === 'independent' ? 'Independent student' : g.org.name}</h3>
+            <h3 className="font-display text-lg font-semibold">{g.org.org_type === 'independent' ? 'Independent student' : g.org.org_type === 'ekoa' ? 'Ekoa admins' : g.org.name}</h3>
             <p className="text-sm text-ink-mute">{g.org.org_type === 'independent' ? `${g.org.school_name}, ${g.org.city}` : `${g.org.city}, ${g.org.country}`}</p>
             <ul className="mt-3 space-y-2">
               {g.people.map(({ person, role }) => (
@@ -123,7 +126,7 @@ function Personas() {
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2 font-bold text-ink">{person.display_name}{person.consent_status === 'pending' && <Badge tone="clay">Waiting for consent</Badge>}</span>
                       <span className="block text-sm text-ink-soft">{roleTitle(role)}{person.is_minor ? `, age ${person.age_band}` : ''}</span>
-                      <span className="block text-xs text-ink-mute">{g.org.org_type === 'independent' ? 'Joined without a school: a private workspace for their own projects.' : SHOWS[role.role]}</span>
+                      <span className="block text-xs text-ink-mute">{g.org.org_type === 'independent' ? 'Joined without a school: a private workspace for their own projects.' : SHOWS[role.role]}{role.role === 'steward' && auditFor(person.id) ? ` Runs the peer audits for ${auditFor(person.id)}.` : ''}</span>
                     </span>
                   </button>
                 </li>

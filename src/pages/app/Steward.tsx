@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Copy } from 'lucide-react';
 import { SafetyQueue } from '@/components/SafetyQueue';
+import { PoliciesAdmin } from '@/components/PoliciesAdmin';
+import AuditDesk from './AuditDesk';
 import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useAction, useData } from '@/lib/hooks';
@@ -12,7 +14,7 @@ import { fmtDate, fmtDateTime, relative } from '@/lib/format';
 import type { Application, ConsentRecord, MetricDefinition, Organisation, Person, RoleAssignment, RoleKey, SafeguardingReport } from '@/lib/types';
 import { Badge, Button, Empty, ErrorNote, Field, Input, Loading, Meter, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
 
-type Tab = 'applications' | 'students' | 'schools' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
+type Tab = 'applications' | 'students' | 'schools' | 'policies' | 'audits' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
 const STAGES_APP: Application['status'][] = ['new', 'contacted', 'call_booked', 'agreement_sent', 'onboarded', 'declined'];
 const APP_LABEL: Record<Application['status'], string> = { new: 'New', contacted: 'Contacted', call_booked: 'Call booked', agreement_sent: 'Agreement sent', onboarded: 'Onboarded', declined: 'Declined' };
 
@@ -25,7 +27,7 @@ export default function Steward() {
     const schools = await Promise.all(orgs.filter((o) => o.org_type === 'school').map((o) => loadSchool(o.id)));
     return { apps, orgs, reports, posts, threads, people, audit, campaigns, metrics, schools, roles, consents, flags };
   });
-  if (!auth.isSteward) return <Empty title="Stewards only">This console is for the Ekoa core team.</Empty>;
+  if (!auth.isSteward) return <Empty title="Admins only">This console is for the Ekoa core team.</Empty>;
   if (!data) return <Loading />;
   const openFlags = data.flags.filter((f) => f.status === 'open').length;
   const independents = independentStudents(data);
@@ -33,11 +35,13 @@ export default function Steward() {
   const openReports = data.reports.filter((r) => r.status !== 'resolved');
   return (
     <div>
-      <PageHeader title="Steward console" lead="For Ekoa admins: applications, students waiting for a role, school health, moderation and safeguarding for the whole network." />
+      <PageHeader title="Admin console" lead="For Ekoa admins: applications, students and their roles, schools, the Policy library, peer audits, moderation and safeguarding for the whole network." />
       <Tabs label="Console sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[
         { key: 'applications', label: 'Applications', count: data.apps.filter((a) => a.status === 'new').length },
         { key: 'students', label: 'Students', count: independents.length + listed.length },
         { key: 'schools', label: 'Schools' },
+        { key: 'policies', label: 'Policies' },
+        { key: 'audits', label: 'Peer audits' },
         { key: 'moderation', label: 'Moderation', count: openFlags },
         { key: 'safeguarding', label: 'Safeguarding', count: openReports.length },
         { key: 'campaigns', label: 'Campaigns' },
@@ -47,6 +51,8 @@ export default function Steward() {
       {tab === 'applications' && <Applications apps={data.apps} reload={reload} />}
       {tab === 'students' && <Students d={data} reload={reload} />}
       {tab === 'schools' && <Schools d={data} reload={reload} />}
+      {tab === 'policies' && <PoliciesAdmin orgs={data.orgs} reload={reload} />}
+      {tab === 'audits' && <AuditsAdmin orgs={data.orgs} roles={data.roles} />}
       {tab === 'moderation' && <SafetyQueue />}
       {tab === 'safeguarding' && <Safeguarding reports={data.reports} reload={reload} />}
       {tab === 'campaigns' && <CampaignsAdmin d={data} reload={reload} />}
@@ -393,6 +399,22 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
           </div>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/** Peer audits for both Ekoa audit schools. Each admin starts on the audit school they belong to. */
+function AuditsAdmin({ orgs, roles }: { orgs: Organisation[]; roles: RoleAssignment[] }) {
+  const auth = useAuth();
+  const schools = orgs.filter((o) => o.audit_school);
+  const mine = schools.find((o) => roles.some((r) => r.org_id === o.id && r.person_id === auth.person?.id && r.status === 'active'));
+  const [pick, setPick] = useState(mine?.id ?? schools[0]?.id ?? '');
+  if (!schools.length) return <Empty title="No audit schools yet">Mark a school as an audit school under Schools.</Empty>;
+  return (
+    <div className="space-y-4">
+      <div className="max-w-sm"><Field label="Audit school" id="au-s"><Select id="au-s" value={pick} onChange={(e) => setPick(e.target.value)}>{schools.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></Field></div>
+      <p className="text-sm text-ink-soft">T3 peer audits requested from this school. A school can never audit its own records.</p>
+      <AuditDesk key={pick} orgId={pick} embedded />
     </div>
   );
 }

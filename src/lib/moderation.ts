@@ -3,7 +3,7 @@
 // The same word lists run in two places: here, so the person posting gets an answer at once, and
 // in the database (public.moderation_hit, generated from this file by `npm run moderation:sql`), so
 // nothing gets past by skipping the app. Anything caught is hidden immediately and goes to the
-// author's teacher and the Ekoa stewards, who can restore it if the filter got it wrong.
+// author's teacher and the Ekoa admins, who can restore it if the filter got it wrong.
 
 export type FlagReason = 'self_harm' | 'violence' | 'hate' | 'sexual' | 'bullying' | 'contact' | 'other';
 

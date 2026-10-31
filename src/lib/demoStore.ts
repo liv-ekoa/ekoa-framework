@@ -9,7 +9,7 @@ type Row = Record<string, any>;
 type Tables = Record<string, Row[]>;
 type Filter = (r: Row) => boolean;
 
-const STORAGE_KEY = 'ekoa-demo-v10';
+const STORAGE_KEY = 'ekoa-demo-v11';
 
 let tables: Tables | null = null;
 

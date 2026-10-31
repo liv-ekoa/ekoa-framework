@@ -72,7 +72,7 @@ export default function RecordView() {
 
       <Modal open={intro} onClose={() => setIntro(false)} title="Ask for an introduction">
         <div className="space-y-4">
-          <p className="text-ink-soft">This opens a moderated thread between the Ekoa Representatives of both schools. Both faculty liaisons and the Ekoa stewards can see it. Never share phone numbers or social handles.</p>
+          <p className="text-ink-soft">This opens a moderated thread between the Ekoa Representatives of both schools. Both faculty liaisons and the Ekoa admins can see it. Never share phone numbers or social handles.</p>
           <Field label="Your question for the other school" id="in-m"><Textarea id="in-m" rows={4} value={introMsg} onChange={(e) => setIntroMsg(e.target.value)} /></Field>
           <ErrorNote>{act.error}</ErrorNote>
           <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => {

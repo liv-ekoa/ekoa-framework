@@ -5,7 +5,6 @@
 
 import { METRIC_LIBRARY, TEMPLATES } from './ekoa';
 import { CIRCLES, POLICY_CLAUSES } from './clauses';
-import { MODEL_CLAUSES, MODEL_POLICIES } from './modelPolicies';
 
 type Row = Record<string, any>;
 
@@ -36,7 +35,7 @@ export function buildSeed(): Record<string, Row[]> {
 
   // ---------- Organisations ----------
   const ekoaTeam = add('organisations', {
-    id: id('a0'), name: 'Ekoa Stewards', org_type: 'ekoa', country: 'India', city: 'Faridabad', lat: null, lng: null,
+    id: id('a0'), name: 'Ekoa Admins', org_type: 'ekoa', country: 'India', city: 'Faridabad', lat: null, lng: null,
     curriculum: null, student_count: null, grade_range: null, climate_zone: null, context_profile: null,
     status: 'active', public_visible: false, anonymised_label: null,
   });
@@ -121,10 +120,12 @@ export function buildSeed(): Record<string, Row[]> {
   const rajesh = person('Rajesh Kumar', 'rajesh@tampines.example', '18+', 'not_needed');
   const lucas = person('Lucas Ferreira', 'lucas@escolaviva.example', '16-17', 'granted');
   const ana = person('Ana Souza', 'ana@escolaviva.example', '18+', 'not_needed');
-  const steward = person('Noor Kapoor', 'steward@ekoa.example', '18+', 'not_needed');
+  // The two Ekoa admins. Each also runs the peer audits of one audit school.
+  const steward = person('Samar Sharma', 'samar@ekoa.example', '18+', 'not_needed');
+  const olivia = person('Olivia Lacour', 'olivia@ekoa.example', '18+', 'not_needed');
   const lena = person('Lena Ortiz', 'lena@compostcommons.example', '18+', 'not_needed');
-  const snsAudit = person('Shiv Nadar School audit team', 'audit@sns.example', '18+', 'not_needed');
-  const gsAudit = person('Green School audit team', 'audit@greenschool.example', '18+', 'not_needed');
+  const snsAudit = steward;
+  const gsAudit = olivia;
 
   role(aanya, aravalli, 'project_lead', -325, 40, 'active', 1, 'Sustainability Head');
   role(kabir, aravalli, 'ekoa_rep', -200, 165, 'active', 2);
@@ -147,6 +148,7 @@ export function buildSeed(): Record<string, Row[]> {
   role(lucas, viva, 'ekoa_rep', -190, 175, 'active', 2);
   role(ana, viva, 'faculty_liaison', -420, null);
   role(steward, ekoaTeam, 'steward', -240, null);
+  role(olivia, ekoaTeam, 'steward', -240, null);
   role(lena, commons, 'partner', -180, null);
   role(snsAudit, sns, 'auditor', -60, null);
   role(gsAudit, greenSchool, 'auditor', -60, null);
@@ -553,10 +555,10 @@ export function buildSeed(): Record<string, Row[]> {
   add('campaign_participants', { id: id('v4'), campaign_id: ss.id, org_id: lakeside.id, baseline: 42, latest: 63 });
   add('campaign_participants', { id: id('v5'), campaign_id: ss.id, org_id: viva.id, baseline: 38, latest: 52 });
 
-  add('events', { id: id('w0'), title: 'Waste Circle monthly call', kind: 'circle_call', starts_at: ts(6, 17), circle_id: circles.waste.id, description: 'Contamination sampling: show and tell. Faculty liaisons attend.', adults_present: ['Noor Kapoor (Ekoa)', 'Ritu Malhotra'], recorded: false });
+  add('events', { id: id('w0'), title: 'Waste Circle monthly call', kind: 'circle_call', starts_at: ts(6, 17), circle_id: circles.waste.id, description: 'Contamination sampling: show and tell. Faculty liaisons attend.', adults_present: ['Samar Sharma (Ekoa)', 'Ritu Malhotra'], recorded: false });
   add('events', { id: id('w1'), title: 'Climate Café for parents at Aravalli Valley', kind: 'climate_cafe', starts_at: ts(9, 18), circle_id: null, description: 'An informal evening for parents: what the compost project found and how to sort at home.', adults_present: ['Ritu Malhotra'], recorded: false });
-  add('events', { id: id('w2'), title: 'Pilot cohort call', kind: 'cohort_call', starts_at: ts(13, 17), circle_id: null, description: 'Month 4 check-in: data completeness and handover planning.', adults_present: ['Noor Kapoor (Ekoa)', 'Wayan Sudarta'], recorded: false });
-  add('events', { id: id('w3'), title: 'Workshop: running a contamination audit', kind: 'workshop', starts_at: ts(16, 16), circle_id: circles.waste.id, description: 'Run by Compost Commons, group session only.', adults_present: ['Lena Ortiz (Compost Commons)', 'Noor Kapoor (Ekoa)'], recorded: false });
+  add('events', { id: id('w2'), title: 'Pilot cohort call', kind: 'cohort_call', starts_at: ts(13, 17), circle_id: null, description: 'Month 4 check-in: data completeness and handover planning.', adults_present: ['Samar Sharma (Ekoa)', 'Wayan Sudarta'], recorded: false });
+  add('events', { id: id('w3'), title: 'Workshop: running a contamination audit', kind: 'workshop', starts_at: ts(16, 16), circle_id: circles.waste.id, description: 'Run by Compost Commons, group session only.', adults_present: ['Lena Ortiz (Compost Commons)', 'Samar Sharma (Ekoa)'], recorded: false });
 
   // ---------- Policies ----------
   const clauses = POLICY_CLAUSES;
@@ -566,13 +568,6 @@ export function buildSeed(): Record<string, Row[]> {
   const section = (c: Row) => ({ key: c.section + '-' + c.id.slice(-4), title: c.title, body: c.body, clause_id: c.id });
   add('policies', { id: id('y0'), org_id: aravalli.id, title: 'School Sustainability & Continuity Policy', version: 2, status: 'internal_review', sections: clauseRows.slice(0, 10).map(section), adopted_at: null, updated_at: ts(-4) });
   const ubPolicy = add('policies', { id: id('y1'), org_id: ubud.id, title: 'Sustainability & Continuity Policy', version: 3, status: 'amended', sections: clauseRows.map(section), adopted_at: ts(-160), updated_at: ts(-40) });
-  // Ekoa model policies and the clauses they use, as in migration 20261031000009.
-  const modelRows = MODEL_CLAUSES.map(([section, title, body]) => add('policy_clauses', { id: id('xm'), section, title, body, source_org_id: null, adoption_count: 0 }));
-  const bySection = (s: string) => [...clauseRows, ...modelRows].find((c) => c.section === s);
-  for (const m of MODEL_POLICIES) {
-    add('policies', { id: id('ym'), org_id: ekoaTeam.id, title: m.title, version: 1, status: 'adopted', adopted_at: ts(-30), updated_at: ts(-30),
-      sections: [{ key: `${m.area}_purpose`, title: 'Purpose', body: m.intro, clause_id: null }, ...m.clauses.map(bySection).filter(Boolean).map((c) => ({ key: c!.section, title: c!.title, body: c!.body, clause_id: c!.id }))] });
-  }
   const avPolicy = T.policies.find((x) => x.org_id === aravalli.id)!;
   add('policies', { id: id('y4'), org_id: lakeside.id, title: 'Green School Policy', version: 1, status: 'draft', sections: clauseRows.slice(4, 12).map(section), adopted_at: null, updated_at: ts(-9) });
   add('policy_links', { id: id('yl'), policy_id: avPolicy.id, org_id: aravalli.id, url: 'https://docs.google.com/document/d/aravalli-compost-rota/edit', title: 'Compost sampling rota, this term', note: 'Who weighs the sample each fortnight. Edit it if you swap a slot.', added_by: kabir.id, added_by_name: kabir.display_name, hidden: false, created_at: ts(-8) });
@@ -640,8 +635,8 @@ export function buildSeed(): Record<string, Row[]> {
   app('Pema Sherpa', 'pema@riversalive.example', 'Rivers Alive', 'Nepal', 'Climate-focused NGO / Partner', 'We could support water audits in schools in the Kathmandu valley.', 'call_booked', -11);
   app('Clara Mendes', 'clara@meridianimpact.example', 'Meridian Impact Fund', 'Portugal', 'ESG Institution', 'Exploring sponsorship of a campaign.', 'agreement_sent', -20);
 
-  add('safeguarding_reports', { id: id('ab'), reporter_person_id: null, reporter_contact: 'Automatic flag', subject_ref: 'Post in “Who has a cheap platform scale that works?”', category: 'privacy', details: 'A student shared a phone number in a circle thread. Post hidden automatically.', status: 'triaged', assigned_to: 'Noor Kapoor (Ekoa safeguarding lead)', actions: [{ at: ts(-2, 16), note: 'Post hidden by keyword filter.' }, { at: ts(-2, 18), note: 'Faculty liaison at Ubud Hills informed; student reminded of circle rules.' }], created_at: ts(-2, 16) });
-  add('safeguarding_reports', { id: id('ac'), reporter_person_id: ritu.id, reporter_contact: 'Ritu Malhotra', subject_ref: 'External link in Policy circle', category: 'content', details: 'Link to an unrelated commercial site posted by an unknown account.', status: 'resolved', assigned_to: 'Noor Kapoor (Ekoa safeguarding lead)', actions: [{ at: ts(-30), note: 'Link removed.' }, { at: ts(-29), note: 'Account was a test account; deleted.' }], created_at: ts(-30) });
+  add('safeguarding_reports', { id: id('ab'), reporter_person_id: null, reporter_contact: 'Automatic flag', subject_ref: 'Post in “Who has a cheap platform scale that works?”', category: 'privacy', details: 'A student shared a phone number in a circle thread. Post hidden automatically.', status: 'triaged', assigned_to: 'Samar Sharma (Ekoa safeguarding lead)', actions: [{ at: ts(-2, 16), note: 'Post hidden by keyword filter.' }, { at: ts(-2, 18), note: 'Faculty liaison at Ubud Hills informed; student reminded of circle rules.' }], created_at: ts(-2, 16) });
+  add('safeguarding_reports', { id: id('ac'), reporter_person_id: ritu.id, reporter_contact: 'Ritu Malhotra', subject_ref: 'External link in Policy circle', category: 'content', details: 'Link to an unrelated commercial site posted by an unknown account.', status: 'resolved', assigned_to: 'Samar Sharma (Ekoa safeguarding lead)', actions: [{ at: ts(-30), note: 'Link removed.' }, { at: ts(-29), note: 'Account was a test account; deleted.' }], created_at: ts(-30) });
 
   add('verifications', { id: id('ad'), record_id: R2.id, requested_tier: 4, requested_by_org: tampines.id, verifier_org: commons.id, status: 'requested', notes: 'Raw daily logs attached.', created_at: ts(-8) });
   add('verifications', { id: id('ae'), record_id: R1.id, requested_tier: 3, requested_by_org: ubud.id, verifier_org: sns.id, status: 'verified', notes: 'Remote audit of three stations from photos and counts. Accuracy figures match the Thursday audit sheets.', created_at: ts(-95) });

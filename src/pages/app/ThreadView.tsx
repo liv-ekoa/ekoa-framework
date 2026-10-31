@@ -41,7 +41,7 @@ export default function ThreadView() {
       <p className="mt-1 text-sm text-ink-mute">
         {t.kind === 'circle' ? `${circle?.name} circle` : t.kind === 'twin' ? 'Conversation between schools' : 'Partner request'}. {record && <>About the record <Link to={`/app/library/${record.id}`} className="font-bold text-leaf-600 underline">{record.title}</Link>.</>}
       </p>
-      <div className="mt-4"><Notice tone="sky"><span className="inline-flex items-start gap-2"><Lock className="mt-0.5 h-4 w-4 shrink-0" />Group space. Faculty liaisons and Ekoa stewards can read everything here. Bullying, sexual content, violence, hate and contact details are hidden the moment they are posted, and anyone can report a post with the flag.</span></Notice></div>
+      <div className="mt-4"><Notice tone="sky"><span className="inline-flex items-start gap-2"><Lock className="mt-0.5 h-4 w-4 shrink-0" />Group space. Faculty liaisons and Ekoa admins can read everything here. Bullying, sexual content, violence, hate and contact details are hidden the moment they are posted, and anyone can report a post with the flag.</span></Notice></div>
 
       <ol className="mt-6 space-y-4">
         {data.posts.map((p) => {
