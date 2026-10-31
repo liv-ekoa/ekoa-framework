@@ -213,7 +213,7 @@ function StewardDashboard() {
   const held = data.posts.filter((p) => p.hidden && p.flagged);
   return (
     <div className="space-y-6">
-      <PageHeader title={<Greeting />} lead="Network health across member schools." actions={<LinkButton to="/app/steward" variant="dark">Open steward console</LinkButton>} />
+      <PageHeader title={<Greeting />} lead="Network health across member schools." actions={<LinkButton to="/app/steward" variant="dark">Open admin console</LinkButton>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <Link to="/app/steward?tab=applications" className="rounded-panel border border-paper-line bg-white p-5 hover:border-ink/40"><p className="text-sm text-ink-mute">New applications</p><p className="font-display text-3xl font-bold">{data.apps.filter((a) => a.status === 'new').length}</p></Link>
         <Link to="/app/steward?tab=safeguarding" className={cx('rounded-panel border p-5 hover:border-ink/40', openReports.length ? 'border-alert/40 bg-alert-100' : 'border-paper-line bg-white')}><p className="text-sm text-ink-mute">Open safeguarding reports</p><p className="font-display text-3xl font-bold">{openReports.length}</p></Link>

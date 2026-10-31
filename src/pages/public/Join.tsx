@@ -46,7 +46,7 @@ export default function Join() {
       <div className="mx-auto max-w-xl px-4 py-24 text-center sm:px-6">
         <CheckCircle2 className="mx-auto h-12 w-12 text-leaf" aria-hidden />
         <h1 className="mt-6 text-3xl font-bold">Application received</h1>
-        <p className="mt-3 text-ink-soft">Thank you, {f.name.split(' ')[0]}. A steward will reply to {f.email} within a week to book a 30-minute call.</p>
+        <p className="mt-3 text-ink-soft">Thank you, {f.name.split(' ')[0]}. An Ekoa admin will reply to {f.email} within a week to book a 30-minute call.</p>
       </div>
     );
 
@@ -61,7 +61,7 @@ export default function Join() {
         </ul>
         <h2 className="mt-10 text-lg font-semibold">What happens next</h2>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-ink-soft">
-          <li>A steward reads your application and replies within a week.</li>
+          <li>An Ekoa admin reads your application and replies within a week.</li>
           <li>We book a 30-minute call to check fit.</li>
           <li>Schools sign a participation and safeguarding agreement.</li>
           <li>You get your workspace and join a cohort.</li>

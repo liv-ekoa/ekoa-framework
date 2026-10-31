@@ -12,7 +12,7 @@ import { Badge, Button, Empty, ErrorNote, Loading, Notice, Tabs, cx } from './ui
 const KIND: Record<ContentFlag['target_kind'], string> = { post: 'Post', evidence: 'Photo', policy_link: 'Policy link', upload: 'Photo upload (stopped)' };
 
 /** Everything the safety filter caught or someone reported, for the adults who decide.
- *  Teachers see their own school's; stewards see the whole network. Items stay hidden until decided. */
+ *  Teachers see their own school's; admins see the whole network. Items stay hidden until decided. */
 export function SafetyQueue({ orgId }: { orgId?: string }) {
   const auth = useAuth();
   const act = useAction();

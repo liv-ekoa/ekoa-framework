@@ -54,7 +54,7 @@ export async function inviteMember(
     id, display_name: input.name.trim(), email: input.email.trim().toLowerCase(), age_band: input.age_band, is_minor: minor,
     locale: 'en', consent_status: minor ? 'pending' : 'not_needed',
   });
-  if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa steward to add them to your school.' : error.message);
+  if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa admin to add them to your school.' : error.message);
   await must(db.from('role_assignments').insert({
     person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, term_start: today(), term_end: input.term_end, status: 'active',
   }));
@@ -319,6 +319,7 @@ export const getPublicPolicy = (id: UUID) => must<PublicPolicy>(db.from('public_
 /** Start a draft at your own school from any policy in the library. */
 export const copyPolicy = (from: PublicPolicy, orgId: UUID) =>
   savePolicy({ org_id: orgId, title: from.title, sections: from.sections.map((s) => ({ ...s })) });
+export const deletePolicy = (id: UUID) => must(db.from('policies').delete().eq('id', id));
 export async function savePolicy(row: Partial<Policy> & { org_id: UUID }) {
   if (row.id) {
     await must(db.from('policies').update({ ...row, updated_at: nowIso() }).eq('id', row.id));
@@ -434,7 +435,7 @@ export const moderatePost = (id: UUID, patch: Partial<Post>) => must(db.from('po
 
 // ---------------- Content safety: reports and the review queue ----------------
 /** Report a post, photo or link. It is hidden for everyone else at once; the author's teacher
- *  and the Ekoa stewards review it. */
+ *  and the Ekoa admins review it. */
 export async function reportContent(kind: 'post' | 'evidence' | 'policy_link', targetId: UUID, reason: FlagReason, note = '') {
   await must(db.from('content_flags').insert({ target_kind: kind, target_id: targetId, reason, note: note.trim().slice(0, 1000) }));
 }
@@ -505,7 +506,7 @@ export const saveEvent = (row: Omit<EventItem, 'id'>) => must(db.from('events').
 export async function submitApplication(row: Pick<Application, 'name' | 'email' | 'organisation' | 'country' | 'role' | 'message' | 'has_lead' | 'lead_plan'> & Pick<Application, 'kind' | 'org_id' | 'student_emails'>) {
   // Insert only: the public can create an application but never read the table.
   await must(db.from('applications').insert({ ...row, status: 'new', notes: '' }));
-  // Emails the stewards once the notify-application function is deployed.
+  // Emails the Ekoa admins once the notify-application function is deployed.
   await supabase.functions.invoke('notify-application', { body: row }).catch(() => undefined);
 }
 /** Pull email addresses out of whatever a school pasted: commas, spaces, new lines, names. */

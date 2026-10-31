@@ -39,8 +39,8 @@ export default function PolicyEditor() {
   const act = useAction();
   useEffect(() => { if (data) setP(data.p); }, [data]);
   if (!p || !data) return <Loading />;
-  const canEdit = auth.has(['project_lead', 'board_member', 'faculty_liaison'], p.org_id);
-  const canAdvance = auth.has(['faculty_liaison', 'approver'], p.org_id);
+  const canEdit = auth.isSteward || auth.has(['project_lead', 'board_member', 'faculty_liaison'], p.org_id);
+  const canAdvance = auth.isSteward || auth.has(['faculty_liaison', 'approver'], p.org_id);
   const adopted = p.status === 'adopted' || p.status === 'amended';
   const dirty = JSON.stringify(p.sections) !== JSON.stringify(data.p.sections) || p.title !== data.p.title;
   const setSection = (i: number, patch: Partial<PolicySection>) => setP({ ...p, sections: p.sections.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
