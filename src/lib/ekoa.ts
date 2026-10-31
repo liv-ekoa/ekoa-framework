@@ -129,7 +129,7 @@ export const ROLES: Record<RoleKey, { label: string; short: string; adult: boole
   faculty_liaison: { label: 'Faculty Liaison', short: 'Liaison', adult: true, description: 'Any teacher. The one adult every school needs: owns the workspace, verifies data, can sign every stage and oversees safeguarding.' },
   approver: { label: 'Approver', short: 'Approver', adult: true, description: 'A decision-maker in the school governance chain.' },
   auditor: { label: 'Peer Auditor', short: 'Auditor', adult: false, description: 'Audits other schools’ records for tier T3. Only members of an Ekoa audit school hold this role.' },
-  steward: { label: 'Ekoa Steward', short: 'Steward', adult: true, description: 'Runs cohorts, moderation and the network.' },
+  steward: { label: 'Ekoa Admin', short: 'Admin', adult: true, description: 'Runs the network: schools, roles, policies, moderation, safeguarding and peer audits.' },
   partner: { label: 'Partner', short: 'Partner', adult: true, description: 'NGO or institution that mentors in groups and verifies outcomes.' },
   alumni: { label: 'Alumni', short: 'Alumni', adult: false, description: 'Former team member with read access.' },
 };
@@ -149,6 +149,9 @@ export const OUTCOMES: Record<OutcomeClass, { label: string; tone: 'leaf' | 'cla
   did_not_work: { label: 'Did not work', tone: 'lesson', blurb: 'Stopped or failed. The lessons are the result.' },
   too_early: { label: 'Too early to tell', tone: 'mute', blurb: 'Not enough data yet.' },
 };
+
+/** A live project is still running and still collecting data. Its record is "too early to tell" until the outcome is known. */
+export const isLiveRecord = (r: { outcome_class: OutcomeClass }) => r.outcome_class === 'too_early';
 
 export const TIERS: Record<Tier, { label: string; who: string }> = {
   0: { label: 'T0 Self-reported', who: 'Entered by students' },

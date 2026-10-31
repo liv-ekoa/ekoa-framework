@@ -25,7 +25,7 @@ export default function Governance() {
   if (!data) return <Loading />;
   const { s } = data;
   const canDecide = auth.has(['approver', 'faculty_liaison']);
-  const canDraft = auth.has(['project_lead', 'board_member', 'faculty_liaison']);
+  const canDraft = auth.isSteward || auth.has(['project_lead', 'board_member', 'implementation_team', 'ekoa_rep', 'faculty_liaison']);
   const pending = s.proposals.filter((p) => p.decision === 'pending');
   const myAmendments = data.amendments.filter((a) => data.policies.some((p) => p.id === a.policy_id));
 

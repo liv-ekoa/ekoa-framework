@@ -9,9 +9,10 @@ import { MINIMUM_TEAM, ROLES, STAGES, roleTitle } from '@/lib/ekoa';
 import { download } from '@/lib/csv';
 import { fmtDate } from '@/lib/format';
 import type { ContextProfile, GovernanceStep, Organisation, Person, RoleKey } from '@/lib/types';
-import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, PageHeader, Panel, Select, Tabs } from '@/components/ui';
+import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea } from '@/components/ui';
+import { SafetyQueue } from '@/components/SafetyQueue';
 
-type Tab = 'profile' | 'people' | 'governance' | 'archive';
+type Tab = 'profile' | 'people' | 'governance' | 'archive' | 'safety';
 
 export default function MySchool() {
   const auth = useAuth();
@@ -27,9 +28,10 @@ export default function MySchool() {
   return (
     <div>
       <PageHeader title={data.s.org.name} lead={`${data.s.org.city}, ${data.s.org.country}. The faculty liaison owns this workspace and keeps its memory across student cohorts.`} />
-      <Tabs label="School sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'profile', label: 'Profile and context' }, { key: 'people', label: 'People and terms', count: data.s.members.length }, { key: 'governance', label: 'Approval chain', count: data.s.steps.length }, { key: 'archive', label: 'Archive' }]} />
+      <Tabs label="School sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'profile', label: 'Profile and context' }, { key: 'people', label: 'People and terms', count: data.s.members.length }, { key: 'governance', label: 'Approval chain', count: data.s.steps.length }, { key: 'archive', label: 'Archive' }, ...(isLiaison ? [{ key: 'safety' as Tab, label: 'Safety' }] : [])]} />
       {tab === 'profile' && <Profile org={data.s.org} canEdit={isLiaison} onChange={() => { void reload(); void auth.refresh(); }} />}
-      {tab === 'people' && <People d={data} canEdit={isLiaison} onChange={reload} />}
+      {tab === 'people' && <>{isLiaison && <StudentEmails org={data.s.org} />}<People d={data} canEdit={isLiaison} onChange={reload} /></>}
+      {tab === 'safety' && isLiaison && <SafetyQueue orgId={orgId} />}
       {tab === 'governance' && <Chain steps={data.s.steps} orgId={orgId} canEdit={isLiaison} onChange={reload} />}
       {tab === 'archive' && <Archive d={data} />}
     </div>
@@ -236,5 +238,28 @@ function Archive({ d }: { d: Data & { policies: Awaited<ReturnType<typeof api.li
         <Panel title="Policies">{d.policies.length ? <ul className="space-y-1.5 text-sm">{d.policies.map((p) => <li key={p.id}><Link to={`/app/governance/policy/${p.id}`} className="font-bold hover:underline">{p.title}</Link> <span className="text-ink-mute">v{p.version}, {p.status.replace('_', ' ')}</span></li>)}</ul> : <p className="text-sm text-ink-mute">None yet.</p>}</Panel>
       </div>
     </div>
+  );
+}
+
+/** A liaison sends the Ekoa team the emails of students who should be on Ekoa. The Ekoa admins
+ *  give each one a role, so students never have to wait on a school-made account. */
+function StudentEmails({ org }: { org: Organisation }) {
+  const auth = useAuth();
+  const act = useAction();
+  const [text, setText] = useState('');
+  const [sent, setSent] = useState(0);
+  const emails = api.parseEmails(text);
+  return (
+    <Panel title="Add students by email" className="mb-6">
+      <p className="mb-3 text-sm text-ink-soft">Paste the emails of the students who should use Ekoa. The Ekoa team gives each one a role here and they can sign in straight away (students under 18 after a guardian consents).</p>
+      {sent > 0 && <div className="mb-3"><Notice tone="leaf">Sent {sent} {sent === 1 ? 'email' : 'emails'} to the Ekoa team. You will see the students under People once they have a role.</Notice></div>}
+      <Field label="Student emails" id="se-t" hint={emails.length ? `${emails.length} found` : 'One per line, or separated by commas'}><Textarea id="se-t" rows={4} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+      <ErrorNote>{act.error}</ErrorNote>
+      <Button className="mt-3" busy={act.busy} disabled={!emails.length} onClick={() => act.run(async () => {
+        if (emails.length > 500) throw new Error('Send up to 500 emails at a time.');
+        await api.submitApplication({ name: auth.person?.display_name ?? '', email: auth.person?.email ?? auth.authEmail ?? '', organisation: org.name, country: org.country, role: 'Faculty liaison', message: `Please add these ${emails.length} students to ${org.name}.`, has_lead: 'yes', lead_plan: '', kind: 'students', org_id: org.id, student_emails: emails });
+        setSent(emails.length); setText('');
+      })}>Send to the Ekoa team</Button>
+    </Panel>
   );
 }

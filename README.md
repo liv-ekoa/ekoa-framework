@@ -24,7 +24,13 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 - **Peer audit.** T3 audits come only from the two Ekoa audit schools, Shiv Nadar School, Faridabad and Green School, Bali, never from the school being audited. Auditors work from **More → Audit desk** and see numbers and evidence, never people. Enforced in the database (`guard_verification_request`, `complete_verification`).
 - **Budget on every project.** Line-by-line planned spend at Design (required by the gate) and actual spend at Implement (also required). Records show planned against actual; the library filters by cost.
 - **School ranking** at `/ranking`, scored only on verified, named, public records and on adoptions by other schools. The formula is on the page and in the `public_school_ranking` view.
-- **Villars-style workspace.** Top tabs (Home, Projects, My school, Wall, Connections, Library, More) and a **Connections** map centred on your school, with filters, depth, back and forward, and labelled links. Other schools appear as schools, never as people.
+- **Villars-style workspace.** Top tabs (Home, Projects, My school, Network, Library, Governance, Funding, More). **Network** holds the Wall, the **Connections** map (centred on your school, other schools appear as schools, never as people) and **Possible collaborators**. **Projects** holds the Metrics view.
+- **Safety.** Posts, photo captions, policy links and thread titles are screened for bullying, sexual content, violence, hate, self-harm and contact details (`src/lib/moderation.ts`, mirrored in the database as `moderation_hit`). Photos get an in-browser nudity check before upload. Anything caught or reported is hidden at once and goes to the school's liaison (My school, Safety) and the Ekoa admins, who remove it for good or restore it.
+- **Possible collaborators.** Schools whose policies share clauses, sections and wording are suggested to each other (`collaborator_suggestions`). This replaced school twins.
+- **Helpful links on policies.** Any member can add a Google Doc or other https link to a policy; anyone can report one.
+- **Two ways in.** Sign in as a school, or join as an independent student with a private workspace (`/join/student`). Schools list student emails when they register or from My school; Ekoa admins assign roles and can move an independent student's projects into their school (Steward console, Students).
+- **Policy library.** Every policy a school adopts is public at once in Library → Policies (`public_policies` view). Drafts stay private. Ekoa admins can add a school's adopted policy directly from the Admin console. Any school can copy a policy as its own draft.
+- **Funding.** Starts from each project's budget and writes a funding ask, with a platform list per country.
 - **One name: Ekoa.** The site is called Ekoa everywhere, including role names (Ekoa Representative, Ekoa Steward), emails and the database. The official logo is traced to vector in `src/components/EkoaLogo.tsx`, with static copies in `public/logo/`, and the O symbol is the favicon and app icon. The contact address is still `hello@ekoagsin.org` until a new mailbox exists; change `VITE_CONTACT_EMAIL` and `EMAIL_FROM` when it does.
 - **Live-site copy.** The problem and solution sections and the closing quote from the original ekoa-framework.org are on the new homepage.
 
@@ -40,7 +46,7 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 | M6 Governance and Policy Builder | `src/pages/app/Governance.tsx`, `PolicyEditor.tsx`, `project/ApprovalsTab.tsx` |
 | M7 Metrics and verification | `src/lib/metrics.ts`, `src/pages/app/QuickLog.tsx`, `Metrics.tsx`, `Kiosk.tsx` |
 | M8 Continuity | `src/pages/app/Handover.tsx`, `src/lib/handover.ts`, alerts in `src/lib/bundle.ts` |
-| M9 Network | `src/pages/app/Network.tsx` (the Wall), `Connections.tsx` with `src/lib/connections.ts`, `ThreadView.tsx` |
+| M9 Network | `src/pages/app/Network.tsx` (the Wall, Connections, Possible collaborators), `Connections.tsx` with `src/lib/connections.ts`, `ThreadView.tsx` |
 | M10 Reports | `src/pages/app/AppReports.tsx`, `CohortReport.tsx` |
 | M11 AI assist | `src/lib/ai.ts`, `supabase/functions/ai-draft` |
 | M12 Safeguarding | `src/components/ReportConcern.tsx`, post screening in `src/lib/api.ts` and the database trigger `screen_post` |

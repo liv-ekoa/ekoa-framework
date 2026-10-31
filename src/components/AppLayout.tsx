@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, HandHelping, Home, Landmark, LogOut, Menu, Network,
-  Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
+  PiggyBank, Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { ReportConcern } from './ReportConcern';
@@ -14,25 +14,27 @@ type Auth = ReturnType<typeof useAuth>;
 interface NavItem { to: string; label: string; icon: typeof Gauge; end?: boolean; show: (a: Auth) => boolean }
 
 const inSchool = (a: Auth) => a.activeOrg?.org_type === 'school';
+/** A school, or the private workspace of a student who joined on their own. */
+const inWorkspace = (a: Auth) => inSchool(a) || a.activeOrg?.org_type === 'independent';
 const auditor = (a: Auth) => !!a.activeOrg?.audit_school && a.has(['auditor', 'faculty_liaison']);
 
-// The main tabs follow the Villars layout: Home, your profile (My school), the Wall and Connections.
+// The main tabs: Projects holds the metrics, Network holds the Wall and Connections, and
+// Governance and Funding sit on the bar itself.
 const TABS: NavItem[] = [
   { to: '/app', label: 'Home', icon: Home, end: true, show: () => true },
-  { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: inSchool },
+  { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: inWorkspace },
   { to: '/app/school', label: 'My school', icon: School, show: inSchool },
-  { to: '/app/network', label: 'Wall', icon: Users, show: () => true },
-  { to: '/app/connections', label: 'Connections', icon: Network, show: () => true },
+  { to: '/app/network', label: 'Network', icon: Network, show: () => true },
   { to: '/app/library', label: 'Library', icon: BookOpenText, show: () => true },
+  { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
+  { to: '/app/funding', label: 'Funding', icon: PiggyBank, show: inWorkspace },
 ];
 const MORE: NavItem[] = [
   { to: '/app/audit', label: 'Audit desk', icon: ClipboardCheck, show: auditor },
-  { to: '/app/metrics', label: 'Metrics', icon: Gauge, show: inSchool },
-  { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
   { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
   { to: '/app/reports', label: 'Reports', icon: FileBarChart, show: (a) => inSchool(a) || a.isSteward },
   { to: '/ranking', label: 'School ranking', icon: Trophy, show: () => true },
-  { to: '/app/steward', label: 'Steward console', icon: ShieldCheck, show: (a) => a.isSteward },
+  { to: '/app/steward', label: 'Admin console', icon: ShieldCheck, show: (a) => a.isSteward },
   { to: '/app/partner', label: 'Partner desk', icon: HandHelping, show: (a) => a.isPartner },
   { to: '/app/settings', label: 'Settings', icon: Settings, show: () => true },
 ];
@@ -67,7 +69,7 @@ export function AppLayout() {
   const tabs = TABS.filter((n) => n.show(auth));
   const moreItems = MORE.filter((n) => n.show(auth));
   const myRoles = auth.roles.filter((r) => r.org_id === auth.activeOrg?.id && r.status !== 'incoming').map((r) => roleTitle(r));
-  const canLog = inSchool(auth) && auth.has(['implementation_team', 'project_lead', 'board_member', 'ekoa_rep', 'faculty_liaison']);
+  const canLog = inWorkspace(auth) && auth.has(['implementation_team', 'project_lead', 'board_member', 'ekoa_rep', 'faculty_liaison']);
   const moreActive = moreItems.some((n) => loc.pathname.startsWith(n.to));
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
@@ -175,7 +177,7 @@ export function AppLayout() {
       <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-paper-line bg-white lg:hidden" aria-label="Quick">
         {[
           { to: '/app', label: 'Home', icon: Home, end: true },
-          { to: '/app/network', label: 'Wall', icon: Users },
+          { to: '/app/network', label: 'Network', icon: Users },
         ].map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold', isActive ? 'text-clay-700' : 'text-ink-mute')}>
             <n.icon className="h-5 w-5" aria-hidden />{n.label}
@@ -184,8 +186,8 @@ export function AppLayout() {
         <Link to={canLog ? '/app/log' : '/app/library'} className="-mt-4 flex flex-col items-center justify-center" aria-label={canLog ? 'Log a measurement' : 'Library'}>
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-clay-600 text-white shadow-md">{canLog ? <Plus className="h-6 w-6" /> : <BookOpenText className="h-6 w-6" />}</span>
         </Link>
-        <NavLink to="/app/connections" className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold', isActive ? 'text-clay-700' : 'text-ink-mute')}>
-          <Network className="h-5 w-5" aria-hidden />Connections
+        <NavLink to={inWorkspace(auth) ? '/app/projects' : '/app/library'} className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold', isActive ? 'text-clay-700' : 'text-ink-mute')}>
+          {inWorkspace(auth) ? <><ClipboardList className="h-5 w-5" aria-hidden />Projects</> : <><BookOpenText className="h-5 w-5" aria-hidden />Library</>}
         </NavLink>
         <button onClick={() => setDrawer(true)} className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold text-ink-mute">
           <Menu className="h-5 w-5" aria-hidden />More

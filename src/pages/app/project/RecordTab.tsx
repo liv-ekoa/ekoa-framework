@@ -17,8 +17,8 @@ export function RecordTab({ b, canEdit, onChange }: { b: ProjectBundle; canEdit:
   const act = useAction();
   const isLiaison = auth.has('faculty_liaison', b.project.org_id);
   const { data } = useData(async () => {
-    const [circles, orgs, twins, verifs] = await Promise.all([api.listCircles(), api.listOrgs(), api.listTwins(), api.listVerifications()]);
-    return { circles, orgs, twins, verifs };
+    const [circles, orgs, verifs] = await Promise.all([api.listCircles(), api.listOrgs(), api.listVerifications()]);
+    return { circles, orgs, verifs };
   });
   const [circle, setCircle] = useState('');
   const [verifier, setVerifier] = useState('');

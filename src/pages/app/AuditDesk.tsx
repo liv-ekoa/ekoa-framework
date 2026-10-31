@@ -19,9 +19,10 @@ const CHECKS = [
   { key: 'honest', label: 'The outcome class is honest, including what did not work' },
 ] as const;
 
-export default function AuditDesk() {
+/** The peer-audit queue of one audit school. Admins open it from the Admin console for either audit school. */
+export default function AuditDesk({ orgId, embedded = false }: { orgId?: string; embedded?: boolean }) {
   const auth = useAuth();
-  const myOrg = auth.activeOrg?.id;
+  const myOrg = orgId ?? auth.activeOrg?.id;
   const { data, reload } = useData(async () => {
     const [vs, records, orgs, ms, evidence] = await Promise.all([api.listVerifications(), api.listRecords(), api.listOrgs(), api.listMeasurements(), api.listEvidence()]);
     return { vs: vs.filter((v) => v.verifier_org === myOrg && v.requested_tier === 3), records, orgs, ms, evidence };
@@ -30,7 +31,9 @@ export default function AuditDesk() {
   const [ticks, setTicks] = useState<Record<string, Record<string, boolean>>>({});
   const act = useAction();
 
-  if (!auth.activeOrg?.audit_school)
+  const auditOrg = orgId ? data?.orgs.find((o) => o.id === orgId) : auth.activeOrg;
+  if (orgId && !data) return <Loading />;
+  if (!auditOrg?.audit_school)
     return (
       <Empty title="Audits are run by the Ekoa audit schools">
         Shiv Nadar School, Faridabad and Green School, Bali carry out T3 peer audits. Request one from a record’s page.
@@ -54,7 +57,7 @@ export default function AuditDesk() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Audit desk" lead={`${auth.activeOrg.name} is an Ekoa audit school. You check other schools’ numbers against the Ekoa protocols so their records can reach tier T3.`} />
+      {!embedded && <PageHeader title="Audit desk" lead={`${auditOrg.name} is an Ekoa audit school. You check other schools’ numbers against the Ekoa protocols so their records can reach tier T3.`} />}
       <Notice tone="sky">
         You audit numbers, not people. You see the record, its measurements and evidence that shows no one. You never see student names or contact details, and you never audit your own school.
       </Notice>
