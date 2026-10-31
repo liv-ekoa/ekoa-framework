@@ -1,4 +1,5 @@
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { PolicyDetail, PolicyLibrary } from '@/components/PolicyLibrary';
 import { listOrgs, listRecords } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useData } from '@/lib/hooks';
@@ -9,7 +10,7 @@ import { BarList } from '@/components/Chart';
 import { Badge, Empty, Loading, PageHeader, Panel, Tabs } from '@/components/ui';
 import type { ImplementationRecord } from '@/lib/types';
 
-type Tab = 'records' | 'failures' | 'patterns';
+type Tab = 'policies' | 'records' | 'failures' | 'patterns';
 
 export default function Library() {
   const auth = useAuth();
@@ -24,8 +25,9 @@ export default function Library() {
   const failures = data.published.filter((r) => r.outcome_class === 'did_not_work' || r.outcome_class === 'partly');
   return (
     <div>
-      <PageHeader title="Library" lead="Every published record in the network, ranked by how similar the school is to yours. Failures are filed alongside successes." />
-      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
+      <PageHeader title="Library" lead="Every adopted policy in the network, and every published record, ranked by how similar the school is to yours. Failures are filed alongside successes." />
+      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'policies', label: 'Policies' }, { key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
+      {tab === 'policies' && <PolicyLibrary hrefBase="/app/library/policies" />}
       {tab === 'records' && <LibraryBrowser records={data.records} orgs={data.orgs} myContext={auth.activeOrg?.context_profile} myOrgId={auth.activeOrg?.id} hrefBase="/app/library" />}
       {tab === 'failures' && <FailureLedger records={failures} orgs={data.orgs} />}
       {tab === 'patterns' && <Patterns records={data.published} />}
@@ -76,4 +78,9 @@ function Patterns({ records }: { records: ImplementationRecord[] }) {
       </div>
     </div>
   );
+}
+
+export function AppPolicy() {
+  const { id } = useParams();
+  return <PolicyDetail id={id!} backTo="/app/library?tab=policies" />;
 }

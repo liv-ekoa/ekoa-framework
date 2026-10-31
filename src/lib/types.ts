@@ -355,6 +355,22 @@ export interface Policy {
   updated_at: string;
 }
 
+/** An adopted policy as anyone can read it, from the public_policies view. */
+export interface PublicPolicy {
+  id: UUID;
+  title: string;
+  version: number;
+  status: 'adopted' | 'amended';
+  sections: PolicySection[];
+  adopted_at: string | null;
+  updated_at: string;
+  is_model: boolean;
+  school: string;
+  org_id: UUID | null;
+  city: string;
+  country: string;
+}
+
 export interface PolicyAmendment { id: UUID; policy_id: UUID; summary: string; adopted_on: string }
 
 export interface PolicyClause {

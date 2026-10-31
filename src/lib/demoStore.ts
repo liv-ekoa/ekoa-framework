@@ -9,7 +9,7 @@ type Row = Record<string, any>;
 type Tables = Record<string, Row[]>;
 type Filter = (r: Row) => boolean;
 
-const STORAGE_KEY = 'ekoa-demo-v9';
+const STORAGE_KEY = 'ekoa-demo-v10';
 
 let tables: Tables | null = null;
 
@@ -282,6 +282,12 @@ function computeRanking(orgs: Row[], records: Row[], adaptations: Row[], project
 }
 
 const VIEWS: Record<string, (db: Tables) => Row[]> = {
+  public_policies: (db) => (db.policies ?? []).flatMap((p) => {
+    const o = db.organisations?.find((x) => x.id === p.org_id);
+    if (!o || !['adopted', 'amended'].includes(p.status) || !['school', 'ekoa'].includes(o.org_type)) return [];
+    const model = o.org_type === 'ekoa';
+    return [{ ...p, is_model: model, school: model ? 'Ekoa model policy' : o.public_visible ? o.name : o.anonymised_label || 'A school in the Ekoa network', org_id: !model && o.public_visible ? o.id : null, city: o.public_visible ? o.city : '', country: o.country }];
+  }),
   public_records: (db) => (db.records ?? []).filter((r) => r.status === 'published' && r.visibility === 'public'),
   public_school_ranking: (db) => computeRanking(db.organisations ?? [], db.records ?? [], db.adaptations ?? [], db.projects ?? []),
 };

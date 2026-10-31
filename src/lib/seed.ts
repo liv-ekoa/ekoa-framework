@@ -5,6 +5,7 @@
 
 import { METRIC_LIBRARY, TEMPLATES } from './ekoa';
 import { CIRCLES, POLICY_CLAUSES } from './clauses';
+import { MODEL_CLAUSES, MODEL_POLICIES } from './modelPolicies';
 
 type Row = Record<string, any>;
 
@@ -565,6 +566,13 @@ export function buildSeed(): Record<string, Row[]> {
   const section = (c: Row) => ({ key: c.section + '-' + c.id.slice(-4), title: c.title, body: c.body, clause_id: c.id });
   add('policies', { id: id('y0'), org_id: aravalli.id, title: 'School Sustainability & Continuity Policy', version: 2, status: 'internal_review', sections: clauseRows.slice(0, 10).map(section), adopted_at: null, updated_at: ts(-4) });
   const ubPolicy = add('policies', { id: id('y1'), org_id: ubud.id, title: 'Sustainability & Continuity Policy', version: 3, status: 'amended', sections: clauseRows.map(section), adopted_at: ts(-160), updated_at: ts(-40) });
+  // Ekoa model policies and the clauses they use, as in migration 20261031000009.
+  const modelRows = MODEL_CLAUSES.map(([section, title, body]) => add('policy_clauses', { id: id('xm'), section, title, body, source_org_id: null, adoption_count: 0 }));
+  const bySection = (s: string) => [...clauseRows, ...modelRows].find((c) => c.section === s);
+  for (const m of MODEL_POLICIES) {
+    add('policies', { id: id('ym'), org_id: ekoaTeam.id, title: m.title, version: 1, status: 'adopted', adopted_at: ts(-30), updated_at: ts(-30),
+      sections: [{ key: `${m.area}_purpose`, title: 'Purpose', body: m.intro, clause_id: null }, ...m.clauses.map(bySection).filter(Boolean).map((c) => ({ key: c!.section, title: c!.title, body: c!.body, clause_id: c!.id }))] });
+  }
   const avPolicy = T.policies.find((x) => x.org_id === aravalli.id)!;
   add('policies', { id: id('y4'), org_id: lakeside.id, title: 'Green School Policy', version: 1, status: 'draft', sections: clauseRows.slice(4, 12).map(section), adopted_at: null, updated_at: ts(-9) });
   add('policy_links', { id: id('yl'), policy_id: avPolicy.id, org_id: aravalli.id, url: 'https://docs.google.com/document/d/aravalli-compost-rota/edit', title: 'Compost sampling rota, this term', note: 'Who weighs the sample each fortnight. Edit it if you swap a slot.', added_by: kabir.id, added_by_name: kabir.display_name, hidden: false, created_at: ts(-8) });

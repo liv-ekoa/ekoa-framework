@@ -7,8 +7,7 @@ import type {
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
   HandoverPacket, ImplementationRecord, Measurement, MetricDefinition, Obstacle, Organisation, Person,
   Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, Proposal, RoleAssignment, RoleKey,
-  SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion,
-} from './types';
+  SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion, PublicPolicy, } from './types';
 import { screen, screenImage, FLAG_REASONS, type FlagReason } from './moderation';
 
 const nowIso = () => new Date().toISOString();
@@ -314,6 +313,12 @@ export async function completeVerification(v: Verification, verified: boolean, n
 // ---------------- Policies ----------------
 export const listPolicies = () => must<Policy[]>(db.from('policies').select('*').order('updated_at', { ascending: false }));
 export const getPolicy = (id: UUID) => must<Policy>(db.from('policies').select('*').eq('id', id).single());
+/** The public Policy library: every adopted policy, plus the Ekoa model policies. */
+export const listPublicPolicies = () => must<PublicPolicy[]>(db.from('public_policies').select('*').order('updated_at', { ascending: false }));
+export const getPublicPolicy = (id: UUID) => must<PublicPolicy>(db.from('public_policies').select('*').eq('id', id).single());
+/** Start a draft at your own school from any policy in the library. */
+export const copyPolicy = (from: PublicPolicy, orgId: UUID) =>
+  savePolicy({ org_id: orgId, title: from.title, sections: from.sections.map((s) => ({ ...s })) });
 export async function savePolicy(row: Partial<Policy> & { org_id: UUID }) {
   if (row.id) {
     await must(db.from('policies').update({ ...row, updated_at: nowIso() }).eq('id', row.id));
