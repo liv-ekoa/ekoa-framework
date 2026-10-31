@@ -150,6 +150,9 @@ export const OUTCOMES: Record<OutcomeClass, { label: string; tone: 'leaf' | 'cla
   too_early: { label: 'Too early to tell', tone: 'mute', blurb: 'Not enough data yet.' },
 };
 
+/** A live project is still running and still collecting data. Its record is "too early to tell" until the outcome is known. */
+export const isLiveRecord = (r: { outcome_class: OutcomeClass }) => r.outcome_class === 'too_early';
+
 export const TIERS: Record<Tier, { label: string; who: string }> = {
   0: { label: 'T0 Self-reported', who: 'Entered by students' },
   1: { label: 'T1 Evidence attached', who: 'Photo or file attached' },

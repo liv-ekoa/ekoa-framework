@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { COST_BANDS } from '@/lib/budget';
 import { Search } from 'lucide-react';
-import { CATEGORIES, OBSTACLE_TAXONOMY, OUTCOMES } from '@/lib/ekoa';
+import { CATEGORIES, OBSTACLE_TAXONOMY, OUTCOMES, isLiveRecord } from '@/lib/ekoa';
 import { similarity } from '@/lib/context';
 import type { ContextProfile, ImplementationRecord, Organisation, OutcomeClass } from '@/lib/types';
 import { PolicyCard } from './PolicyCard';
@@ -57,6 +57,7 @@ type Item = { kind: 'record'; r: ImplementationRecord; score: number; sim: numbe
 export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId, policies = [] }: { records: ImplementationRecord[]; orgs: Organisation[]; myContext?: ContextProfile | null; hrefBase: string; myOrgId?: string; policies?: PolicyEntry[] }) {
   const [kind, setKind] = useState<Kind>('');
   const [q, setQ] = useState('');
+  const [status, setStatus] = useState<'' | 'live' | 'completed'>('');
   const [cat, setCat] = useState('');
   const [outcome, setOutcome] = useState<'' | OutcomeClass>('');
   const [budget, setBudget] = useState('');
@@ -69,9 +70,10 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId, po
   const orgName = (id: string) => orgs.find((o) => o.id === id)?.name;
 
   // Outcome, cost, climate, obstacle and tier describe project records only, so choosing one hides policies.
-  const recordOnlyFilter = !!(outcome || budget || climate || obstacle || tier);
+  const recordOnlyFilter = !!(status || outcome || budget || climate || obstacle || tier);
   const results = useMemo(() => {
     const recs: Item[] = kind === 'policy' ? [] : records
+      .filter((r) => !status || (status === 'live') === isLiveRecord(r))
       .filter((r) => (!cat || r.category === cat) && (!outcome || r.outcome_class === outcome) && (!budget || !!COST_BANDS.find((b) => b.key === budget)?.test(r.budget_amount_usd ?? 0)))
       .filter((r) => (!climate || r.context.climate_zone === climate) && (!obstacle || r.obstacles.some((o) => o.category === obstacle)) && r.tier >= tier)
       .map((r) => ({ kind: 'record' as const, r, score: searchScore(r, q), sim: r.org_id === myOrgId ? -1 : similarity(myContext, r.context) }))
@@ -86,11 +88,11 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId, po
     else recs.sort((a, b) => rank(b) - rank(a));
     // Policies follow the records, or lead when searching, so a good policy match is not buried.
     return q.trim() ? [...recs, ...pols].sort((a, b) => rank(b) - rank(a)) : [...recs, ...pols];
-  }, [records, policies, kind, q, cat, outcome, budget, climate, obstacle, tier, sort, myContext, recordOnlyFilter]);
+  }, [records, policies, kind, q, status, cat, outcome, budget, climate, obstacle, tier, sort, myContext, recordOnlyFilter]);
   const recordCount = results.filter((x) => x.kind === 'record').length;
   const policyCount = results.length - recordCount;
 
-  const active = [cat, outcome, budget, climate, obstacle].filter(Boolean).length + (tier ? 1 : 0);
+  const active = [status, cat, outcome, budget, climate, obstacle].filter(Boolean).length + (tier ? 1 : 0);
 
   return (
     <div className="space-y-5">
@@ -105,6 +107,11 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId, po
         />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+        <Select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as '' | 'live' | 'completed')}>
+          <option value="">Live and completed</option>
+          <option value="live">Live projects</option>
+          <option value="completed">Completed</option>
+        </Select>
         {policies.length > 0 && (
           <Select aria-label="Type" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
             <option value="">All types</option>
@@ -147,7 +154,7 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId, po
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-mute">
         <span>{recordCount} {recordCount === 1 ? 'record' : 'records'}{policies.length > 0 && <>, {policyCount} {policyCount === 1 ? 'policy' : 'policies'}</>}</span>
         {active > 0 && (
-          <button className="font-bold text-ink-soft underline" onClick={() => { setCat(''); setOutcome(''); setBudget(''); setClimate(''); setObstacle(''); setTier(0); }}>
+          <button className="font-bold text-ink-soft underline" onClick={() => { setStatus(''); setCat(''); setOutcome(''); setBudget(''); setClimate(''); setObstacle(''); setTier(0); }}>
             Clear {active} {active === 1 ? 'filter' : 'filters'}
           </button>
         )}

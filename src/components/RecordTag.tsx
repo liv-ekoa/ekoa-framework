@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { OUTCOMES, metricByCode } from '@/lib/ekoa';
+import { OUTCOMES, isLiveRecord, metricByCode } from '@/lib/ekoa';
+import { fmtDate } from '@/lib/format';
 import { formatMetric } from '@/lib/metrics';
 import type { ImplementationRecord } from '@/lib/types';
 import { cx } from './ui';
@@ -35,8 +36,10 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
       <span className="tag-hole" aria-hidden />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pr-10 text-xs text-ink-mute">
         <span className="rounded-tag bg-paper-deep px-2 py-0.5 font-bold text-ink-soft">Project</span>
+        {isLiveRecord(r) && <span className="inline-flex items-center gap-1.5 rounded-tag bg-leaf/15 px-2 py-0.5 font-bold text-leaf"><span className="h-1.5 w-1.5 rounded-full bg-leaf" aria-hidden />Live</span>}
         <span className="font-bold tabular-nums text-ink-soft">{catalogue(r)}</span>
         <span>{r.category}</span>
+        {isLiveRecord(r) && <span>Updated {fmtDate(r.updated_at)}</span>}
         {r.status !== 'published' && <span className="font-bold text-sky">{r.status === 'in_review' ? 'In review' : 'Draft'}</span>}
       </div>
       <h3 className={cx('mt-2 font-display font-semibold leading-snug text-ink', compact ? 'text-base' : 'text-lg')}>{r.title}</h3>

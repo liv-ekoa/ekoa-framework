@@ -69,6 +69,7 @@ export default function App() {
           <Route path="library" element={<PublicLibrary />} />
           <Route path="library/:id" element={<PublicRecord />} />
           <Route path="library/policies/:id" element={<PublicPolicy />} />
+          <Route path="policies" element={<Navigate to="/library" replace />} />
           <Route path="ranking" element={<Ranking />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
