@@ -9,7 +9,7 @@ type Row = Record<string, any>;
 type Tables = Record<string, Row[]>;
 type Filter = (r: Row) => boolean;
 
-const STORAGE_KEY = 'ekoa-demo-v11';
+const STORAGE_KEY = 'ekoa-demo-v12';
 
 let tables: Tables | null = null;
 
@@ -282,6 +282,7 @@ function computeRanking(orgs: Row[], records: Row[], adaptations: Row[], project
 }
 
 const VIEWS: Record<string, (db: Tables) => Row[]> = {
+  public_policy_links: (db) => (db.library_policies ?? []).filter((p) => p.status === 'approved').map(({ id, title, school_name, topic, category, summary, url, created_at }) => ({ id, title, school_name, topic, category, summary, url, created_at })),
   public_policies: (db) => (db.policies ?? []).flatMap((p) => {
     const o = db.organisations?.find((x) => x.id === p.org_id);
     if (!o || !['adopted', 'amended'].includes(p.status) || !['school', 'ekoa'].includes(o.org_type)) return [];
@@ -293,6 +294,11 @@ const VIEWS: Record<string, (db: Tables) => Row[]> = {
 };
 
 const BEFORE_INSERT: Record<string, (row: Row, db: Tables) => string | void> = {
+  library_policies: (row, db) => {
+    const p = me(db);
+    if (!p) return 'Sign in first.';
+    Object.assign(row, { submitted_by: p.id, status: 'pending', reviewed_by: null, reviewed_at: null });
+  },
   posts: (row) => {
     const hit = screen(String(row.body ?? ''));
     row.flag_reason = hit?.reason ?? null;
@@ -361,6 +367,9 @@ const AFTER_INSERT: Record<string, (row: Row, db: Tables) => void> = {
 
 let deciding = false;
 const BEFORE_UPDATE: Record<string, (row: Row, before: Row, db: Tables) => void> = {
+  library_policies: (row, before, db) => {
+    if (row.status !== before.status) { row.reviewed_by = me(db)?.id ?? null; row.reviewed_at = now(); }
+  },
   content_flags: (row, before, db) => {
     for (const k of ['target_kind', 'target_id', 'org_id', 'reason', 'source', 'reporter_person_id', 'excerpt', 'created_at']) row[k] = before[k];
     if (row.status === before.status) return;

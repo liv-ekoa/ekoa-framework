@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PolicyDetail, PolicyLibrary } from '@/components/PolicyLibrary';
-import { listOrgs, listRecords } from '@/lib/api';
+import { listOrgs, listPolicySubmissions, listRecords } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useData } from '@/lib/hooks';
 import { OBSTACLE_TAXONOMY, OUTCOMES, obstacleLabel } from '@/lib/ekoa';
+import { SubmitPolicy } from '@/components/SubmitPolicy';
 import { LibraryBrowser } from '@/components/LibraryBrowser';
 import { RecordTag } from '@/components/RecordTag';
 import { BarList } from '@/components/Chart';
-import { Badge, Empty, Loading, PageHeader, Panel, Tabs } from '@/components/ui';
+import { Badge, Button, Empty, LinkButton, Loading, Notice, PageHeader, Panel, Tabs } from '@/components/ui';
 import type { ImplementationRecord } from '@/lib/types';
 
 type Tab = 'policies' | 'records' | 'failures' | 'patterns';
@@ -16,16 +18,21 @@ export default function Library() {
   const auth = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'records';
-  const { data } = useData(async () => {
-    const [records, orgs] = await Promise.all([listRecords(), listOrgs()]);
+  const [adding, setAdding] = useState(false);
+  const { data, reload } = useData(async () => {
+    const [records, orgs, submissions] = await Promise.all([listRecords(), listOrgs(), listPolicySubmissions().catch(() => [])]);
     const mine = new Set(auth.orgs.map((o) => o.id));
-    return { records: records.filter((r) => r.status === 'published' || mine.has(r.org_id)), published: records.filter((r) => r.status === 'published'), orgs };
+    const waiting = submissions.filter((p) => p.submitted_by === auth.person?.id && p.status === 'pending').length;
+    return { records: records.filter((r) => r.status === 'published' || mine.has(r.org_id)), published: records.filter((r) => r.status === 'published'), orgs, waiting };
   }, [auth.orgs.length]);
   if (!data) return <Loading />;
+  const canWrite = !!auth.activeOrg && (auth.isSteward || auth.has(['project_lead', 'board_member', 'implementation_team', 'ekoa_rep', 'faculty_liaison']));
   const failures = data.published.filter((r) => r.outcome_class === 'did_not_work' || r.outcome_class === 'partly');
   return (
     <div>
-      <PageHeader title="Library" lead="Every adopted policy in the network, and every published record, ranked by how similar the school is to yours. Failures are filed alongside successes." />
+      <PageHeader title="Library" lead="Every adopted policy in the network, and every published record, ranked by how similar the school is to yours. Failures are filed alongside successes." actions={<div className="flex flex-wrap gap-2">{auth.activeOrg && <LinkButton to="/app/projects/new" variant="dark">Add a project</LinkButton>}{canWrite && <LinkButton to="/app/governance" variant="ghost">Write a policy</LinkButton>}<Button variant="ghost" onClick={() => setAdding(true)}>Share a link to a policy</Button></div>} />
+      {data.waiting > 0 && <div className="mb-4"><Notice tone="sky">{data.waiting} of your shared policy {data.waiting === 1 ? 'link is' : 'links are'} waiting for an Ekoa admin to review.</Notice></div>}
+      <SubmitPolicy open={adding} onClose={() => setAdding(false)} onDone={reload} />
       <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'policies', label: 'Policies' }, { key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
       {tab === 'policies' && <PolicyLibrary hrefBase="/app/library/policies" />}
       {tab === 'records' && <LibraryBrowser records={data.records} orgs={data.orgs} myContext={auth.activeOrg?.context_profile} myOrgId={auth.activeOrg?.id} hrefBase="/app/library" />}

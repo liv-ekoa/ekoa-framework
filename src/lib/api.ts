@@ -5,7 +5,7 @@ import { METRIC_LIBRARY, nextStage, templateByKey } from './ekoa';
 import type {
   Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
-  HandoverPacket, ImplementationRecord, Measurement, MetricDefinition, Obstacle, Organisation, Person,
+  HandoverPacket, ImplementationRecord, LibraryPolicy, LibraryPolicySubmission, Measurement, MetricDefinition, Obstacle, Organisation, Person,
   Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, Proposal, RoleAssignment, RoleKey,
   SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion, PublicPolicy, } from './types';
 import { screen, screenImage, FLAG_REASONS, type FlagReason } from './moderation';
@@ -258,6 +258,14 @@ export async function verifyMeasurements(ids: UUID[], tier: Tier, actor: UUID) {
 export const listObstacles = () => must<Obstacle[]>(db.from('obstacles').select('*').order('started_on', { ascending: false }));
 export const addObstacle = (row: Omit<Obstacle, 'id'>) => must(db.from('obstacles').insert(row));
 export const updateObstacle = (id: UUID, patch: Partial<Obstacle>) => must(db.from('obstacles').update(patch).eq('id', id));
+
+// ---------------- Library policies ----------------
+/** Approved policies only. Visitors can read this without signing in. */
+export const listSharedPolicyLinks = () => must<LibraryPolicy[]>(db.from('public_policy_links').select('*').order('created_at', { ascending: false }));
+/** Your own submissions, or every submission for a steward. */
+export const listPolicySubmissions = () => must<LibraryPolicySubmission[]>(db.from('library_policies').select('*').order('created_at', { ascending: false }));
+export const submitPolicy = (row: Pick<LibraryPolicySubmission, 'title' | 'school_name' | 'topic' | 'category' | 'summary' | 'url' | 'submitted_by'>) => must(db.from('library_policies').insert(row));
+export const reviewPolicy = (id: UUID, status: 'approved' | 'rejected') => must(db.from('library_policies').update({ status }).eq('id', id));
 
 // ---------------- Records, library, adaptations ----------------
 export const listRecords = () => must<ImplementationRecord[]>(db.from('records').select('*').order('updated_at', { ascending: false }));
