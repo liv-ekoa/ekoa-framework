@@ -453,3 +453,13 @@ exception when others then perform t('or start one', true); end $$;
 select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
 select t('a student with cross-school consent can join the conversation', (select count(*) from threads where id = '77777777-0000-0000-0000-000000000003') = 1);
 reset role;
+
+-- Public Policy library: adopted policies are public, drafts are not
+set role anon; select set_config('request.jwt.claim.sub','',false);
+select t('visitors see adopted policies in the library', (select count(*) from public_policies where id = '66666666-0000-0000-0000-000000000001') = 1);
+select t('but never a draft', (select count(*) from public_policies where title = 'B policy') = 0);
+do $$ begin perform t('visitors cannot read the policies table itself', (select count(*) from policies) = 0);
+exception when others then perform t('visitors cannot read the policies table itself', true); end $$;
+do $$ begin update public_policies set title = 'x'; perform t('the library cannot be written to', false);
+exception when others then perform t('the library cannot be written to', true); end $$;
+reset role;

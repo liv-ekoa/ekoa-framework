@@ -139,6 +139,13 @@ export default function PolicyEditor() {
               </div>
               {!canAdvance && <p className="mt-2 text-xs text-ink-mute">Only the faculty liaison or an approver can change the status.</p>}
               {dirty && canAdvance && <p className="mt-2 text-xs text-ink-mute">Save your changes first.</p>}
+              <p className="mt-3 text-xs text-ink-mute">When the policy is adopted it is published in the public Policy library, where any school can read and copy it. Drafts stay private to your school.</p>
+            </Panel>
+          )}
+          {adopted && (
+            <Panel title="In the Policy library">
+              <p className="text-sm text-ink-soft">Adopted policies are public, so other schools can learn from yours. Amendments you adopt appear there at once.</p>
+              <Link to={`/app/library/policies/${p.id}`} className="mt-2 inline-block text-sm font-bold text-leaf-600 hover:underline">See it in the library</Link>
             </Panel>
           )}
           <Panel title="Amendment log">

@@ -10,6 +10,8 @@ const Mission = lazy(() => import('./pages/public/Mission'));
 const HowItWorks = lazy(() => import('./pages/public/HowItWorks'));
 const NetworkMap = lazy(() => import('./pages/public/NetworkMap'));
 const PublicLibrary = lazy(() => import('./pages/public/PublicLibrary'));
+const PublicPolicy = lazy(() => import('./pages/public/PublicLibrary').then((m) => ({ default: m.PublicPolicy })));
+const AppPolicy = lazy(() => import('./pages/app/Library').then((m) => ({ default: m.AppPolicy })));
 const PublicRecord = lazy(() => import('./pages/public/PublicRecord'));
 const Reports = lazy(() => import('./pages/public/Reports'));
 const Join = lazy(() => import('./pages/public/Join'));
@@ -66,6 +68,7 @@ export default function App() {
           <Route path="network" element={<NetworkMap />} />
           <Route path="library" element={<PublicLibrary />} />
           <Route path="library/:id" element={<PublicRecord />} />
+          <Route path="library/policies/:id" element={<PublicPolicy />} />
           <Route path="ranking" element={<Ranking />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
@@ -89,6 +92,7 @@ export default function App() {
           <Route path="metrics" element={<Moved to="/app/projects" extra={{ view: 'metrics' }} />} />
           <Route path="library" element={<Library />} />
           <Route path="library/:id" element={<RecordView />} />
+          <Route path="library/policies/:id" element={<AppPolicy />} />
           <Route path="records/:id/edit" element={<RecordEditor />} />
           <Route path="network" element={<Network />} />
           <Route path="network/thread/:id" element={<ThreadView />} />
