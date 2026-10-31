@@ -14,12 +14,13 @@ import { CATEGORIES, EKOA_LETTERS, METRIC_LIBRARY, ROLES, STAGES, TEMPLATES } fr
 import { EkoaMark, EkoaWordmark } from '@/components/EkoaLogo';
 import { RecordTag } from '@/components/RecordTag';
 import { Bloom } from './home/bloom';
-import { GeckoScene, PHOTO } from './home/gecko';
+import { BacklightScene, PHOTO } from './home/backlight';
 import './home/home.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// The landing page: the wordmark blooms open onto the leaf, the gecko walks in, the problem
+// The landing page: the wordmark blooms open onto a dark leaf, light rises behind it and the
+// gecko's shadow appears, the problem
 // lands, then paper slides over and the page shifts between paper, moss and deep green.
 // The rest of the site (header aside) and the member app are untouched.
 
@@ -202,7 +203,7 @@ export default function Home() {
 
     // ── Opening ──
     const stageEl = $('.stage'), leaf = $('.leaf'), canvas = $<HTMLCanvasElement>('#gl');
-    const gecko = new GeckoScene($<HTMLCanvasElement>('.leaf canvas'), { plate: '/img/home/leaf-plate.jpg', photo: '/img/gecko-hero.jpg', atlas: '/img/home/gecko-parts.png' });
+    const leafScene = new BacklightScene($<HTMLCanvasElement>('.leaf canvas'), { plate: '/img/home/leaf-plate.jpg', photo: '/img/gecko-hero.jpg' });
     // Size the leaf like object-fit: cover, keeping the gecko in frame on narrow screens.
     const fitLeaf = () => {
       const w = stageEl.clientWidth, h = stageEl.clientHeight, ar = PHOTO.w / PHOTO.h;
@@ -211,7 +212,7 @@ export default function Home() {
       const focus = w < 760 ? 0.7 : 0.6;
       const left = clamp(w / 2 - lw * focus, w - lw, 0);
       Object.assign(leaf.style, { width: lw + 'px', height: lh + 'px', left: left + 'px', top: (h - lh) / 2 + 'px' });
-      gecko.resize();
+      leafScene.resize();
     };
     fitLeaf();
     on('resize', fitLeaf);
@@ -233,15 +234,15 @@ export default function Home() {
       };
       const strips = $$('.odo .strip');
       if (!anim) {
-        gecko.set(1);
+        leafScene.set(1);
         strips.forEach((s) => (s.style.transform = `translateY(${(-100 * +s.dataset.n!) / (+s.dataset.n! + 1)}%)`));
         setNavOn(true);
       } else {
-        const walk = { p: 0 };
+        const light = { p: 0 };
         gsap.set('.stat .k, #statLine, #statSub, .odo', { autoAlpha: 0 });
         gsap.set('#ln1 > span, #ln2 > span, #ln3 > span', { yPercent: 115, autoAlpha: 0 });
         gsap.set('.gridlines', { autoAlpha: 0 });
-        gecko.set(0);
+        leafScene.set(0);
         const tl = gsap.timeline({
           defaults: { ease: 'none' },
           scrollTrigger: {
@@ -259,8 +260,8 @@ export default function Home() {
           // without WebGL the plain wordmark fades instead
           .to('.fallback', { autoAlpha: 0, duration: 0.12 }, 0.06)
           .fromTo(leaf, { scale: 1.18 }, { scale: 1, duration: 0.3, ease: 'power2.out' }, 0.05)
-          // b. the gecko walks in and settles into the photo's pose
-          .to(walk, { p: 1, duration: 0.23, onUpdate: () => gecko.set(walk.p) }, 0.21)
+          // b. light rises behind the leaf, the veins glow and the gecko's shadow appears
+          .to(light, { p: 1, duration: 0.3, onUpdate: () => leafScene.set(light.p) }, 0.14)
           // c. the problem lands: 1.5B rolls in over the leaf
           .to('.shade', { opacity: 1, duration: 0.06 }, 0.445)
           .to('.stat .k', { autoAlpha: 1, duration: 0.03 }, 0.465)
