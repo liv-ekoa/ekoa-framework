@@ -6,15 +6,16 @@ import { authorMeta, useAuth } from '@/lib/auth';
 import { useAction, useData } from '@/lib/hooks';
 import { ROLES } from '@/lib/ekoa';
 import { fmtDateTime } from '@/lib/format';
-import { ReportConcern } from '@/components/ReportConcern';
+import { ReportContent } from '@/components/ReportContent';
+import { FLAG_REASONS, type FlagReason } from '@/lib/moderation';
 import { Avatar, Badge, Button, Empty, ErrorNote, Loading, Notice, Textarea } from '@/components/ui';
 
 export default function ThreadView() {
   const { id } = useParams();
   const auth = useAuth();
   const { data, reload, error } = useData(async () => {
-    const [t, posts, people, roles, orgs, circles, records] = await Promise.all([api.getThread(id!), api.listPosts(), api.listPeople().catch(() => []), api.listAllRoles().catch(() => []), api.listOrgs(), api.listCircles(), api.listRecords()]);
-    return { t, posts: posts.filter((p) => p.thread_id === id), people, roles, orgs, circles, records };
+    const [t, posts, people, roles, orgs, circles, records, flags] = await Promise.all([api.getThread(id!), api.listPosts(), api.listPeople().catch(() => []), api.listAllRoles().catch(() => []), api.listOrgs(), api.listCircles(), api.listRecords(), api.listFlags().catch(() => [])]);
+    return { t, posts: posts.filter((p) => p.thread_id === id), people, roles, orgs, circles, records, flags };
   }, [id]);
   const [body, setBody] = useState('');
   const [held, setHeld] = useState<string | null>(null);
@@ -38,16 +39,18 @@ export default function ThreadView() {
       <Link to={t.kind === 'partner_request' ? '/app/network?tab=requests' : '/app/network'} className="text-sm font-bold text-ink-mute hover:text-ink">Network</Link>
       <h1 className="mt-2 text-2xl font-bold sm:text-3xl">{t.title}</h1>
       <p className="mt-1 text-sm text-ink-mute">
-        {t.kind === 'circle' ? `${circle?.name} circle` : t.kind === 'twin' ? 'Twin and introduction space' : 'Partner request'}. {record && <>About the record <Link to={`/app/library/${record.id}`} className="font-bold text-leaf-600 underline">{record.title}</Link>.</>}
+        {t.kind === 'circle' ? `${circle?.name} circle` : t.kind === 'twin' ? 'Conversation between schools' : 'Partner request'}. {record && <>About the record <Link to={`/app/library/${record.id}`} className="font-bold text-leaf-600 underline">{record.title}</Link>.</>}
       </p>
-      <div className="mt-4"><Notice tone="sky"><span className="inline-flex items-start gap-2"><Lock className="mt-0.5 h-4 w-4 shrink-0" />Group space. Faculty liaisons and Ekoa stewards can read everything here. Phone numbers, emails and social handles are blocked.</span></Notice></div>
+      <div className="mt-4"><Notice tone="sky"><span className="inline-flex items-start gap-2"><Lock className="mt-0.5 h-4 w-4 shrink-0" />Group space. Faculty liaisons and Ekoa admins can read everything here. Bullying, sexual content, violence, hate and contact details are hidden the moment they are posted, and anyone can report a post with the flag.</span></Notice></div>
 
       <ol className="mt-6 space-y-4">
         {data.posts.map((p) => {
           const w = who(p);
           if (p.hidden && !canModerate) {
-            return <li key={p.id} className="flex items-center gap-2 rounded-panel border border-dashed border-paper-line p-4 text-sm text-ink-mute"><EyeOff className="h-4 w-4" /> A post here is held for review.</li>;
+            return <li key={p.id} className="flex items-center gap-2 rounded-panel border border-dashed border-paper-line p-4 text-sm text-ink-mute"><EyeOff className="h-4 w-4" /> A post here is hidden while a teacher reviews it.</li>;
           }
+          const openFlags = data.flags.filter((f) => f.target_id === p.id && f.status === 'open');
+          const why = openFlags[0]?.reason ?? (p.flag_reason as FlagReason | null | undefined) ?? null;
           return (
             <li key={p.id} className={p.hidden ? 'rounded-panel border border-alert/40 bg-alert-100/50 p-4' : 'rounded-panel border border-paper-line bg-white p-4'}>
               <div className="flex items-start gap-3">
@@ -57,13 +60,21 @@ export default function ThreadView() {
                   <p className="mt-1.5 whitespace-pre-line text-ink">{p.body}</p>
                   {p.hidden && (
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Badge tone="alert">Held by the safeguarding filter</Badge>
-                      <Button size="sm" variant="ghost" onClick={() => act.run(async () => { await api.moderatePost(p.id, { hidden: false }); await api.audit(auth.person!.id, 'released held post', 'posts', p.id); reload(); })}>Release</Button>
-                      <Button size="sm" variant="danger" onClick={() => act.run(async () => { await api.moderatePost(p.id, { body: '[Removed by a moderator]', hidden: false }); await api.audit(auth.person!.id, 'removed post', 'posts', p.id); reload(); })}>Remove text</Button>
+                      <Badge tone="alert">Hidden: {why ? FLAG_REASONS[why as FlagReason]?.label.toLowerCase() ?? why : 'held for review'}{openFlags.some((f) => f.source === 'report') ? ' (reported)' : ''}</Badge>
+                      <Button size="sm" variant="ghost" onClick={() => act.run(async () => {
+                        if (openFlags.length) await api.decideFlag(openFlags[0], 'restored', auth.person!.id);
+                        else { await api.moderatePost(p.id, { hidden: false, flagged: false }); await api.audit(auth.person!.id, 'released held post', 'posts', p.id); }
+                        reload();
+                      })}>Restore: it’s fine</Button>
+                      <Button size="sm" variant="danger" onClick={() => act.run(async () => {
+                        if (openFlags.length) await api.decideFlag(openFlags[0], 'removed', auth.person!.id);
+                        else { await api.moderatePost(p.id, { body: '[Removed by a moderator]', hidden: false }); await api.audit(auth.person!.id, 'removed post', 'posts', p.id); }
+                        reload();
+                      })}>Keep it removed</Button>
                     </div>
                   )}
                 </div>
-                {!p.hidden && <ReportConcern variant="icon" subject={`Post by ${w.name} in “${t.title}”`} />}
+                {!p.hidden && p.person_id !== auth.person?.id && p.body !== '[Removed by a moderator]' && <ReportContent kind="post" id={p.id} what="post" onDone={reload} />}
               </div>
             </li>
           );
@@ -71,7 +82,7 @@ export default function ThreadView() {
       </ol>
 
       <div className="mt-6 space-y-3 rounded-panel border border-paper-line bg-white p-5">
-        {held && <Notice tone="clay">Your post was held for review because it looked like it contained a {held}. A steward will check it.</Notice>}
+        {held && <Notice tone="clay">{held}</Notice>}
         <Textarea aria-label="Reply" rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a reply" />
         <ErrorNote>{act.error}</ErrorNote>
         <div className="flex flex-wrap items-center gap-2">
