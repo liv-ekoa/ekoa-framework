@@ -11,7 +11,7 @@ import { loadSchool, schoolAlerts } from '@/lib/bundle';
 import { METRIC_LIBRARY, ROLES, metricByCode } from '@/lib/ekoa';
 import { completeness } from '@/lib/metrics';
 import { fmtDate, fmtDateTime, relative } from '@/lib/format';
-import type { Application, ConsentRecord, MetricDefinition, Organisation, Person, RoleAssignment, RoleKey, SafeguardingReport } from '@/lib/types';
+import type { Application, ConsentRecord, LibraryPolicySubmission, MetricDefinition, Organisation, Person, RoleAssignment, RoleKey, SafeguardingReport } from '@/lib/types';
 import { Badge, Button, Empty, ErrorNote, Field, Input, Loading, Meter, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
 
 type Tab = 'applications' | 'students' | 'schools' | 'policies' | 'audits' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
@@ -23,9 +23,9 @@ export default function Steward() {
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'applications';
   const { data, reload } = useData(async () => {
-    const [apps, orgs, reports, posts, threads, people, audit, campaigns, metrics, roles, consents, flags] = await Promise.all([api.listApplications(), api.listOrgs(), api.listReports(), api.listPosts(), api.listThreads(), api.listPeople(), api.listAudit(), api.listCampaigns(), api.listMetricDefs(), api.listAllRoles(), api.listConsents(), api.listFlags()]);
+    const [apps, orgs, reports, posts, threads, people, audit, campaigns, metrics, roles, consents, flags, links] = await Promise.all([api.listApplications(), api.listOrgs(), api.listReports(), api.listPosts(), api.listThreads(), api.listPeople(), api.listAudit(), api.listCampaigns(), api.listMetricDefs(), api.listAllRoles(), api.listConsents(), api.listFlags(), api.listPolicySubmissions().catch(() => [] as LibraryPolicySubmission[])]);
     const schools = await Promise.all(orgs.filter((o) => o.org_type === 'school').map((o) => loadSchool(o.id)));
-    return { apps, orgs, reports, posts, threads, people, audit, campaigns, metrics, schools, roles, consents, flags };
+    return { apps, orgs, reports, posts, threads, people, audit, campaigns, metrics, schools, roles, consents, flags, links };
   });
   if (!auth.isSteward) return <Empty title="Admins only">This console is for the Ekoa core team.</Empty>;
   if (!data) return <Loading />;
@@ -40,7 +40,7 @@ export default function Steward() {
         { key: 'applications', label: 'Applications', count: data.apps.filter((a) => a.status === 'new').length },
         { key: 'students', label: 'Students', count: independents.length + listed.length },
         { key: 'schools', label: 'Schools' },
-        { key: 'policies', label: 'Policies' },
+        { key: 'policies', label: 'Policies', count: data.links.filter((p) => p.status === 'pending').length },
         { key: 'audits', label: 'Peer audits' },
         { key: 'moderation', label: 'Moderation', count: openFlags },
         { key: 'safeguarding', label: 'Safeguarding', count: openReports.length },
@@ -51,7 +51,7 @@ export default function Steward() {
       {tab === 'applications' && <Applications apps={data.apps} reload={reload} />}
       {tab === 'students' && <Students d={data} reload={reload} />}
       {tab === 'schools' && <Schools d={data} reload={reload} />}
-      {tab === 'policies' && <PoliciesAdmin orgs={data.orgs} reload={reload} />}
+      {tab === 'policies' && <><PoliciesAdmin orgs={data.orgs} reload={reload} /><h2 className="mb-3 mt-10 font-display text-2xl font-semibold">Shared links to policies</h2><p className="mb-4 text-sm text-ink-soft">Members share links to policy documents on other websites. Each waits here until an admin approves it.</p><LibraryPolicies items={data.links} reload={reload} /></>}
       {tab === 'audits' && <AuditsAdmin orgs={data.orgs} roles={data.roles} />}
       {tab === 'moderation' && <SafetyQueue />}
       {tab === 'safeguarding' && <Safeguarding reports={data.reports} reload={reload} />}
@@ -415,6 +415,34 @@ function AuditsAdmin({ orgs, roles }: { orgs: Organisation[]; roles: RoleAssignm
       <div className="max-w-sm"><Field label="Audit school" id="au-s"><Select id="au-s" value={pick} onChange={(e) => setPick(e.target.value)}>{schools.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></Field></div>
       <p className="text-sm text-ink-soft">T3 peer audits requested from this school. A school can never audit its own records.</p>
       <AuditDesk key={pick} orgId={pick} embedded />
+    </div>
+  );
+}
+
+function LibraryPolicies({ items, reload }: { items: LibraryPolicySubmission[]; reload: () => void }) {
+  const act = useAction();
+  const pending = items.filter((p) => p.status === 'pending');
+  if (!items.length) return <Empty title="No links shared yet">When a member shares a link to a policy, it waits here for your review.</Empty>;
+  const review = (id: string, status: 'approved' | 'rejected') => act.run(async () => { await api.reviewPolicy(id, status); reload(); });
+  return (
+    <div className="space-y-4">
+      <Notice tone="sky">Open each link before approving. Approved policies appear on the public Library with the link you see here. Check the link goes to the policy itself and that the summary is accurate and suitable for a school audience.</Notice>
+      <ErrorNote>{act.error}</ErrorNote>
+      {pending.length === 0 && <p className="text-sm text-ink-mute">Nothing waiting for review.</p>}
+      <ul className="space-y-3">
+        {items.map((p) => (
+          <li key={p.id} className="rounded-panel border border-paper-line bg-white p-4">
+            <div className="flex flex-wrap items-center gap-2"><Badge tone={p.status === 'approved' ? 'leaf' : p.status === 'rejected' ? 'lesson' : 'clay'}>{p.status}</Badge><span className="text-xs text-ink-mute">{p.topic} · {p.school_name} · {fmtDate(p.created_at)}</span></div>
+            <h3 className="mt-2 font-display text-lg font-semibold">{p.title}</h3>
+            <p className="mt-1 text-sm text-ink-soft">{p.summary}</p>
+            <p className="mt-2 break-all text-sm"><a href={p.url} target="_blank" rel="noreferrer" className="underline">{p.url}</a></p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {p.status !== 'approved' && <Button size="sm" variant="dark" busy={act.busy} onClick={() => review(p.id, 'approved')}>Approve</Button>}
+              {p.status !== 'rejected' && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => review(p.id, 'rejected')}>{p.status === 'approved' ? 'Remove from Library' : 'Reject'}</Button>}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

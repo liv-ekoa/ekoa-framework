@@ -4,7 +4,9 @@ import { Search } from 'lucide-react';
 import { CATEGORIES, OBSTACLE_TAXONOMY, OUTCOMES } from '@/lib/ekoa';
 import { similarity } from '@/lib/context';
 import type { ContextProfile, ImplementationRecord, Organisation, OutcomeClass } from '@/lib/types';
+import { PolicyCard } from './PolicyCard';
 import { RecordTag } from './RecordTag';
+import type { PolicyEntry } from '@/lib/policyLibrary';
 import { Empty, Select, cx } from './ui';
 
 // Plain-language search: expands common words so "cheap" finds low-budget records,
@@ -42,7 +44,18 @@ export function searchScore(r: ImplementationRecord, q: string) {
   return score;
 }
 
-export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: { records: ImplementationRecord[]; orgs: Organisation[]; myContext?: ContextProfile | null; hrefBase: string; myOrgId?: string }) {
+function policyScore(p: PolicyEntry, q: string) {
+  const words = q.toLowerCase().split(/[^a-z0-9-]+/).filter((w) => w.length > 2);
+  if (!words.length) return 1;
+  const text = `${p.title} ${p.topic} ${p.category} ${p.school} ${p.summary}`.toLowerCase();
+  return words.reduce((n, w) => n + ([w, ...(SYNONYMS[w] ?? [])].some((x) => text.includes(x)) ? 1 : 0), 0);
+}
+
+type Kind = '' | 'record' | 'policy';
+type Item = { kind: 'record'; r: ImplementationRecord; score: number; sim: number } | { kind: 'policy'; p: PolicyEntry; score: number };
+
+export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId, policies = [] }: { records: ImplementationRecord[]; orgs: Organisation[]; myContext?: ContextProfile | null; hrefBase: string; myOrgId?: string; policies?: PolicyEntry[] }) {
+  const [kind, setKind] = useState<Kind>('');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('');
   const [outcome, setOutcome] = useState<'' | OutcomeClass>('');
@@ -55,17 +68,27 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
   const climates = useMemo(() => [...new Set(records.map((r) => r.context.climate_zone))].sort(), [records]);
   const orgName = (id: string) => orgs.find((o) => o.id === id)?.name;
 
+  // Outcome, cost, climate, obstacle and tier describe project records only, so choosing one hides policies.
+  const recordOnlyFilter = !!(outcome || budget || climate || obstacle || tier);
   const results = useMemo(() => {
-    const list = records
+    const recs: Item[] = kind === 'policy' ? [] : records
       .filter((r) => (!cat || r.category === cat) && (!outcome || r.outcome_class === outcome) && (!budget || !!COST_BANDS.find((b) => b.key === budget)?.test(r.budget_amount_usd ?? 0)))
       .filter((r) => (!climate || r.context.climate_zone === climate) && (!obstacle || r.obstacles.some((o) => o.category === obstacle)) && r.tier >= tier)
-      .map((r) => ({ r, score: searchScore(r, q), sim: r.org_id === myOrgId ? -1 : similarity(myContext, r.context) }))
+      .map((r) => ({ kind: 'record' as const, r, score: searchScore(r, q), sim: r.org_id === myOrgId ? -1 : similarity(myContext, r.context) }))
       .filter((x) => x.score > 0);
-    if (sort === 'similar') list.sort((a, b) => b.sim - a.sim || b.score - a.score);
-    else if (sort === 'recent') list.sort((a, b) => (b.r.published_at ?? b.r.updated_at).localeCompare(a.r.published_at ?? a.r.updated_at));
-    else list.sort((a, b) => b.score - a.score);
-    return list;
-  }, [records, q, cat, outcome, budget, climate, obstacle, tier, sort, myContext]);
+    const pols: Item[] = kind === 'record' || recordOnlyFilter ? [] : policies
+      .filter((p) => !cat || p.category === cat)
+      .map((p) => ({ kind: 'policy' as const, p, score: policyScore(p, q) }))
+      .filter((x) => x.score > 0);
+    const rank = (x: Item) => x.score;
+    if (sort === 'similar') recs.sort((a, b) => (b.kind === 'record' && a.kind === 'record' ? b.sim - a.sim : 0) || rank(b) - rank(a));
+    else if (sort === 'recent') recs.sort((a, b) => (b.kind === 'record' && a.kind === 'record' ? (b.r.published_at ?? b.r.updated_at).localeCompare(a.r.published_at ?? a.r.updated_at) : 0));
+    else recs.sort((a, b) => rank(b) - rank(a));
+    // Policies follow the records, or lead when searching, so a good policy match is not buried.
+    return q.trim() ? [...recs, ...pols].sort((a, b) => rank(b) - rank(a)) : [...recs, ...pols];
+  }, [records, policies, kind, q, cat, outcome, budget, climate, obstacle, tier, sort, myContext, recordOnlyFilter]);
+  const recordCount = results.filter((x) => x.kind === 'record').length;
+  const policyCount = results.length - recordCount;
 
   const active = [cat, outcome, budget, climate, obstacle].filter(Boolean).length + (tier ? 1 : 0);
 
@@ -82,6 +105,13 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
         />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+        {policies.length > 0 && (
+          <Select aria-label="Type" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+            <option value="">All types</option>
+            <option value="record">Project records</option>
+            <option value="policy">Policies</option>
+          </Select>
+        )}
         <Select aria-label="Category" value={cat} onChange={(e) => setCat(e.target.value)}>
           <option value="">All categories</option>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
@@ -115,7 +145,7 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
         </Select>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-mute">
-        <span>{results.length} {results.length === 1 ? 'record' : 'records'}</span>
+        <span>{recordCount} {recordCount === 1 ? 'record' : 'records'}{policies.length > 0 && <>, {policyCount} {policyCount === 1 ? 'policy' : 'policies'}</>}</span>
         {active > 0 && (
           <button className="font-bold text-ink-soft underline" onClick={() => { setCat(''); setOutcome(''); setBudget(''); setClimate(''); setObstacle(''); setTier(0); }}>
             Clear {active} {active === 1 ? 'filter' : 'filters'}
@@ -124,19 +154,23 @@ export function LibraryBrowser({ records, orgs, myContext, hrefBase, myOrgId }: 
       </div>
       {results.length ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {results.map(({ r, sim }) => (
-            <div key={r.id} className="relative">
-              <RecordTag r={r} href={`${hrefBase}/${r.id}`} schoolName={orgName(r.org_id)} />
-              {myContext && sort === 'similar' && (
-                <span className={cx('absolute -top-2.5 left-4 rounded-tag px-2 py-0.5 text-xs font-bold', sim < 0 ? 'bg-sky-100 text-sky' : sim > 0.6 ? 'bg-leaf text-white' : 'bg-paper-deep text-ink-soft')}>
-                  {sim < 0 ? 'Your school' : `${Math.round(sim * 100)}% similar context`}
-                </span>
-              )}
-            </div>
-          ))}
+          {results.map((x) => {
+            if (x.kind === 'policy') return <PolicyCard key={x.p.title} p={x.p} />;
+            const { r, sim } = x;
+            return (
+              <div key={r.id} className="relative">
+                <RecordTag r={r} href={`${hrefBase}/${r.id}`} schoolName={orgName(r.org_id)} />
+                {myContext && sort === 'similar' && (
+                  <span className={cx('absolute -top-2.5 left-4 rounded-tag px-2 py-0.5 text-xs font-bold', sim < 0 ? 'bg-sky-100 text-sky' : sim > 0.6 ? 'bg-leaf text-white' : 'bg-paper-deep text-ink-soft')}>
+                    {sim < 0 ? 'Your school' : `${Math.round(sim * 100)}% similar context`}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
-        <Empty title="No records match">Try fewer filters or different words. Failed and partly-worked records count too: switch the outcome filter to “Did not work”.</Empty>
+        <Empty title="Nothing matches">Try fewer filters or different words. Failed and partly-worked records count too: switch the outcome filter to “Did not work”.</Empty>
       )}
     </div>
   );
