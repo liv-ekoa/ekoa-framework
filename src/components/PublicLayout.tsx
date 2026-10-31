@@ -22,6 +22,8 @@ export function PublicLayout() {
   const [open, setOpen] = useState(false);
   const { person } = useAuth();
   const loc = useLocation();
+  // The landing page brings its own header, which appears after the opening animation.
+  const home = loc.pathname === '/';
   useEffect(() => {
     setOpen(false);
     if (!loc.hash) {
@@ -42,7 +44,7 @@ export function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-field focus:bg-white focus:px-3 focus:py-2">Skip to content</a>
-      <header className="sticky top-0 z-40 border-b border-paper-line bg-paper/95 backdrop-blur">
+      {!home && <header className="sticky top-0 z-40 border-b border-paper-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-page items-center justify-between gap-6 px-4 py-3 sm:px-6">
           <Link to="/" aria-label="Ekoa home"><Logo /></Link>
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
@@ -69,11 +71,11 @@ export function PublicLayout() {
             <Link to="/join" className="mt-2 block rounded-full bg-moss px-3 py-2.5 text-center font-bold text-paper">Join the founding cohort</Link>
           </nav>
         )}
-      </header>
+      </header>}
       <main id="main" className="flex-1">
         <Outlet />
       </main>
-      <footer className="mt-20 bg-moss text-paper">
+      <footer className={cx('bg-moss text-paper', !home && 'mt-20')}>
         <div className="mx-auto grid max-w-page gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="space-y-3">
             <Logo light />
