@@ -106,6 +106,8 @@ export function PublicLayout() {
             <h2 className="mb-3 label-caps text-paper">Trust</h2>
             <ul className="space-y-2 text-sm text-paper/85">
               <li><Link to="/safeguarding" className="hover:text-paper">Safeguarding and privacy</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-paper">Privacy policy</Link></li>
+              <li><Link to="/terms-of-use" className="hover:text-paper">Terms of use</Link></li>
               <li><a href={`mailto:${config.contactEmail}`} className="hover:text-paper">{config.contactEmail}</a></li>
             </ul>
           </div>

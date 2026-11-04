@@ -18,6 +18,8 @@ const Join = lazy(() => import('./pages/public/Join'));
 const About = lazy(() => import('./pages/public/About'));
 const Safeguarding = lazy(() => import('./pages/public/Safeguarding'));
 const Contact = lazy(() => import('./pages/public/Contact'));
+const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
+const TermsOfUse = lazy(() => import('./pages/public/TermsOfUse'));
 const SignIn = lazy(() => import('./pages/public/SignIn'));
 const JoinStudent = lazy(() => import('./pages/public/JoinStudent'));
 const GuardianConsent = lazy(() => import('./pages/public/GuardianConsent'));
@@ -78,6 +80,8 @@ export default function App() {
           <Route path="about" element={<About />} />
           <Route path="safeguarding" element={<Safeguarding />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="terms-of-use" element={<TermsOfUse />} />
           <Route path="signin" element={<SignIn />} />
           <Route path="consent/:token" element={<GuardianConsent />} />
           <Route path="waiting-for-consent" element={<WaitingConsent />} />
