@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Trophy } from 'lucide-react';
 import { listSchoolRanking } from '@/lib/api';
 import { useData } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth';
@@ -14,28 +15,28 @@ export const SCORE_RULES: [string, string][] = [
   ['Peer-audited (T3) or partner-verified (T4) records', '× 1.5'],
 ];
 
-export default function Ranking() {
+export default function Leaderboard() {
   const { activeOrg } = useAuth();
   const { data, loading } = useData(listSchoolRanking);
   const top = data?.[0]?.score ?? 1;
 
   return (
     <div className="mx-auto max-w-page px-4 py-16 sm:px-6">
-      <span className="eyebrow">School ranking</span>
-      <h1 className="mt-5 max-w-3xl text-4xl sm:text-5xl">Ranked on verified impact, not on sign-ups.</h1>
+      <span className="eyebrow">School leaderboard</span>
+      <h1 className="mt-5 max-w-3xl text-4xl sm:text-5xl">Celebrating verified impact, not sign-ups.</h1>
       <p className="mt-4 max-w-2xl text-lg text-ink-soft">
-        A school climbs by publishing results someone has checked, and by building models other schools adapt. Honest failures count too, because their lessons save the next school a term.
+        Schools earn their place by publishing results someone has checked, and by building models other schools adapt. Honest failures count too, because their lessons save the next school a term.
       </p>
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_340px]">
-        <section aria-label="Ranking">
+        <section aria-label="Leaderboard">
           {loading || !data ? <Loading /> : data.length ? (
             <ol className="space-y-3">
               {data.map((r) => {
                 const mine = r.org_id === activeOrg?.id;
                 return (
                   <li key={r.org_id} className={cx('grid grid-cols-[3.5rem_1fr] items-center gap-4 rounded-panel border bg-white p-5 sm:grid-cols-[4rem_1fr_9rem]', mine ? 'border-clay' : 'border-paper-line')}>
-                    <span className={cx('font-display text-4xl font-semibold italic tabular-nums leading-none', r.position <= 3 ? 'text-clay-700' : 'text-ink-mute')} aria-label={`Position ${r.position}`}>{r.position}</span>
+                    <Trophy className="h-8 w-8 text-clay-600" aria-hidden />
                     <div className="min-w-0">
                       <p className="font-display text-xl font-semibold leading-tight">{r.name}{mine && <span className="ml-2 align-middle font-sans text-xs font-bold not-italic text-clay-700">Your school</span>}</p>
                       <p className="text-sm text-ink-mute">{[r.city, r.country].filter(Boolean).join(', ')}</p>
@@ -54,7 +55,7 @@ export default function Ranking() {
               })}
             </ol>
           ) : (
-            <p className="rounded-panel border border-dashed border-paper-line p-8 text-center text-ink-mute">No school has a verified, published record yet. The first one tops the table.</p>
+            <p className="rounded-panel border border-dashed border-paper-line p-8 text-center text-ink-mute">No school has a verified, published record yet. The first one will be the first on the board.</p>
           )}
         </section>
 
@@ -72,9 +73,9 @@ export default function Ranking() {
             <p className="mt-4 text-xs leading-relaxed text-paper/80">Only published, named records at tier T2 or higher count. Sign-ups, posts and unverified numbers never do. Schools that publish anonymously are left out of the table.</p>
           </div>
           <div className="rounded-panel border border-paper-line bg-white p-5 text-sm text-ink-soft">
-            <p>Want to climb? Publish a verified record, then ask an Ekoa audit school for a T3 peer audit. <Link to="/how-it-works#peer-audit" className="font-bold text-leaf-600 underline">How peer audit works</Link>.</p>
+            <p>Want to be featured? Publish a verified record, then ask an Ekoa audit school for a T3 peer audit. <Link to="/how-it-works#peer-audit" className="font-bold text-leaf-600 underline">How peer audit works</Link>.</p>
           </div>
-          <LinkButton to="/library" variant="ghost" className="w-full">Read the records behind the ranking</LinkButton>
+          <LinkButton to="/library" variant="ghost" className="w-full">Read the records behind the leaderboard</LinkButton>
         </aside>
       </div>
     </div>

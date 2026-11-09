@@ -13,22 +13,20 @@ import { config } from '@/lib/config';
 import { CATEGORIES, EKOA_LETTERS, METRIC_LIBRARY, ROLES, STAGES, TEMPLATES } from '@/lib/ekoa';
 import { EkoaMark, EkoaWordmark } from '@/components/EkoaLogo';
 import { RecordTag } from '@/components/RecordTag';
-import { Bloom } from './home/bloom';
 import { BacklightScene, PHOTO } from './home/backlight';
 import './home/home.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// The landing page: the wordmark blooms open onto a dark leaf, light rises behind it and the
-// gecko's shadow appears, the problem
-// lands, then paper slides over and the page shifts between paper, moss and deep green.
+// The landing page: the page opens on the lit leaf and the gecko, the problem
+// lands as you scroll, then paper slides over and the page shifts between paper, moss and deep green.
 // The rest of the site (header aside) and the member app are untouched.
 
 const NAV = [
   { to: '/how-it-works', label: 'How it works' },
   { to: '/network', label: 'Network' },
   { to: '/library', label: 'Library' },
-  { to: '/ranking', label: 'Ranking' },
+  { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/reports', label: 'Reports' },
   { to: '/about', label: 'About' },
 ];
@@ -147,7 +145,6 @@ export default function Home() {
       off.push(() => window.removeEventListener(t, fn));
     };
     el.classList.toggle('motion', anim);
-    el.classList.remove('no-gl');
     el.dataset.ground = 'paper';
 
     // Smooth scrolling on GSAP's clock, for this page only.
@@ -202,7 +199,7 @@ export default function Home() {
     }
 
     // ── Opening ──
-    const stageEl = $('.stage'), leaf = $('.leaf'), canvas = $<HTMLCanvasElement>('#gl');
+    const stageEl = $('.stage'), leaf = $('.leaf');
     const leafScene = new BacklightScene($<HTMLCanvasElement>('.leaf canvas'), { plate: '/img/home/leaf-plate.jpg', photo: '/img/gecko-hero.jpg' });
     // Size the leaf like object-fit: cover, keeping the gecko in frame on narrow screens.
     const fitLeaf = () => {
@@ -217,15 +214,6 @@ export default function Home() {
     fitLeaf();
     on('resize', fitLeaf);
 
-    let bloom: Bloom | null = null;
-    if (anim) {
-      bloom = new Bloom(canvas, () => el.classList.add('no-gl'));
-      on('pointermove', (e) => { if (bloom) { bloom.mx = e.clientX / innerWidth; bloom.my = 1 - e.clientY / innerHeight; } }, { passive: true });
-      on('resize', () => bloom?.resize());
-    } else {
-      el.classList.add('no-gl');
-    }
-
     const ctx = gsap.context(() => {
       const lines = ['#ln1', '#ln2', '#ln3'].map((s) => $(s));
       const centreOffset = (l: HTMLElement) => {
@@ -238,45 +226,35 @@ export default function Home() {
         strips.forEach((s) => (s.style.transform = `translateY(${(-100 * +s.dataset.n!) / (+s.dataset.n! + 1)}%)`));
         setNavOn(true);
       } else {
-        const light = { p: 0 };
         gsap.set('.stat .k, #statLine, #statSub, .odo', { autoAlpha: 0 });
         gsap.set('#ln1 > span, #ln2 > span, #ln3 > span', { yPercent: 115, autoAlpha: 0 });
         gsap.set('.gridlines', { autoAlpha: 0 });
-        leafScene.set(0);
+        leafScene.set(1);
         const tl = gsap.timeline({
           defaults: { ease: 'none' },
           scrollTrigger: {
             trigger: '.opening', start: 'top top', end: 'bottom bottom', scrub: 0.6, invalidateOnRefresh: true,
             onUpdate: (s) => {
-              if (bloom) bloom.on = s.progress < 0.26;
-              canvas.style.visibility = s.progress < 0.26 ? 'visible' : 'hidden';
-              setNavOn(s.progress > 0.7);
+              setNavOn(s.progress > 0.5);
             },
           },
         });
-        // a. the name, then the O blooms onto the leaf
+        // The page opens on the lit leaf and the gecko. Scrolling brings in the problem, then paper slides over.
         tl.to('.stage .corner', { autoAlpha: 0, y: -10, duration: 0.05, stagger: 0.008 }, 0.02)
-          .to(bloom ?? {}, { bloom: 1, duration: 0.2, ease: 'power1.in' }, 0.03)
-          // without WebGL the plain wordmark fades instead
-          .to('.fallback', { autoAlpha: 0, duration: 0.12 }, 0.06)
-          .fromTo(leaf, { scale: 1.18 }, { scale: 1, duration: 0.3, ease: 'power2.out' }, 0.05)
-          // b. light rises behind the leaf, the veins glow and the gecko's shadow appears
-          .to(light, { p: 1, duration: 0.3, onUpdate: () => leafScene.set(light.p) }, 0.14)
-          // c. the problem lands: 1.5B rolls in over the leaf
-          .to('.shade', { opacity: 1, duration: 0.06 }, 0.445)
-          .to('.stat .k', { autoAlpha: 1, duration: 0.03 }, 0.465)
-          .to('.odo', { autoAlpha: 1, duration: 0.02 }, 0.475);
-        strips.forEach((s, k) => tl.fromTo(s, { yPercent: 0 }, { yPercent: () => (-100 * +s.dataset.n!) / (+s.dataset.n! + 1), duration: 0.1, ease: 'power3.out' }, 0.475 + k * 0.015));
-        tl.fromTo('#statLine', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.04, ease: 'power3.out' }, 0.555)
-          .fromTo('#statSub', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.04, ease: 'power3.out' }, 0.585)
-          // d. paper slides over, the grid opens and the statement lands
-          .to('.sheet', { clipPath: 'inset(0% 0 0 0)', duration: 0.07, ease: 'power3.inOut' }, 0.67)
-          .to(leaf, { y: () => -innerHeight * 0.2, duration: 0.07, ease: 'power3.inOut' }, 0.67)
-          .to('#ln1 > span, #ln2 > span, #ln3 > span', { yPercent: 0, autoAlpha: 1, duration: 0.07, stagger: 0.012, ease: 'power3.out' }, 0.73)
-          .fromTo(lines, { x: (_i: number, l: HTMLElement) => centreOffset(l) }, { x: 0, duration: 0.1, ease: 'power2.inOut' }, 0.85)
-          .to('.gridlines', { autoAlpha: 1, duration: 0.05 }, 0.86)
-          .fromTo('.gridlines .cols i', { scaleY: 0, transformOrigin: 'top' }, { scaleY: 1, duration: 0.08, stagger: 0.004 }, 0.85);
-        gsap.from(canvas, { autoAlpha: 0, duration: 1.4, ease: 'power2.out' });
+          // a. the problem lands: 1.5B rolls in over the leaf
+          .to('.shade', { opacity: 1, duration: 0.1 }, 0.075)
+          .to('.stat .k', { autoAlpha: 1, duration: 0.05 }, 0.108)
+          .to('.odo', { autoAlpha: 1, duration: 0.033 }, 0.125);
+        strips.forEach((s, k) => tl.fromTo(s, { yPercent: 0 }, { yPercent: () => (-100 * +s.dataset.n!) / (+s.dataset.n! + 1), duration: 0.167, ease: 'power3.out' }, 0.125 + k * 0.025));
+        tl.fromTo('#statLine', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.067, ease: 'power3.out' }, 0.258)
+          .fromTo('#statSub', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.067, ease: 'power3.out' }, 0.308)
+          // b. paper slides over, the grid opens and the statement lands
+          .to('.sheet', { clipPath: 'inset(0% 0 0 0)', duration: 0.117, ease: 'power3.inOut' }, 0.45)
+          .to(leaf, { y: () => -innerHeight * 0.2, duration: 0.117, ease: 'power3.inOut' }, 0.45)
+          .to('#ln1 > span, #ln2 > span, #ln3 > span', { yPercent: 0, autoAlpha: 1, duration: 0.117, stagger: 0.02, ease: 'power3.out' }, 0.55)
+          .fromTo(lines, { x: (_i: number, l: HTMLElement) => centreOffset(l) }, { x: 0, duration: 0.167, ease: 'power2.inOut' }, 0.75)
+          .to('.gridlines', { autoAlpha: 1, duration: 0.083 }, 0.767)
+          .fromTo('.gridlines .cols i', { scaleY: 0, transformOrigin: 'top' }, { scaleY: 1, duration: 0.133, stagger: 0.007 }, 0.75);
 
         // ── Type and reveal animations ──
         $$('.split').forEach((s) => gsap.from(s.querySelectorAll('.w > span'), { yPercent: 110, duration: 1.1, ease: 'power4.out', stagger: 0.035, scrollTrigger: { trigger: s, start: 'top 85%' } }));
@@ -374,7 +352,6 @@ export default function Home() {
       off.forEach((f) => f());
       cancelAnimationFrame(cRaf);
       ctx.revert();
-      bloom?.destroy();
       gsap.ticker.remove(tick);
       lenis?.destroy();
       document.documentElement.classList.remove('lenis', 'lenis-smooth', 'lenis-scrolling', 'lenis-stopped');
@@ -446,8 +423,6 @@ export default function Home() {
         <div className="stage">
           <div className="leaf" aria-hidden="true"><canvas /></div>
           <div className="shade" />
-          <canvas id="gl" aria-hidden="true" />
-          <div className="fallback"><EkoaWordmark title="Ekoa" /></div>
           <h1 className="sr">Ekoa: from enthusiasm to lasting action</h1>
 
           <span className="corner tl mono">Scroll top</span>
@@ -693,12 +668,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═════════ 07 · Proof: peer audit, ranking and the record, live ═════════ */}
-      <section className="sec" id="proof" data-ground="moss" data-label="Checked and ranked">
+      {/* ═════════ 07 · Proof: peer audit, leaderboard and the record, live ═════════ */}
+      <section className="sec" id="proof" data-ground="moss" data-label="Checked and celebrated">
         <div className="wrap">
-          <div className="sec-tag mono"><span>07 — Checked and ranked</span><span>Live from the record</span></div>
+          <div className="sec-tag mono"><span>07 — Checked and celebrated</span><span>Live from the record</span></div>
           <div className="grid12 sec-head">
-            <h2 className="heavy split"><W t="Checked by peers," /> <span className="it"><W t="ranked on verified impact." /></span></h2>
+            <h2 className="heavy split"><W t="Checked by peers," /> <span className="it"><W t="celebrated for verified impact." /></span></h2>
           </div>
           <div className="grid12 proof-grid">
             <div className="audit rise">
@@ -707,15 +682,15 @@ export default function Home() {
               <Link to="/how-it-works#peer-audit" className="more mono">How peer audit works →</Link>
             </div>
             <div className="rank rise">
-              <p className="mono mute" style={{ marginBottom: 14 }}>Schools climb by publishing checked results and building models others adapt. Sign-ups don’t count.</p>
+              <p className="mono mute" style={{ marginBottom: 14 }}>Schools earn points by publishing checked results and building models others adapt. Sign-ups don’t count.</p>
               <ol>
                 {(data?.ranking ?? []).slice(0, 3).map((r) => (
-                  <li key={r.org_id}><span className="pos heavy">{r.position}</span><span className="nm">{r.name}</span><span className="pts mono">{Math.round(r.score)} pts</span></li>
+                  <li key={r.org_id}><span className="pos heavy" aria-hidden>★</span><span className="nm">{r.name}</span><span className="pts mono">{Math.round(r.score)} pts</span></li>
                 ))}
-                {data && data.ranking.length === 0 && <li className="empty mono">The first ranking appears once records are verified.</li>}
-                {!data && <li className="empty mono">Loading the ranking…</li>}
+                {data && data.ranking.length === 0 && <li className="empty mono">The first leaderboard entries appear once records are verified.</li>}
+                {!data && <li className="empty mono">Loading the leaderboard…</li>}
               </ol>
-              <Link to="/ranking" className="more mono" style={{ marginTop: 22 }}>See the full ranking →</Link>
+              <Link to="/leaderboard" className="more mono" style={{ marginTop: 22 }}>See the full leaderboard →</Link>
             </div>
           </div>
           <div className="grid12 records">
