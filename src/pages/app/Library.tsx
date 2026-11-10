@@ -30,23 +30,23 @@ export default function Library() {
   const failures = data.published.filter((r) => r.outcome_class === 'did_not_work' || r.outcome_class === 'partly');
   return (
     <div>
-      <PageHeader title="Library" lead="Every adopted policy in the network, and every published record, ranked by how similar the school is to yours. Failures are filed alongside successes." actions={<div className="flex flex-wrap gap-2">{auth.activeOrg && <LinkButton to="/app/projects/new" variant="dark">Add a project</LinkButton>}{canWrite && <LinkButton to="/app/governance" variant="ghost">Write a policy</LinkButton>}<Button variant="ghost" onClick={() => setAdding(true)}>Share a link to a policy</Button></div>} />
+      <PageHeader title="Library" lead="Every adopted policy in the network, and every published record, ranked by how similar the school is to yours. What did not work is filed alongside what did, so every record teaches." actions={<div className="flex flex-wrap gap-2">{auth.activeOrg && <LinkButton to="/app/projects/new" variant="dark">Add a project</LinkButton>}{canWrite && <LinkButton to="/app/governance" variant="ghost">Write a policy</LinkButton>}<Button variant="ghost" onClick={() => setAdding(true)}>Share a link to a policy</Button></div>} />
       {data.waiting > 0 && <div className="mb-4"><Notice tone="sky">{data.waiting} of your shared policy {data.waiting === 1 ? 'link is' : 'links are'} waiting for an Ekoa admin to review.</Notice></div>}
       <SubmitPolicy open={adding} onClose={() => setAdding(false)} onDone={reload} />
-      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'policies', label: 'Policies' }, { key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
+      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'policies', label: 'Policies' }, { key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Learning Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
       {tab === 'policies' && <PolicyLibrary hrefBase="/app/library/policies" />}
       {tab === 'records' && <LibraryBrowser records={data.records} orgs={data.orgs} myContext={auth.activeOrg?.context_profile} myOrgId={auth.activeOrg?.id} hrefBase="/app/library" />}
-      {tab === 'failures' && <FailureLedger records={failures} orgs={data.orgs} />}
+      {tab === 'failures' && <LearningLedger records={failures} orgs={data.orgs} />}
       {tab === 'patterns' && <Patterns records={data.published} />}
     </div>
   );
 }
 
-function FailureLedger({ records, orgs }: { records: ImplementationRecord[]; orgs: { id: string; name: string }[] }) {
-  if (!records.length) return <Empty title="No failures filed yet">When a project ends early, its post-mortem lands here.</Empty>;
+function LearningLedger({ records, orgs }: { records: ImplementationRecord[]; orgs: { id: string; name: string }[] }) {
+  if (!records.length) return <Empty title="No lessons filed yet">When a project ends early or only partly works, its lessons land here.</Empty>;
   return (
     <div className="space-y-6">
-      <p className="max-w-prose text-ink-soft">Schools rarely publish what did not work. These schools did, so yours can skip the mistake. Each entry earns the same contribution credit as a success.</p>
+      <p className="max-w-prose text-ink-soft">Schools rarely publish what they learned when things did not go to plan. These schools did, so yours can skip the mistake. Each entry earns the same contribution credit as a success.</p>
       {records.map((r) => (
         <article key={r.id} className="grid gap-5 rounded-panel border border-paper-line bg-white p-5 lg:grid-cols-[320px_1fr]">
           <RecordTag r={r} href={`/app/library/${r.id}`} compact schoolName={orgs.find((o) => o.id === r.org_id)?.name} />

@@ -42,7 +42,7 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 | M2 Accounts, roles, consent | `src/lib/auth.tsx`, `src/pages/public/SignIn.tsx`, `GuardianConsent.tsx`, `src/pages/app/MySchool.tsx` |
 | M3 Project workspace (Ekoa cycle) | `src/pages/app/project/*`, `src/lib/gates.ts`, `src/lib/ekoa.ts` |
 | M4 Implementation Record and Library | `src/components/RecordTag.tsx`, `RecordDetail.tsx`, `LibraryBrowser.tsx`, `src/pages/app/Library.tsx`, `RecordView.tsx`, `RecordEditor.tsx` |
-| M5 Failure Ledger and obstacles | `src/pages/app/Library.tsx` (Failure Ledger, Resistance patterns), `project/ObstaclesTab.tsx`, `project/StatusControl.tsx` |
+| M5 Learning Ledger and obstacles | `src/pages/app/Library.tsx` (Learning Ledger, Resistance patterns), `project/ObstaclesTab.tsx`, `project/StatusControl.tsx` |
 | M6 Governance and Policy Builder | `src/pages/app/Governance.tsx`, `PolicyEditor.tsx`, `project/ApprovalsTab.tsx` |
 | M7 Metrics and verification | `src/lib/metrics.ts`, `src/pages/app/QuickLog.tsx`, `Metrics.tsx`, `Kiosk.tsx` |
 | M8 Continuity | `src/pages/app/Handover.tsx`, `src/lib/handover.ts`, alerts in `src/lib/bundle.ts` |
