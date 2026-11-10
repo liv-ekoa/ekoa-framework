@@ -25,7 +25,7 @@ const JoinStudent = lazy(() => import('./pages/public/JoinStudent'));
 const GuardianConsent = lazy(() => import('./pages/public/GuardianConsent'));
 const WaitingConsent = lazy(() => import('./pages/public/WaitingConsent'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
-const Ranking = lazy(() => import('./pages/public/Ranking'));
+const Leaderboard = lazy(() => import('./pages/public/Leaderboard'));
 
 // Member app
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
@@ -72,7 +72,8 @@ export default function App() {
           <Route path="library/:id" element={<PublicRecord />} />
           <Route path="library/policies/:id" element={<PublicPolicy />} />
           <Route path="policies" element={<Navigate to="/library" replace />} />
-          <Route path="ranking" element={<Ranking />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="ranking" element={<Navigate to="/leaderboard" replace />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
           <Route path="join" element={<Join />} />

@@ -32,7 +32,7 @@ export default function PrivacyPolicy() {
             <li>let schools manage their members, projects and records;</li>
             <li>manage guardian consent for members under 18 and keep minors safe;</li>
             <li>publish anonymised records in the public Library, where a school has agreed to that (see “Public records” below);</li>
-            <li>generate the public school ranking from verified, published records;</li>
+            <li>generate the public school leaderboard from verified, published records;</li>
             <li>keep the platform secure, prevent abuse and comply with the law.</li>
           </ul>
 

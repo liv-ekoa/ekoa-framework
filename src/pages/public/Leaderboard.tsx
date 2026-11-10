@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { listSchoolRanking } from '@/lib/api';
+import { listSchoolLeaderboard } from '@/lib/api';
 import { useData } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth';
 import { plural } from '@/lib/format';
@@ -14,21 +14,21 @@ export const SCORE_RULES: [string, string][] = [
   ['Peer-audited (T3) or partner-verified (T4) records', '× 1.5'],
 ];
 
-export default function Ranking() {
+export default function Leaderboard() {
   const { activeOrg } = useAuth();
-  const { data, loading } = useData(listSchoolRanking);
+  const { data, loading } = useData(listSchoolLeaderboard);
   const top = data?.[0]?.score ?? 1;
 
   return (
     <div className="mx-auto max-w-page px-4 py-16 sm:px-6">
-      <span className="eyebrow">School ranking</span>
-      <h1 className="mt-5 max-w-3xl text-4xl sm:text-5xl">Ranked on verified impact, not on sign-ups.</h1>
+      <span className="eyebrow">School leaderboard</span>
+      <h1 className="mt-5 max-w-3xl text-4xl sm:text-5xl">Celebrating verified impact, not sign-ups.</h1>
       <p className="mt-4 max-w-2xl text-lg text-ink-soft">
         A school climbs by publishing results someone has checked, and by building models other schools adapt. Honest failures count too, because their lessons save the next school a term.
       </p>
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_340px]">
-        <section aria-label="Ranking">
+        <section aria-label="Leaderboard">
           {loading || !data ? <Loading /> : data.length ? (
             <ol className="space-y-3">
               {data.map((r) => {
@@ -74,7 +74,7 @@ export default function Ranking() {
           <div className="rounded-panel border border-paper-line bg-white p-5 text-sm text-ink-soft">
             <p>Want to climb? Publish a verified record, then ask an Ekoa audit school for a T3 peer audit. <Link to="/how-it-works#peer-audit" className="font-bold text-leaf-600 underline">How peer audit works</Link>.</p>
           </div>
-          <LinkButton to="/library" variant="ghost" className="w-full">Read the records behind the ranking</LinkButton>
+          <LinkButton to="/library" variant="ghost" className="w-full">Read the records behind the leaderboard</LinkButton>
         </aside>
       </div>
     </div>

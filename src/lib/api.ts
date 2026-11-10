@@ -524,14 +524,14 @@ export function parseEmails(text: string): string[] {
 export const listApplications = () => must<Application[]>(db.from('applications').select('*').order('created_at', { ascending: false }));
 export const updateApplication = (id: UUID, patch: Partial<Application>) => must(db.from('applications').update(patch).eq('id', id));
 
-// ---------------- School ranking ----------------
-export interface RankRow {
+// ---------------- School leaderboard ----------------
+export interface LeaderboardRow {
   org_id: UUID; name: string; country: string; city: string;
   verified_records: number; audited_records: number; adopting_schools: number; adoptions_that_worked: number;
   score: number; position: number;
 }
 /** Read from the public_school_ranking view, which holds the formula. */
-export const listSchoolRanking = () => must<RankRow[]>(db.from('public_school_ranking').select('*').order('position'));
+export const listSchoolLeaderboard = () => must<LeaderboardRow[]>(db.from('public_school_ranking').select('*').order('position'));
 
 // ---------------- Safeguarding ----------------
 export async function submitConcern(row: Pick<SafeguardingReport, 'reporter_person_id' | 'reporter_contact' | 'subject_ref' | 'category' | 'details'>) {

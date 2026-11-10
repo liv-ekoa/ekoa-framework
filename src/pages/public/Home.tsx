@@ -6,7 +6,7 @@ import Lenis from 'lenis';
 import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
-import { listOrgs, listPublicRecords, listSchoolRanking } from '@/lib/api';
+import { listOrgs, listPublicRecords, listSchoolLeaderboard } from '@/lib/api';
 import { useData } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth';
 import { config } from '@/lib/config';
@@ -28,7 +28,7 @@ const NAV = [
   { to: '/how-it-works', label: 'How it works' },
   { to: '/network', label: 'Network' },
   { to: '/library', label: 'Library' },
-  { to: '/ranking', label: 'Ranking' },
+  { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/reports', label: 'Reports' },
   { to: '/about', label: 'About' },
 ];
@@ -59,7 +59,7 @@ const METHOD: { word: string; t: string; p: string; facts: [string, string, bool
   { word: 'Verified', t: 'Every result carries a verification tier.', p: 'No school ever audits its own work. Auditors see numbers and evidence, never people.', facts: [['T0 · T1', 'Self-reported · Evidence attached'], ['T2', 'Faculty-verified'], ['T3', 'Peer-audited by Shiv Nadar School, Faridabad or Green School, Bali', true], ['T4', 'Partner-verified']] },
   { word: 'Handover', t: 'The next Project Lead is named before the work moves on.', p: 'So a leadership change doesn’t mean starting over.', facts: [['Implement gate', 'Next Project Lead named, so the work survives graduation'], ['Handover packets', 'Keep what a team learned long after it graduates']] },
   { word: 'Record', t: 'Every project ends as an Implementation Record.', p: 'Failures included. The lessons are the result.', facts: [['Worked', 'Met or beat its target'], ['Partly worked', 'Moved the metric but missed the target'], ['Did not work', 'Stopped or failed. The lessons are the result', true], ['Too early to tell', 'Not enough data yet']] },
-  { word: 'Ranked', t: 'Schools are ranked on verified impact.', p: 'Scored only on verified, named, public records and on adoptions by other schools. Sign-ups don’t count.', facts: [['Counts', 'Verified, named, public records'], ['Counts', 'Adoptions by other schools'], ['Doesn’t count', 'Sign-ups', true]] },
+  { word: 'Leaderboard', t: 'Schools earn points for verified impact.', p: 'Scored only on verified, named, public records and on adoptions by other schools. Sign-ups don’t count.', facts: [['Counts', 'Verified, named, public records'], ['Counts', 'Adoptions by other schools'], ['Doesn’t count', 'Sign-ups', true]] },
 ];
 const CATS = CATEGORIES.map((name) => ({
   name,
@@ -112,7 +112,7 @@ function Strip({ to }: { to: number }) {
 export default function Home() {
   const { person } = useAuth();
   const { data } = useData(async () => {
-    const [records, orgs, ranking] = await Promise.all([listPublicRecords(), listOrgs('school'), listSchoolRanking()]);
+    const [records, orgs, ranking] = await Promise.all([listPublicRecords(), listOrgs('school'), listSchoolLeaderboard()]);
     return { records, orgs: orgs.filter((o) => o.public_visible), ranking };
   });
   const records = data?.records ?? [];
@@ -694,11 +694,11 @@ export default function Home() {
       </section>
 
       {/* ═════════ 07 · Proof: peer audit, ranking and the record, live ═════════ */}
-      <section className="sec" id="proof" data-ground="moss" data-label="Checked and ranked">
+      <section className="sec" id="proof" data-ground="moss" data-label="Checked and celebrated">
         <div className="wrap">
-          <div className="sec-tag mono"><span>07 — Checked and ranked</span><span>Live from the record</span></div>
+          <div className="sec-tag mono"><span>07 — Checked and celebrated</span><span>Live from the record</span></div>
           <div className="grid12 sec-head">
-            <h2 className="heavy split"><W t="Checked by peers," /> <span className="it"><W t="ranked on verified impact." /></span></h2>
+            <h2 className="heavy split"><W t="Checked by peers," /> <span className="it"><W t="celebrated for verified impact." /></span></h2>
           </div>
           <div className="grid12 proof-grid">
             <div className="audit rise">
@@ -712,10 +712,10 @@ export default function Home() {
                 {(data?.ranking ?? []).slice(0, 3).map((r) => (
                   <li key={r.org_id}><span className="pos heavy">{r.position}</span><span className="nm">{r.name}</span><span className="pts mono">{Math.round(r.score)} pts</span></li>
                 ))}
-                {data && data.ranking.length === 0 && <li className="empty mono">The first ranking appears once records are verified.</li>}
-                {!data && <li className="empty mono">Loading the ranking…</li>}
+                {data && data.ranking.length === 0 && <li className="empty mono">The first leaderboard appears once records are verified.</li>}
+                {!data && <li className="empty mono">Loading the leaderboard…</li>}
               </ol>
-              <Link to="/ranking" className="more mono" style={{ marginTop: 22 }}>See the full ranking →</Link>
+              <Link to="/leaderboard" className="more mono" style={{ marginTop: 22 }}>See the full leaderboard →</Link>
             </div>
           </div>
           <div className="grid12 records">

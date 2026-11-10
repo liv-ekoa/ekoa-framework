@@ -4,7 +4,7 @@ Guidance for Claude when working in this repository.
 
 ## What this is
 
-Ekoa, the implementation network for student-led school sustainability, served at ekoa-framework.org. Public site plus a member app: projects move through the six-stage Ekoa cycle, end as Implementation Records (failures included), are peer-audited by the two Ekoa audit schools, and feed a school ranking. See README.md for the full map of modules.
+Ekoa, the implementation network for student-led school sustainability, served at ekoa-framework.org. Public site plus a member app: projects move through the six-stage Ekoa cycle, end as Implementation Records (failures included), are peer-audited by the two Ekoa audit schools, and feed a school leaderboard. See README.md for the full map of modules.
 
 ## Commands
 

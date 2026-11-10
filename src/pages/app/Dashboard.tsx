@@ -51,7 +51,7 @@ function SchoolDashboard() {
   const orgId = auth.activeOrg?.id;
   const { data, loading } = useData(async () => {
     if (!orgId) return null;
-    const [s, threads, posts, circles, ranking, verifs, flags] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolRanking(), api.listVerifications(), auth.has('faculty_liaison', orgId) ? api.listFlags() : Promise.resolve([])]);
+    const [s, threads, posts, circles, ranking, verifs, flags] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolLeaderboard(), api.listVerifications(), auth.has('faculty_liaison', orgId) ? api.listFlags() : Promise.resolve([])]);
     return { s, threads, posts, circles, ranking, openFlags: flags.filter((f) => f.org_id === orgId && f.status === 'open'), audits: verifs.filter((v) => v.verifier_org === orgId && v.requested_tier === 3 && (v.status === 'requested' || v.status === 'in_progress')) };
   }, [orgId]);
   if (loading || !data) return <Loading />;
@@ -161,7 +161,7 @@ function SchoolDashboard() {
               <p className="mt-1 text-sm text-ink-soft">Open the audit desk to check them against the protocols.</p>
             </Link>
           )}
-          <RankCard ranking={data.ranking} orgId={s.org.id} />
+          <LeaderboardCard ranking={data.ranking} orgId={s.org.id} />
           <Panel title="From the circles" action={<Link to="/app/network" className="text-sm font-bold text-leaf-600">Wall</Link>}>
             <ul className="space-y-3">
               {recentThreads.map((t) => {
@@ -185,18 +185,18 @@ function SchoolDashboard() {
   );
 }
 
-function RankCard({ ranking, orgId }: { ranking: api.RankRow[]; orgId: string }) {
+function LeaderboardCard({ ranking, orgId }: { ranking: api.LeaderboardRow[]; orgId: string }) {
   const me = ranking.find((r) => r.org_id === orgId);
   return (
-    <Link to="/ranking" className="block rounded-panel bg-moss p-5 text-paper hover:bg-moss-800">
-      <p className="label-caps text-paper/80">School ranking</p>
+    <Link to="/leaderboard" className="block rounded-panel bg-moss p-5 text-paper hover:bg-moss-800">
+      <p className="label-caps text-paper/80">School leaderboard</p>
       {me ? (
         <>
           <p className="mt-1 font-display text-4xl font-semibold italic">#{me.position} <span className="font-sans text-base not-italic text-paper/80">of {ranking.length}</span></p>
           <p className="mt-1 text-sm text-paper/85">{Math.round(me.score * 10) / 10} points from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
         </>
       ) : (
-        <p className="mt-1 text-sm text-paper/85">Not ranked yet. Publish a verified record (T2 or higher) to enter the table.</p>
+        <p className="mt-1 text-sm text-paper/85">Not on the leaderboard yet. Publish a verified record (T2 or higher) to appear.</p>
       )}
     </Link>
   );
