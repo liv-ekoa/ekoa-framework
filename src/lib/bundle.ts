@@ -170,7 +170,7 @@ export function schoolAlerts(s: SchoolData, opts: { isLiaison: boolean; personId
     const pending = s.members.filter((m) => m.person.consent_status === 'pending');
     if (pending.length) out.push({ tone: 'sky', text: `${pending.length} student ${pending.length === 1 ? 'account is' : 'accounts are'} waiting for guardian consent.`, to: '/app/school?tab=people' });
     const unverified = s.measurements.filter((m) => m.tier < 2 && !m.is_baseline).length;
-    if (unverified) out.push({ tone: 'sky', text: `${unverified} measurements are waiting for your verification.`, to: '/app/metrics?tab=verify' });
+    if (unverified) out.push({ tone: 'sky', text: `${unverified} measurements are waiting for your verification.`, to: '/app/projects?view=metrics&tab=verify' });
   }
   return out;
 }

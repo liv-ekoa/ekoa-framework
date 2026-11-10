@@ -32,16 +32,17 @@ function useWide() {
   return wide;
 }
 
-export default function Connections() {
+/** The map of how your school is linked. Shown as a tab of the Network page. */
+export default function Connections({ embedded = false }: { embedded?: boolean }) {
   const auth = useAuth();
   const myOrg = auth.activeOrg?.id ?? null;
   const { data } = useData(async () => {
-    const [orgs, cohorts, cohortMembers, circles, circleMembers, myRoles, people, twins, records, adaptations, verifications, threads, posts] = await Promise.all([
+    const [orgs, cohorts, cohortMembers, circles, circleMembers, myRoles, people, collaborators, records, adaptations, verifications, threads, posts] = await Promise.all([
       api.listOrgs(), api.listCohorts(), api.listCohortMembers(), api.listCircles(), api.listCircleMembers(),
-      myOrg ? api.listRolesForOrg(myOrg) : Promise.resolve([]), api.listPeople(), api.listTwins(), api.listRecords(),
+      myOrg ? api.listRolesForOrg(myOrg) : Promise.resolve([]), api.listPeople(), myOrg ? api.collaboratorSuggestions(myOrg).catch(() => []) : Promise.resolve([]), api.listRecords(),
       api.listAdaptations(), api.listVerifications(), api.listThreads(), api.listPosts(),
     ]);
-    return buildGraph({ myOrgId: myOrg, orgs, cohorts, cohortMembers, circles, circleMembers, myRoles, people, twins, records, adaptations, verifications, threads, posts });
+    return buildGraph({ myOrgId: myOrg, orgs, cohorts, cohortMembers, circles, circleMembers, myRoles, people, collaborators, records, adaptations, verifications, threads, posts });
   }, [myOrg]);
 
   const home = myOrg ? `o:${myOrg}` : '';
@@ -91,17 +92,19 @@ export default function Connections() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Connections"
-        lead="How your school is linked to countries, circles, hubs, partners and the projects other schools adapted. Click anything to put it at the centre."
-        actions={
+      {(() => {
+        const lead = 'How your school is linked to countries, circles, hubs, partners, possible collaborators and the projects other schools adapted. Click anything to put it at the centre.';
+        const controls = (
           <div className="flex items-center gap-1.5">
             <button className="rounded-full border border-paper-line bg-white p-2 text-ink-soft hover:border-ink/30 disabled:opacity-40" disabled={at <= 0} onClick={() => setAt(at - 1)} aria-label="Back"><ArrowLeft className="h-4 w-4" /></button>
             <button className="rounded-full border border-paper-line bg-white p-2 text-ink-soft hover:border-ink/30 disabled:opacity-40" disabled={at >= history.length - 1} onClick={() => setAt(at + 1)} aria-label="Forward"><ArrowRight className="h-4 w-4" /></button>
             {home && center !== home && <button className="inline-flex items-center gap-1.5 rounded-full border border-paper-line bg-white px-3 py-1.5 text-sm font-bold hover:border-ink/30" onClick={() => go(home)}><LocateFixed className="h-4 w-4" /> My school</button>}
           </div>
-        }
-      />
+        );
+        return embedded
+          ? <div className="flex flex-wrap items-start justify-between gap-3"><p className="max-w-prose text-sm text-ink-soft">{lead}</p>{controls}</div>
+          : <PageHeader title="Connections" lead={lead} actions={controls} />;
+      })()}
 
       <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
         <aside className="order-2 space-y-5 rounded-panel border border-paper-line bg-white p-5 lg:order-1 lg:self-start">

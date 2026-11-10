@@ -13,7 +13,8 @@ import { Badge, Button, Checkbox, Empty, ErrorNote, LinkButton, Loading, Meter, 
 
 type Tab = 'dashboard' | 'verify' | 'library' | 'kiosk';
 
-export default function Metrics() {
+/** Measurements for every project. Shown as the Metrics view of the Projects page. */
+export default function Metrics({ embedded = false }: { embedded?: boolean }) {
   const auth = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'dashboard';
@@ -28,8 +29,8 @@ export default function Metrics() {
 
   return (
     <div>
-      <PageHeader title="Metrics" lead="Comparable numbers with fixed units and protocols. Participation is tracked, but never reported as impact." actions={<LinkButton to="/app/log" variant="clay">Log a measurement</LinkButton>} />
-      <Tabs label="Metrics sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'dashboard', label: 'School dashboard' }, { key: 'verify', label: 'Verification', count: unverified.length }, { key: 'library', label: 'Metric library' }, { key: 'kiosk', label: 'Corridor screen' }]} />
+      {!embedded && <PageHeader title="Metrics" lead="Comparable numbers with fixed units and protocols. Participation is tracked, but never reported as impact." actions={<LinkButton to="/app/log" variant="clay">Log a measurement</LinkButton>} />}
+      <Tabs label="Metrics sections" value={tab} onChange={(k) => setParams(embedded ? { view: 'metrics', tab: k } : { tab: k })} tabs={[{ key: 'dashboard', label: 'School dashboard' }, { key: 'verify', label: 'Verification', count: unverified.length }, { key: 'library', label: 'Metric library' }, { key: 'kiosk', label: 'Corridor screen' }]} />
 
       {tab === 'dashboard' && (
         active.length ? (

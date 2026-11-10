@@ -1,0 +1,42 @@
+import type { LibraryPolicy } from './types';
+
+// Published school sustainability policies, shown in the Library with a short summary and a link to the full original.
+// Summaries are written in our own words; the full text stays with the school that wrote it.
+
+export interface PolicyEntry {
+  title: string;
+  school: string;
+  topic: string;
+  /** One of the project categories, so the Library's category filter works on policies too. */
+  category: string;
+  summary: string;
+  url: string;
+}
+
+const GS = 'https://sites.google.com/greenschool.org/environmental-hub';
+
+export const POLICY_LIBRARY: PolicyEntry[] = [
+  { title: 'Waste: reducing and reinventing', school: 'Green School Bali', topic: 'Waste', category: 'Waste', summary: 'Aims for zero waste and zero landfill. Refuse and reduce first, then repurpose and recycle, with procurement and food sharing the responsibility.', url: `${GS}/pledges` },
+  { title: 'Water: conserving and replenishing', school: 'Green School Bali', topic: 'Water', category: 'Water', summary: 'Commits to returning as much water to the aquifer as the school takes, through monitoring, harvesting, reuse and student-led solutions.', url: `${GS}/pledges` },
+  { title: 'Energy: mixing solutions', school: 'Green School Bali', topic: 'Energy', category: 'Energy', summary: 'Use less energy, move to a mix of renewable sources, and aim to become energy-independent, later sharing surplus with the community.', url: `${GS}/pledges/energy` },
+  { title: 'Food: nourishing all living things', school: 'Green School Bali', topic: 'Food', category: 'Food', summary: 'Nutritious, seasonal, local and ethically sourced food, with little single-use packaging, and students learning the cycle from seed to compost.', url: `${GS}/pledges/food` },
+  { title: 'Things we buy and use', school: 'Green School Bali', topic: 'Procurement', category: 'Policy & governance', summary: 'Buy only what is needed and choose products with the least harm over their life cycle, preferring local, recycled, recyclable and low-chemical options.', url: `${GS}/pledges/things-we-consume` },
+  { title: 'Transport: fuelling solutions', school: 'Green School Bali', topic: 'Transport', category: 'Policy & governance', summary: 'Default to the lowest-carbon option, plan to cut trips, and support cycling, electric vehicle charging and the school’s biofuel buses.', url: `${GS}/pledges/transport` },
+  { title: 'Biodiversity: part of the system', school: 'Green School Bali', topic: 'Biodiversity', category: 'Biodiversity', summary: 'Students survey and record the species on campus, and the census guides building and regeneration.', url: `${GS}/pledges/biodiversity` },
+  { title: 'Building and play', school: 'Green School Bali', topic: 'Buildings', category: 'Policy & governance', summary: 'Protect green space when building, use local and sustainable materials, reuse structures, and include nature-based play and productive gardens.', url: `${GS}/pledges/building-play` },
+  { title: 'Family sustainability guide', school: 'Green School Bali', topic: 'Community', category: 'Policy & governance', summary: 'A parent-written guide to living sustainably alongside the school, kept up to date by the community.', url: `${GS}/sustainability-guide` },
+];
+
+/** Starter policies from the code, then policies members added and a steward approved. */
+export const allPolicies = (added: LibraryPolicy[]): PolicyEntry[] => [
+  ...added.map((p) => ({ title: p.title, school: p.school_name, topic: p.topic, category: p.category, summary: p.summary, url: p.url })),
+  ...POLICY_LIBRARY,
+];
+
+export const POLICY_TOPICS: { topic: string; category: string }[] = [
+  { topic: 'Waste', category: 'Waste' }, { topic: 'Energy', category: 'Energy' }, { topic: 'Water', category: 'Water' },
+  { topic: 'Food', category: 'Food' }, { topic: 'Biodiversity', category: 'Biodiversity' },
+  { topic: 'Procurement', category: 'Policy & governance' }, { topic: 'Transport', category: 'Policy & governance' },
+  { topic: 'Buildings', category: 'Policy & governance' }, { topic: 'Teaching and training', category: 'Policy & governance' },
+  { topic: 'Safety and wellbeing', category: 'Policy & governance' }, { topic: 'Other', category: 'Policy & governance' },
+];

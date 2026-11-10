@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createProject } from '@/lib/api';
+import { fireConfetti } from '@/components/confetti';
 import { useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
 import { CATEGORIES, TEMPLATES, metricByCode, type ProjectTemplate } from '@/lib/ekoa';
@@ -42,7 +43,7 @@ export default function NewProject() {
             <p className="mt-1 text-sm text-ink-soft">Choose your own metrics from the library.</p>
           </button>
         </div>
-        <form className="h-fit space-y-4 rounded-panel border border-paper-line bg-white p-6 lg:sticky lg:top-6" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { if (!title.trim()) throw new Error('Give the project a name.'); const p = await createProject(auth.activeOrg!.id, { title: title.trim(), category, template_key: tpl?.key ?? null, problem }, auth.person!.id); nav(`/app/projects/${p.id}`); }); }}>
+        <form className="h-fit space-y-4 rounded-panel border border-paper-line bg-white p-6 lg:sticky lg:top-6" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { if (!title.trim()) throw new Error('Give the project a name.'); const p = await createProject(auth.activeOrg!.id, { title: title.trim(), category, template_key: tpl?.key ?? null, problem }, auth.person!.id); fireConfetti(); nav(`/app/projects/${p.id}`); }); }}>
           <Field label="Project name" id="np-title"><Input id="np-title" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
           <Field label="Category" id="np-cat"><Select id="np-cat" value={category} onChange={(e) => setCategory(e.target.value)}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
           <Field label="What problem are you looking at?" id="np-problem" hint={tpl?.problemPrompt ?? 'You can finish this after the baseline audit.'}>

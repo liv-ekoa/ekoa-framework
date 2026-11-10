@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { deleteBudgetLine, removeProjectMetric, saveBudget, saveBudgetLine, setProjectMetric, updateProject } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -198,6 +199,7 @@ function BudgetPanel({ b, canEdit, onChange }: { b: ProjectBundle; canEdit: bool
             </table>
           </div>
           {!lines.length && <p className="py-3 text-sm text-ink-mute">No budget lines yet. List what you will buy or pay for, with a planned amount for each.</p>}
+          {lines.length > 0 && b.budgetLines.length > 0 && <p className="mt-2 text-sm"><Link to={`/app/funding?project=${b.project.id}#ask`} className="font-bold text-leaf-600 hover:underline">Need to raise this money? Write the funding ask</Link></p>}
           {canEdit && <Button variant="quiet" size="sm" className="mt-2" onClick={() => setLines([...lines, { category: 'materials', item: '', planned: 0, actual: null, note: '' }])}><Plus className="h-4 w-4" /> Add a line</Button>}
           {allActual && planned > 0 && (
             <div className="mt-4">

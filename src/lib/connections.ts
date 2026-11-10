@@ -4,7 +4,7 @@
 
 import type {
   Adaptation, Circle, CircleMember, Cohort, CohortMember, ImplementationRecord, Organisation, Person, Post,
-  RoleAssignment, Thread, Twin, UUID, Verification,
+  RoleAssignment, Thread, UUID, Verification,
 } from './types';
 import { roleTitle } from './ekoa';
 
@@ -24,7 +24,7 @@ export interface GNode {
 export interface GEdge { a: string; b: string; label: string; inverse: string }
 
 const INVERSE: Record<string, string> = {
-  'located in': 'home to', 'member of': 'includes', 'active in': 'includes', 'mentors in': 'mentored by', 'twin school': 'twin school',
+  'located in': 'home to', 'member of': 'includes', 'active in': 'includes', 'mentors in': 'mentored by', 'possible collaborator': 'possible collaborator',
   published: 'published by', 'adapted by': 'adapted', 'audited by': 'audited', 'verified by': 'verified', 'helped by': 'helps',
   team: 'team', incoming: 'incoming', member: 'member',
 };
@@ -51,7 +51,8 @@ export interface GraphInput {
   circleMembers: CircleMember[];
   myRoles: RoleAssignment[];
   people: Person[];
-  twins: Twin[];
+  /** Schools with similar policies (collaborator suggestions for your school). */
+  collaborators: { org_id: UUID; score: number }[];
   records: ImplementationRecord[];
   adaptations: Adaptation[];
   verifications: Verification[];
@@ -106,11 +107,11 @@ export function buildGraph(d: GraphInput): Graph {
       if (visibleOrg(o)) edge(orgNode(o), cid, o.org_type === 'partner' ? 'mentors in' : 'active in');
     }
   }
-  // Twin schools.
-  for (const t of d.twins) {
-    const a = orgById.get(t.org_a);
-    const b = orgById.get(t.org_b);
-    if (visibleOrg(a) && visibleOrg(b)) edge(orgNode(a), orgNode(b), 'twin school');
+  // Possible collaborators: schools whose policies are like yours.
+  const mine = d.myOrgId ? orgById.get(d.myOrgId) : undefined;
+  for (const c of d.collaborators) {
+    const other = orgById.get(c.org_id);
+    if (mine && other && other.org_type === 'school') edge(orgNode(mine), orgNode(other), 'possible collaborator');
   }
   // Projects: published records (and your own drafts), who adapted them and who audited them.
   for (const r of d.records) {
