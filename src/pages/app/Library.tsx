@@ -24,20 +24,20 @@ export default function Library() {
   const failures = data.published.filter((r) => r.outcome_class === 'did_not_work' || r.outcome_class === 'partly');
   return (
     <div>
-      <PageHeader title="Library" lead="Every published record in the network, ranked by how similar the school is to yours. Failures are filed alongside successes." />
-      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Failure Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
+      <PageHeader title="Library" lead="Every published record in the network, ranked by how similar the school is to yours. What did not work is filed alongside what did, so every record teaches." />
+      <Tabs label="Library sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'records', label: 'Records', count: data.records.length }, { key: 'failures', label: 'Learning Ledger', count: failures.length }, { key: 'patterns', label: 'Resistance patterns' }]} />
       {tab === 'records' && <LibraryBrowser records={data.records} orgs={data.orgs} myContext={auth.activeOrg?.context_profile} myOrgId={auth.activeOrg?.id} hrefBase="/app/library" />}
-      {tab === 'failures' && <FailureLedger records={failures} orgs={data.orgs} />}
+      {tab === 'failures' && <LearningLedger records={failures} orgs={data.orgs} />}
       {tab === 'patterns' && <Patterns records={data.published} />}
     </div>
   );
 }
 
-function FailureLedger({ records, orgs }: { records: ImplementationRecord[]; orgs: { id: string; name: string }[] }) {
-  if (!records.length) return <Empty title="No failures filed yet">When a project ends early, its post-mortem lands here.</Empty>;
+function LearningLedger({ records, orgs }: { records: ImplementationRecord[]; orgs: { id: string; name: string }[] }) {
+  if (!records.length) return <Empty title="No lessons filed yet">When a project ends early or only partly works, its lessons land here.</Empty>;
   return (
     <div className="space-y-6">
-      <p className="max-w-prose text-ink-soft">Schools rarely publish what did not work. These schools did, so yours can skip the mistake. Each entry earns the same contribution credit as a success.</p>
+      <p className="max-w-prose text-ink-soft">Schools rarely publish what they learned when things did not go to plan. These schools did, so yours can skip the mistake. Each entry earns the same contribution credit as a success.</p>
       {records.map((r) => (
         <article key={r.id} className="grid gap-5 rounded-panel border border-paper-line bg-white p-5 lg:grid-cols-[320px_1fr]">
           <RecordTag r={r} href={`/app/library/${r.id}`} compact schoolName={orgs.find((o) => o.id === r.org_id)?.name} />
