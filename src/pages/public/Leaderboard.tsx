@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
-import { listSchoolRanking } from '@/lib/api';
+import { listSchoolLeaderboard } from '@/lib/api';
 import { useData } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth';
 import { plural } from '@/lib/format';
@@ -17,7 +17,7 @@ export const SCORE_RULES: [string, string][] = [
 
 export default function Leaderboard() {
   const { activeOrg } = useAuth();
-  const { data, loading } = useData(listSchoolRanking);
+  const { data, loading } = useData(listSchoolLeaderboard);
   const top = data?.[0]?.score ?? 1;
 
   return (

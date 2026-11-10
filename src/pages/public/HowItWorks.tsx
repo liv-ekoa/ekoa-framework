@@ -10,7 +10,7 @@ const STEPS = [
   { title: 'A school applies', body: 'It names one teacher as faculty liaison and signs the participation and safeguarding agreement. That teacher is the only adult a school needs.' },
   { title: 'A student takes the lead', body: 'One student becomes the Project Lead, under whatever title the school already uses. Bigger schools can add a team, a board and an Ekoa Representative.' },
   { title: 'Schools exchange tested models', body: 'Teams find records from similar schools, adapt them, measure real impact, state their budget and document what failed.' },
-  { title: 'Peers check the results', body: 'An Ekoa audit school checks the numbers, results are published, and schools are ranked on verified impact.' },
+  { title: 'Peers check the results', body: 'An Ekoa audit school checks the numbers, results are published, and schools earn a place on the leaderboard for verified impact.' },
 ];
 
 const AUDIT_STEPS = [

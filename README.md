@@ -42,7 +42,7 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 | M2 Accounts, roles, consent | `src/lib/auth.tsx`, `src/pages/public/SignIn.tsx`, `GuardianConsent.tsx`, `src/pages/app/MySchool.tsx` |
 | M3 Project workspace (Ekoa cycle) | `src/pages/app/project/*`, `src/lib/gates.ts`, `src/lib/ekoa.ts` |
 | M4 Implementation Record and Library | `src/components/RecordTag.tsx`, `RecordDetail.tsx`, `LibraryBrowser.tsx`, `src/pages/app/Library.tsx`, `RecordView.tsx`, `RecordEditor.tsx` |
-| M5 Failure Ledger and obstacles | `src/pages/app/Library.tsx` (Failure Ledger, Resistance patterns), `project/ObstaclesTab.tsx`, `project/StatusControl.tsx` |
+| M5 Learning Ledger and obstacles | `src/pages/app/Library.tsx` (Learning Ledger, Resistance patterns), `project/ObstaclesTab.tsx`, `project/StatusControl.tsx` |
 | M6 Governance and Policy Builder | `src/pages/app/Governance.tsx`, `PolicyEditor.tsx`, `project/ApprovalsTab.tsx` |
 | M7 Metrics and verification | `src/lib/metrics.ts`, `src/pages/app/QuickLog.tsx`, `Metrics.tsx`, `Kiosk.tsx` |
 | M8 Continuity | `src/pages/app/Handover.tsx`, `src/lib/handover.ts`, alerts in `src/lib/bundle.ts` |
@@ -132,7 +132,7 @@ The platform is built for minors, so these are launch requirements, not extras:
 
 ## Security tests
 
-`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the ranking: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
+`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the leaderboard: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
 
 ## Scripts
 
