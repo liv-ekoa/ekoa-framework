@@ -23,7 +23,7 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 - **No sustainability head needed.** The role is now **Project Lead**, any student. The minimum team is one teacher (Faculty Liaison) and one student. Members can carry their school's own title, hold several roles, or co-lead. The Join form asks whether the school has a lead. The Implement gate asks for the next Project Lead to be named.
 - **Peer audit.** T3 audits come only from the two Ekoa audit schools, Shiv Nadar School, Faridabad and Green School, Bali, never from the school being audited. Auditors work from **More → Audit desk** and see numbers and evidence, never people. Enforced in the database (`guard_verification_request`, `complete_verification`).
 - **Budget on every project.** Line-by-line planned spend at Design (required by the gate) and actual spend at Implement (also required). Records show planned against actual; the library filters by cost.
-- **School ranking** at `/ranking`, scored only on verified, named, public records and on adoptions by other schools. The formula is on the page and in the `public_school_ranking` view.
+- **School leaderboard** at `/ranking`, scored only on verified, named, public records and on adoptions by other schools. The formula is on the page and in the `public_school_ranking` view.
 - **Villars-style workspace.** Top tabs (Home, Projects, My school, Network, Library, Governance, Funding, More). **Network** holds the Wall, the **Connections** map (centred on your school, other schools appear as schools, never as people) and **Possible collaborators**. **Projects** holds the Metrics view.
 - **Safety.** Posts, photo captions, policy links and thread titles are screened for bullying, sexual content, violence, hate, self-harm and contact details (`src/lib/moderation.ts`, mirrored in the database as `moderation_hit`). Photos get an in-browser nudity check before upload. Anything caught or reported is hidden at once and goes to the school's liaison (My school, Safety) and the Ekoa admins, who remove it for good or restore it.
 - **Possible collaborators.** Schools whose policies share clauses, sections and wording are suggested to each other (`collaborator_suggestions`). This replaced school twins.
@@ -51,7 +51,7 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 | M11 AI assist | `src/lib/ai.ts`, `supabase/functions/ai-draft` |
 | M12 Safeguarding | `src/components/ReportConcern.tsx`, post screening in `src/lib/api.ts` and the database trigger `screen_post` |
 | M13 Steward console | `src/pages/app/Steward.tsx`, `PartnerDesk.tsx`, `AuditDesk.tsx` |
-| Ranking | `src/pages/public/Ranking.tsx`, view `public_school_ranking` in the security migration |
+| Leaderboard | `src/pages/public/Leaderboard.tsx`, view `public_school_ranking` in the security migration |
 | Budgets | `src/lib/budget.ts`, budget panel in `project/PlanTab.tsx`, `BudgetBox` in `RecordDetail.tsx` |
 
 The method itself — stages, gate checklists, roles, obstacle taxonomy, metric library, templates — is data in `src/lib/ekoa.ts`. Change the method there.
@@ -132,7 +132,7 @@ The platform is built for minors, so these are launch requirements, not extras:
 
 ## Security tests
 
-`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the ranking: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
+`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the leaderboard: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
 
 ## Scripts
 

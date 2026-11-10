@@ -10,14 +10,14 @@ const STEPS = [
   { title: 'A school applies', body: 'It names one teacher as faculty liaison and signs the participation and safeguarding agreement. That teacher is the only adult a school needs.' },
   { title: 'A student takes the lead', body: 'One student becomes the Project Lead, under whatever title the school already uses. Bigger schools can add a team, a board and an Ekoa Representative.' },
   { title: 'Schools exchange tested models', body: 'Teams find records from similar schools, adapt them, measure real impact, state their budget and document what failed.' },
-  { title: 'Peers check the results', body: 'An Ekoa audit school checks the numbers, results are published, and schools are ranked on verified impact.' },
+  { title: 'Peers check the results', body: 'An Ekoa audit school checks the numbers, results are published, and schools earn a place on the leaderboard for verified impact.' },
 ];
 
 const AUDIT_STEPS = [
   ['Request', 'The school asks for a T3 audit from its record page, choosing Shiv Nadar School, Faridabad or Green School, Bali. It can never pick itself.'],
   ['Check', 'An auditor at that school checks four things: the baseline followed the protocol, the raw numbers add up, the evidence backs them, and the outcome class is honest.'],
   ['Decide', 'The auditor raises the record to T3 or declines with a reason the school can act on. Both are logged.'],
-  ['Count', 'Peer-audited records count one and a half times in the school ranking.'],
+  ['Count', 'Peer-audited records count one and a half times in the school leaderboard.'],
 ];
 
 const ROLE_ORDER: RoleKey[] = ['faculty_liaison', 'project_lead', 'implementation_team', 'ekoa_rep', 'board_member', 'approver', 'auditor'];
@@ -130,7 +130,7 @@ export default function HowItWorks() {
                 </li>
               ))}
             </ol>
-            <p className="mt-5 text-sm text-ink-soft">Verified results feed the <Link to="/ranking" className="font-bold text-leaf-600 underline">school ranking</Link>.</p>
+            <p className="mt-5 text-sm text-ink-soft">Verified results feed the <Link to="/leaderboard" className="font-bold text-leaf-600 underline">school leaderboard</Link>.</p>
           </div>
         </div>
       </section>
