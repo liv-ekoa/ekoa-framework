@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
+import { ChevronDown } from 'lucide-react';
 import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
@@ -86,9 +87,9 @@ const pt = (r: number, a: number): [number, number] => [r * Math.cos(a), r * Mat
 const SEGMENTS = STAGES.map((s, i) => {
   const a0 = ((i * 60 - 120 + GAP) * Math.PI) / 180, a1 = ((i * 60 - 60 - GAP) * Math.PI) / 180;
   const [x0, y0] = pt(R2, a0), [x1, y1] = pt(R2, a1), [x2, y2] = pt(R1, a1), [x3, y3] = pt(R1, a0);
-  const am = ((i * 60 - 90) * Math.PI) / 180, deg = i * 60, flip = deg > 90 && deg < 270 ? 180 : 0;
-  const [tx, ty] = pt((R1 + R2) / 2 + 14, am), [nx, ny] = pt((R1 + R2) / 2 - 22, am);
-  return { name: s.name, d: `M${x0} ${y0} A${R2} ${R2} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${R1} ${R1} 0 0 0 ${x3} ${y3} Z`, tx, ty, nx, ny, rot: deg + flip };
+  const am = ((i * 60 - 90) * Math.PI) / 180;
+  const [mx, my] = pt((R1 + R2) / 2, am);
+  return { name: s.name, d: `M${x0} ${y0} A${R2} ${R2} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${R1} ${R1} 0 0 0 ${x3} ${y3} Z`, mx, my };
 });
 const TICKS = Array.from({ length: 72 }, (_, i) => {
   const a = (i * Math.PI) / 36, [x1, y1] = pt(160, a), [x2, y2] = pt(i % 12 === 0 ? 178 : 170, a);
@@ -278,9 +279,12 @@ export default function Home() {
       // ── Framework wheel: drag to turn, snap to a stage ──
       const rot = $<SVGGElement>('#wheelRot'), wheelEl = $<SVGSVGElement>('.wheel');
       const norm = (i: number) => ((i % 6) + 6) % 6;
+      const labels = $$<SVGTextElement>('.wheel .seg text');
       let angle = 0, active = -1, dragMoved = false, dragging = false, lastA = 0, vel = 0;
       const apply = () => {
         rot.setAttribute('transform', `rotate(${angle})`);
+        // Keep every label upright, whatever the wheel is doing.
+        labels.forEach((t) => t.setAttribute('transform', `rotate(${-angle} ${t.dataset.cx} ${t.dataset.cy})`));
         const i = norm(Math.round(-angle / 60));
         if (i !== active) { active = i; setStage(i); }
       };
@@ -320,8 +324,16 @@ export default function Home() {
       // ── Methodology: one word per step, pinned while you scroll ──
       const steps = $$('.m-step'), word = $('#mWord'), dotBars = $$('.m-dots b'), mCount = $('#mCount');
       let mActive = -1;
+      // Shrink long words (Leaderboard) so both ends stay on screen.
+      const fitWord = () => {
+        word.style.fontSize = '';
+        const avail = word.clientWidth * 0.9, w = word.scrollWidth;
+        if (w > avail) word.style.fontSize = (parseFloat(getComputedStyle(word).fontSize) * avail) / w + 'px';
+      };
+      on('resize', fitWord);
       const setWord = (txt: string, dir: number) => {
         word.innerHTML = txt.split('').map((c) => `<span class="w"><span>${c}</span></span>`).join('') + '<span class="w"><span style="color:var(--acc)">.</span></span>';
+        fitWord();
         if (anim) gsap.from(word.querySelectorAll('.w > span'), { yPercent: dir >= 0 ? 110 : -110, duration: 0.8, stagger: 0.025, ease: 'power4.out' });
       };
       const setStep = (i: number) => {
@@ -334,7 +346,7 @@ export default function Home() {
       };
       if (anim) {
         ScrollTrigger.create({ trigger: '.method-scroll', start: 'top top', end: 'bottom bottom', onUpdate: (s) => { const p = s.progress * steps.length; setStep(Math.min(steps.length - 1, Math.floor(p))); dotBars.forEach((b, k) => (b.style.transform = `scaleX(${clamp(p - k)})`)); } });
-        gsap.fromTo(word, { xPercent: 4 }, { xPercent: -10, ease: 'none', scrollTrigger: { trigger: '.method-scroll', start: 'top top', end: 'bottom bottom', scrub: true } });
+        gsap.fromTo(word, { xPercent: 1 }, { xPercent: -2.5, ease: 'none', scrollTrigger: { trigger: '.method-scroll', start: 'top top', end: 'bottom bottom', scrub: true } });
         setStep(0);
       } else {
         word.textContent = 'Method.';
@@ -425,10 +437,10 @@ export default function Home() {
           <div className="shade" />
           <h1 className="sr">Ekoa: from enthusiasm to lasting action</h1>
 
-          <span className="corner tl mono">Scroll top</span>
           <span className="corner tr mono">Building the founding cohort</span>
-          <span className="corner bl mono">Education · Knowledge transfer · Outcomes · Adoption</span>
-          <span className="corner br mono"><i />Scroll down</span>
+          <button className="corner cue mono" onClick={() => lenisRef.current?.scrollTo(innerHeight * 1.2)} aria-label="Scroll down to continue">
+            <span>Scroll down to explore</span><ChevronDown aria-hidden="true" />
+          </button>
 
           <div className="stat">
             <div className="wrap">
@@ -565,8 +577,8 @@ export default function Home() {
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wheel.current?.turnTo(i); } }}
                       >
                         <path d={g.d} />
-                        <text x={g.tx} y={g.ty} textAnchor="middle" dominantBaseline="middle" transform={`rotate(${g.rot} ${g.tx} ${g.ty})`}>{g.name}</text>
-                        <text className="num" x={g.nx} y={g.ny} textAnchor="middle" dominantBaseline="middle" transform={`rotate(${g.rot} ${g.nx} ${g.ny})`}>{pad(i + 1)}</text>
+                        <text data-cx={g.mx} data-cy={g.my} x={g.mx} y={g.my + 12} textAnchor="middle" dominantBaseline="middle">{g.name}</text>
+                        <text data-cx={g.mx} data-cy={g.my} className="num" x={g.mx} y={g.my - 12} textAnchor="middle" dominantBaseline="middle">{pad(i + 1)}</text>
                       </g>
                     ))}
                   </g>
@@ -733,11 +745,6 @@ export default function Home() {
               <div className="alt"><span className="mono">Or write to us</span><a href={`mailto:${config.contactEmail}`}><b>{config.contactEmail}</b></a></div>
             </div>
           </div>
-        </div>
-        <div className="loop">
-          <span className="corner tl mono">Ekoa</span>
-          <button className="corner br mono" onClick={toTop}>Scroll top ↑</button>
-          <EkoaWordmark title="Ekoa" />
         </div>
       </section>
     </div>

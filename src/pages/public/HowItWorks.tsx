@@ -7,10 +7,9 @@ import { LinkButton } from '@/components/ui';
 import type { RoleKey } from '@/lib/types';
 
 const STEPS = [
-  { title: 'A school applies', body: 'It names one teacher as faculty liaison and signs the participation and safeguarding agreement. That teacher is the only adult a school needs.' },
-  { title: 'A student takes the lead', body: 'One student becomes the Project Lead, under whatever title the school already uses. Bigger schools can add a team, a board and an Ekoa Representative.' },
-  { title: 'Schools exchange tested models', body: 'Teams find records from similar schools, adapt them, measure real impact, state their budget and document what failed.' },
-  { title: 'Peers check the results', body: 'An Ekoa audit school checks the numbers, results are published, and schools earn a place on the leaderboard for verified impact.' },
+  { title: 'Send a short form', body: 'Your name, email, school and role. It takes about two minutes. One teacher and one student are enough to start.' },
+  { title: 'We help you set up', body: 'An Ekoa admin replies within a week. Your school signs one participation and safeguarding agreement and names a student Project Lead.' },
+  { title: 'Start your first project', body: 'Find a tested record from a similar school, adapt it, measure real impact and share what you learn, including what failed.' },
 ];
 
 const AUDIT_STEPS = [
@@ -24,10 +23,12 @@ const ROLE_ORDER: RoleKey[] = ['faculty_liaison', 'project_lead', 'implementatio
 
 export default function HowItWorks() {
   return (
-    <div className="mx-auto max-w-page px-4 py-16 sm:px-6">
-      <span className="eyebrow">How it works</span>
-      <h1 className="mt-5 max-w-3xl text-5xl sm:text-6xl">One school’s project becomes the next school’s starting point.</h1>
-      <p className="mt-5 max-w-2xl text-lg text-ink-soft">Ekoa is a network of schools and student leaders, and the method and tools they share. Together they turn tested work into something every school can reuse.</p>
+    <div className="mx-auto max-w-page px-4 py-8 sm:px-6">
+      <header className="rounded-[28px] bg-moss px-7 py-14 sm:px-14 sm:py-20">
+        <span className="eyebrow-light">How it works</span>
+        <h1 className="mt-5 max-w-3xl text-5xl text-paper sm:text-6xl">One school’s project becomes the next school’s starting point.</h1>
+        <p className="mt-5 max-w-2xl text-lg text-paper/90">Ekoa is a network of schools and student leaders, and the method and tools they share. Together they turn tested work into something every school can reuse.</p>
+      </header>
 
       <section className="mt-16">
         <h2 className="mb-6 text-3xl">What Ekoa stands for</h2>
@@ -35,11 +36,11 @@ export default function HowItWorks() {
       </section>
 
       <section className="mt-20">
-        <h2 className="text-3xl">Joining, in four steps</h2>
-        <ol className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <h2 className="text-3xl">Joining takes three steps</h2>
+        <ol className="mt-6 grid gap-5 md:grid-cols-3">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="rounded-panel border border-paper-line bg-white p-6">
-              <span className="font-display text-4xl font-semibold italic text-clay">{i + 1}</span>
+            <li key={s.title} className="rounded-panel border border-leaf/20 bg-leaf-100 p-6">
+              <span className="font-display text-4xl font-semibold italic text-moss">{i + 1}</span>
               <h3 className="mt-2 text-xl">{s.title}</h3>
               <p className="mt-2 text-sm text-ink-soft">{s.body}</p>
             </li>
@@ -60,7 +61,7 @@ export default function HowItWorks() {
         </div>
         <dl className="grid gap-3 sm:grid-cols-2">
           {ROLE_ORDER.map((k) => (
-            <div key={k} className="rounded-panel border border-paper-line bg-white p-5">
+            <div key={k} className="rounded-panel border border-leaf/20 bg-leaf-50 p-5">
               <dt className="flex items-center justify-between gap-2">
                 <span className="font-display text-xl font-semibold">{ROLES[k].label}</span>
                 {(k === 'faculty_liaison' || k === 'project_lead') && <span className="rounded-full bg-clay-100 px-2 py-0.5 text-[11px] font-bold text-clay-700">Required</span>}
@@ -76,7 +77,7 @@ export default function HowItWorks() {
         <p className="mt-2 max-w-2xl text-ink-soft">A project only moves to the next stage when its checklist is complete and the named role signs it off. The platform ticks what it can check itself.</p>
         <div className="mt-6 space-y-3">
           {STAGES.map((s) => (
-            <div key={s.key} className="grid gap-4 rounded-panel border border-paper-line bg-white p-5 md:grid-cols-[220px_1fr_220px]">
+            <div key={s.key} className="grid gap-4 rounded-panel border border-leaf/20 bg-leaf-50 p-5 md:grid-cols-[220px_1fr_220px]">
               <div className="flex items-center gap-3">
                 <StageRing stage={s.key} size={36} />
                 <div>
@@ -93,11 +94,11 @@ export default function HowItWorks() {
         </div>
       </section>
 
-      <section id="budget" className="mt-20 grid scroll-mt-24 gap-8 rounded-panel border border-paper-line bg-white p-7 sm:p-10 lg:grid-cols-[auto_1fr]">
-        <Wallet className="h-10 w-10 text-clay-600" aria-hidden />
+      <section id="budget" className="mt-20 grid scroll-mt-24 gap-8 rounded-[28px] bg-moss p-7 text-paper sm:p-10 lg:grid-cols-[auto_1fr]">
+        <Wallet className="h-10 w-10 text-[#E8A47C]" aria-hidden />
         <div>
-          <h2 className="text-3xl">Every project states its budget</h2>
-          <p className="mt-3 max-w-3xl text-ink-soft">
+          <h2 className="text-3xl text-paper">Every project states its budget</h2>
+          <p className="mt-3 max-w-3xl text-paper/90">
             At the Design stage a team lists what it will spend, line by line, and where the money comes from, or marks the project zero-cost. During Implement it records what it actually spent. The record shows planned against actual, so the next school knows the real price before it starts, and the library can be filtered by cost.
           </p>
         </div>
@@ -112,7 +113,7 @@ export default function HowItWorks() {
             </p>
             <ol className="mt-6 space-y-3">
               {AUDIT_STEPS.map(([t, b], i) => (
-                <li key={t} className="grid grid-cols-[2.5rem_1fr] gap-3 rounded-panel border border-paper-line bg-white p-4">
+                <li key={t} className="grid grid-cols-[2.5rem_1fr] gap-3 rounded-panel border border-leaf/20 bg-leaf-100 p-4">
                   <span className="font-display text-3xl font-semibold italic leading-none text-clay">{i + 1}</span>
                   <span><span className="block font-bold">{t}</span><span className="text-sm text-ink-soft">{b}</span></span>
                 </li>
@@ -124,7 +125,7 @@ export default function HowItWorks() {
             <p className="mt-2 text-ink-soft">Every number carries a tier, so readers know how far to trust it.</p>
             <ol className="mt-5 space-y-2">
               {Object.entries(TIERS).map(([k, t]) => (
-                <li key={k} className="grid grid-cols-[3rem_1fr] items-baseline gap-2 rounded-field border border-paper-line bg-white px-4 py-3">
+                <li key={k} className="grid grid-cols-[3rem_1fr] items-baseline gap-2 rounded-field border border-leaf/20 bg-leaf-50 px-4 py-3">
                   <span className="font-display text-xl font-semibold text-clay-700">T{k}</span>
                   <span><span className="block font-bold">{t.label.replace(/^T\d /, '')}</span><span className="text-sm text-ink-mute">{t.who}</span></span>
                 </li>
