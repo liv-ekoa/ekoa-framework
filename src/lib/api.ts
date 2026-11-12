@@ -28,7 +28,18 @@ export const updateOrg = (id: UUID, patch: Partial<Organisation>) => must(db.fro
 export const createOrg = (row: Partial<Organisation>) => must<Organisation>(db.from('organisations').insert(row).select().single());
 
 // ---------------- People, roles, consent ----------------
-export const listPeople = () => must<Person[]>(db.from('people').select('*').order('display_name'));
+/** Everyone in your schools. Teachers and stewards get full records; everyone else gets a name and student/adult flag only. */
+export async function listPeople(): Promise<Person[]> {
+  const [dir, full] = await Promise.all([
+    must<{ id: UUID; display_name: string; is_minor: boolean }[]>(db.from('school_directory').select('*').order('display_name')),
+    must<Person[]>(db.from('people').select('*')),
+  ]);
+  const fullById = new Map(full.map((p) => [p.id, p]));
+  return dir.map((d) => fullById.get(d.id) ?? ({
+    id: d.id, auth_user_id: null, display_name: d.display_name, email: '', age_band: d.is_minor ? '16-17' : '18+', is_minor: d.is_minor,
+    locale: 'en', consent_status: 'not_needed', created_at: '',
+  } as Person));
+}
 export const getPerson = (id: UUID) => must<Person>(db.from('people').select('*').eq('id', id).single());
 export const listRolesForOrg = (orgId: UUID) => must<RoleAssignment[]>(db.from('role_assignments').select('*').eq('org_id', orgId));
 export const listRolesForPerson = (personId: UUID) => must<RoleAssignment[]>(db.from('role_assignments').select('*').eq('person_id', personId));
