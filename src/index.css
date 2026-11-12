@@ -103,6 +103,62 @@
   }
 }
 
+/* The Ekoa figure (src/components/EkoaMascot.tsx). */
+.ekoa-mascot { overflow: visible; }
+.ekoa-mascot .ekoa-ring { transform-box: view-box; transform-origin: 64px 64px; }
+.ekoa-mascot .ekoa-figure-inner,
+.ekoa-mascot .ekoa-shadow { transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* Loading: six steps of 0.33s, as in the loading GIF. The figure stands alone, ring 1, ring 2
+   and ring 3 appear one at a time, then ring 3 and ring 2 leave in reverse order. */
+.ekoa-loading .ekoa-ring { opacity: 0; animation-duration: 2s; animation-iteration-count: infinite; animation-timing-function: ease-out; }
+.ekoa-loading .ekoa-ring-0 { animation-name: ekoa-step-1; }
+.ekoa-loading .ekoa-ring-1 { animation-name: ekoa-step-2; }
+.ekoa-loading .ekoa-ring-2 { animation-name: ekoa-step-3; }
+@keyframes ekoa-step-1 {
+  0%, 16.6% { opacity: 0; transform: scale(.88); }
+  21%, 99.9% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(.88); }
+}
+@keyframes ekoa-step-2 {
+  0%, 33.3% { opacity: 0; transform: scale(.88); }
+  38%, 83.2% { opacity: 1; transform: scale(1); }
+  83.3%, 100% { opacity: 0; transform: scale(1); }
+}
+@keyframes ekoa-step-3 {
+  0%, 50% { opacity: 0; transform: scale(.9); }
+  55%, 66.5% { opacity: 1; transform: scale(1); }
+  66.6%, 100% { opacity: 0; transform: scale(1); }
+}
+
+/* Thumbs up: the hand pops closed into a fist, then the sparks flash. */
+.ekoa-mascot .ekoa-hand { transform-box: view-box; transform-origin: 88px 70px; }
+.ekoa-thumbsUp .ekoa-hand { animation: ekoa-hand .55s .1s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes ekoa-hand { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+.ekoa-thumbsUp .ekoa-spark { animation: ekoa-spark .45s .55s ease-out both; }
+@keyframes ekoa-spark { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+.ekoa-mascot .ekoa-spark { transform-box: view-box; transform-origin: 84px 51px; }
+
+/* Jump: crouch, leap, land, on a soft loop. */
+.ekoa-jump .ekoa-figure-inner { animation: ekoa-jump 1.4s infinite; }
+@keyframes ekoa-jump {
+  0%, 100% { transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  14% { transform: translateY(0) scale(1.08, .88); animation-timing-function: cubic-bezier(.2,.7,.3,1); }
+  46% { transform: translateY(-24px) scale(.95, 1.07); animation-timing-function: cubic-bezier(.7,0,.8,.4); }
+  74% { transform: translateY(0) scale(1.08, .9); animation-timing-function: ease-out; }
+  88% { transform: translateY(0) scale(.98, 1.03); }
+}
+.ekoa-jump .ekoa-shadow { animation: ekoa-shadow 1.4s ease-in-out infinite; }
+@keyframes ekoa-shadow { 0%, 100% { transform: scale(1); opacity: .18; } 46% { transform: scale(.55); opacity: .08; } 74% { transform: scale(1); opacity: .18; } }
+
+.ekoa-moment { animation: ekoa-moment-in .35s cubic-bezier(.3,1.3,.5,1) both; }
+@keyframes ekoa-moment-in { from { opacity: 0; transform: translateY(16px) scale(.95); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ekoa-mascot *, .ekoa-moment { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .ekoa-jump .ekoa-shadow { opacity: .18 !important; }
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: white; }

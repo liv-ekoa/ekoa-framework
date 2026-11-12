@@ -9,6 +9,7 @@ import { metricByCode } from '@/lib/ekoa';
 import { computeValue, formatMetric } from '@/lib/metrics';
 import { enqueue, flush, queued } from '@/lib/offline';
 import type { RoleKey } from '@/lib/types';
+import { useMoments } from '@/components/EkoaMascot';
 import { Button, Checkbox, Empty, ErrorNote, Field, Input, Loading, Notice, PageHeader, Panel, Select } from '@/components/ui';
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -28,6 +29,7 @@ export default function QuickLog() {
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, setPending] = useState(queued());
   const act = useAction();
+  const moments = useMoments();
   const isLiaison = auth.has('faculty_liaison');
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function QuickLog() {
         if (photo) evidence_id = (await uploadEvidence(data.org.id, projectId, photo, `${def.name}, week ending ${end}`, false, false)).id;
         await addMeasurement({ ...row, evidence_id });
         setSaved(`Saved: ${def.name} ${formatMetric(def.code, row.value)}.`);
+        moments.thumbsUp('Measurement saved');
       }
       setRaw({});
       setPhoto(null);
