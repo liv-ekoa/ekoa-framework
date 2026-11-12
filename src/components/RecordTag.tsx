@@ -53,6 +53,11 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
               {formatMetric(lead.metric_code, lead.baseline)} <span className="text-ink-mute">to</span> {formatMetric(lead.metric_code, lead.result)}
             </p>
           </div>
+        ) : r.key_result ? (
+          <div className="max-w-[60%]">
+            <p className="text-xs text-ink-mute">Key result</p>
+            <p className="text-sm font-bold leading-snug text-ink">{r.key_result}</p>
+          </div>
         ) : (
           <span />
         )}

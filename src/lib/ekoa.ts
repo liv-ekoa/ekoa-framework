@@ -171,6 +171,8 @@ export const OBSTACLE_TAXONOMY: { key: string; label: string; examples: string[]
   { key: 'time', label: 'Time and staffing', examples: ['Exam season', 'Leadership turnover', 'Staff mentor left'] },
   { key: 'policy', label: 'Policy conflict', examples: ['Clashes with an existing school rule'] },
   { key: 'safety', label: 'Safety or compliance', examples: ['Hygiene rules', 'Fire or health regulations'] },
+  { key: 'technical', label: 'Technical or design', examples: ['First prototype failed', 'Material did not work', 'Equipment broke'] },
+  { key: 'skills', label: 'Skills or language', examples: ['Had to learn a new skill', 'No shared language with a partner'] },
   { key: 'external', label: 'External', examples: ['Weather', 'Municipal services', 'Supply shortages'] },
 ];
 export const obstacleLabel = (k: string) => OBSTACLE_TAXONOMY.find((o) => o.key === k)?.label ?? k;

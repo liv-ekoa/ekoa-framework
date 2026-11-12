@@ -319,6 +319,10 @@ export interface ImplementationRecord {
   outcome_class: OutcomeClass;
   tier: Tier;
   lessons: string;
+  /** One plain line with the headline result, shown on the record tag. Optional. */
+  key_result?: string;
+  /** Set when the record was written up from a public talk or report rather than a member project. */
+  example_source?: string | null;
   materials: { name: string; kind: string }[];
   contributors: string[];
   visibility: Visibility;
