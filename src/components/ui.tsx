@@ -167,17 +167,22 @@ export function Avatar({ name, tone = 'moss' }: { name: string; tone?: 'moss' | 
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Callers pass a new onClose function on every render. Keep it in a ref so the effect below runs
+  // only when the modal opens or closes; otherwise every keystroke would pull focus out of the field.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>('input,textarea,select,button')?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const box = ref.current;
+    (box?.querySelector<HTMLElement>('input,textarea,select') ?? box?.querySelector<HTMLElement>('button'))?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current();
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
       prev?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
