@@ -31,7 +31,7 @@ interface ReportData {
 
 async function compile(): Promise<ReportData | null> {
   const [cohorts, members, budgets] = await Promise.all([api.listCohorts(), api.listCohortMembers(), api.listBudgets()]);
-  const pilot = cohorts.find((c) => /pilot|founding/i.test(c.name));
+  const pilot = cohorts.find((c) => /pilot/i.test(c.name));
   if (!pilot) return null;
   const schools: SchoolData[] = await Promise.all(members.filter((m) => m.cohort_id === pilot.id).map((m) => loadSchool(m.org_id)));
   const label = (s: SchoolData) => s.org.anonymised_label ?? s.org.name;
