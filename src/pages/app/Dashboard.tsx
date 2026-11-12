@@ -192,8 +192,8 @@ function LeaderboardCard({ ranking, orgId }: { ranking: api.LeaderboardRow[]; or
       <p className="label-caps text-paper/80">School leaderboard</p>
       {me ? (
         <>
-          <p className="mt-1 font-display text-4xl font-semibold italic">#{me.position} <span className="font-sans text-base not-italic text-paper/80">of {ranking.length}</span></p>
-          <p className="mt-1 text-sm text-paper/85">{Math.round(me.score * 10) / 10} points from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
+          <p className="mt-1 font-display text-4xl font-semibold italic">{Math.round(me.score * 10) / 10} <span className="font-sans text-base not-italic text-paper/80">points</span></p>
+          <p className="mt-1 text-sm text-paper/85">Earned from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
         </>
       ) : (
         <p className="mt-1 text-sm text-paper/85">Not on the leaderboard yet. Publish a verified record (T2 or higher) to appear.</p>

@@ -17,7 +17,7 @@ const AUDIT_STEPS = [
   ['Request', 'The school asks for a T3 audit from its record page, choosing Shiv Nadar School, Faridabad or Green School, Bali. It can never pick itself.'],
   ['Check', 'An auditor at that school checks four things: the baseline followed the protocol, the raw numbers add up, the evidence backs them, and the outcome class is honest.'],
   ['Decide', 'The auditor raises the record to T3 or declines with a reason the school can act on. Both are logged.'],
-  ['Count', 'Peer-audited records count one and a half times in the school leaderboard.'],
+  ['Count', 'Peer-audited records count one and a half times on the school leaderboard.'],
 ];
 
 const ROLE_ORDER: RoleKey[] = ['faculty_liaison', 'project_lead', 'implementation_team', 'ekoa_rep', 'board_member', 'approver', 'auditor'];
