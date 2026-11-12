@@ -623,3 +623,20 @@ select t('the student lead can choose the teacher later', (select mentor_person_
 do $$ begin update projects set mentor_person_id = '22222222-0000-0000-0000-00000000000b' where id = '33333333-0000-0000-0000-0000000000a2'; perform t('a student cannot swap the teacher once chosen', false);
 exception when others then perform t('a student cannot swap the teacher once chosen', true); end $$;
 reset role;
+
+-- People privacy: classmates see a name, only the teacher sees the full record
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+select t('a student can read their own full record', (select email = 'student.a@x.org' from people where id = '22222222-0000-0000-0000-00000000000b'));
+select t('a student cannot read a classmate''s email or consent status', (select count(*) from people where id = '22222222-0000-0000-0000-00000000000c') = 0);
+select t('a student cannot read their teacher''s record either', (select count(*) from people where id = '22222222-0000-0000-0000-00000000000a') = 0);
+select t('but a student sees their classmates and teacher by name', (select count(*) from school_directory where id in ('22222222-0000-0000-0000-00000000000a','22222222-0000-0000-0000-00000000000c')) = 2);
+select t('and the directory shows who is a student', (select is_minor from school_directory where id = '22222222-0000-0000-0000-00000000000c'));
+select t('another school''s people are not in the directory', (select count(*) from school_directory where id = '22222222-0000-0000-0000-00000000000d') = 0);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+select t('the teacher reads their students'' full records', (select count(*) from people where id in ('22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000c')) = 2);
+select t('but not another school''s', (select count(*) from people where id = '22222222-0000-0000-0000-00000000000d') = 0);
+reset role;
+set role anon;
+do $$ begin perform t('visitors cannot read the directory', (select count(*) from school_directory) = 0);
+exception when others then perform t('visitors cannot read the directory', true); end $$;
+reset role;

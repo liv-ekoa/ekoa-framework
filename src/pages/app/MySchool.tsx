@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, Copy, Download, Plus, Trash2 } from 'lucide-react';
 import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -19,12 +19,15 @@ export default function MySchool() {
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'profile';
   const orgId = auth.activeOrg!.id;
+  // Students never see the school's roster, grade counts or approval chain: this page is for the teacher.
+  const isLiaisonHere = auth.has('faculty_liaison');
   const { data, reload } = useData(async () => {
     const [s, consents, policies, evidence] = await Promise.all([loadSchool(orgId), api.listConsents(), api.listPolicies(), api.listEvidence()]);
     return { s, consents, policies: policies.filter((p) => p.org_id === orgId), evidence: evidence.filter((e) => e.org_id === orgId) };
   }, [orgId]);
+  if (!isLiaisonHere) return <Navigate to="/app" replace />;
   if (!data) return <Loading />;
-  const isLiaison = auth.has('faculty_liaison');
+  const isLiaison = isLiaisonHere;
   return (
     <div>
       <PageHeader title={data.s.org.name} lead={`${data.s.org.city}, ${data.s.org.country}. The faculty liaison owns this workspace and keeps its memory across student cohorts.`} />
