@@ -106,12 +106,14 @@ export interface CircleMember { id: UUID; circle_id: UUID; person_id: UUID }
 
 export interface Thread {
   id: UUID;
-  kind: 'circle' | 'partner_request' | 'twin';
+  kind: 'circle' | 'partner_request' | 'twin' | 'project';
   circle_id: UUID | null;
   org_id: UUID | null;
   /** Second school in a twin or introduction thread. */
   org_b: UUID | null;
   record_id: UUID | null;
+  /** Set for a project's team chat, which only the project's school can read. */
+  project_id?: UUID | null;
   title: string;
   created_by: UUID;
   created_at: string;
@@ -138,6 +140,8 @@ export interface Post {
 export interface MonitoringItem { metric_code: string; who: RoleKey; frequency: string }
 export interface Risk { text: string; mitigation: string }
 
+export type ProjectScope = 'school' | 'individual';
+
 export interface Project {
   id: UUID;
   org_id: UUID;
@@ -146,6 +150,10 @@ export interface Project {
   stage: StageKey;
   status: ProjectStatus;
   owner_role: RoleKey;
+  scope: ProjectScope;
+  lead_person_id: UUID | null;
+  mentor_person_id: UUID | null;
+  successor_person_id: UUID | null;
   template_key: string | null;
   starts_on: string;
   ends_on: string | null;
@@ -319,6 +327,10 @@ export interface ImplementationRecord {
   outcome_class: OutcomeClass;
   tier: Tier;
   lessons: string;
+  /** One plain line with the headline result, shown on the record tag. Optional. */
+  key_result?: string;
+  /** Set when the record was written up from a public talk or report rather than a member project. */
+  example_source?: string | null;
   materials: { name: string; kind: string }[];
   contributors: string[];
   visibility: Visibility;
@@ -380,6 +392,20 @@ export interface PolicyClause {
   body: string;
   source_org_id: UUID | null;
   adoption_count: number;
+}
+
+export interface ProjectFile {
+  id: UUID;
+  org_id: UUID;
+  project_id: UUID;
+  title: string;
+  file_name: string | null;
+  file_type: string | null;
+  size_bytes: number | null;
+  storage_path: string | null;
+  link_url: string | null;
+  added_by: UUID | null;
+  created_at: string;
 }
 
 export interface Evidence {
