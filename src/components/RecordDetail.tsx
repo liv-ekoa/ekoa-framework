@@ -42,6 +42,8 @@ export function RecordDetail({
         <h1 className="mt-3 max-w-3xl text-3xl font-bold sm:text-4xl">{r.title}</h1>
         <p className="mt-2 text-ink-mute">{where}</p>
         <p className="mt-5 max-w-prose text-lg leading-relaxed text-ink-soft">{r.summary}</p>
+        {r.key_result && <p className="mt-4 max-w-prose rounded-field bg-paper px-4 py-3 text-sm"><span className="font-bold text-ink">Key result: </span><span className="text-ink-soft">{r.key_result}</span></p>}
+        {r.example_source && <p className="mt-3 text-sm text-ink-mute">Example record, written up from {r.example_source}. Use it to see what a good record contains.</p>}
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <span className={cx('rounded-tag px-2.5 py-1 text-sm font-bold text-white', band[r.outcome_class])}>{o.label}</span>
           <span className="rounded-tag border border-clay-600/50 bg-clay-100 px-2.5 py-1 text-sm font-bold text-clay-700">{TIERS[r.tier].label}</span>
@@ -52,6 +54,7 @@ export function RecordDetail({
 
       <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-8">
+          {r.outcomes.length > 0 && (
           <section>
             <h2 className="text-xl font-semibold">Outcomes</h2>
             <div className="mt-3 overflow-x-auto rounded-panel border border-paper-line bg-white">
@@ -78,6 +81,7 @@ export function RecordDetail({
               </table>
             </div>
           </section>
+          )}
 
           <section className="space-y-5">
             <div>
@@ -132,15 +136,15 @@ export function RecordDetail({
           <section className="rounded-panel border border-paper-line bg-white p-5">
             <h2 className="mb-4 text-lg font-semibold">Context</h2>
             <KeyValue
-              items={[
+              items={([
                 ['Location', r.anonymised ? `${r.context.country} (city hidden)` : `${r.context.city}, ${r.context.country}`],
-                ['Size', `${r.context.size_band} students`],
+                ['Size', r.context.size_band ? `${r.context.size_band} students` : ''],
                 ['Curriculum', r.context.curriculum],
                 ['Climate', r.context.climate_zone],
                 ['Budget band', r.context.budget_band],
                 ['Waste collection', r.context.waste_contractor],
-                ['Approval chain', `${r.context.governance_chain_length} steps`],
-              ]}
+                ['Approval chain', r.context.governance_chain_length ? `${r.context.governance_chain_length} steps` : ''],
+              ] as [string, string][]).filter(([, v]) => v)}
             />
           </section>
           <BudgetBox r={r} />
