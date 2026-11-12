@@ -69,7 +69,7 @@ export default function Handover() {
           <div className="mt-3 flex flex-wrap gap-2">
             <Select aria-label="Successor" value={succ[m.role.id] ?? ''} onChange={(e) => setSucc({ ...succ, [m.role.id]: e.target.value })} className="w-auto">
               <option value="">Choose the successor</option>
-              {data.members.filter((x) => x.person.id !== m.person.id && STUDENT_ROLES.includes(x.role.role)).sort((a, b) => Number(b.role.status === 'incoming') - Number(a.role.status === 'incoming')).map((x) => <option key={x.role.id} value={x.person.id}>{x.person.display_name}{x.role.status === 'incoming' ? ' (incoming)' : ''}</option>)}
+              {data.members.filter((x) => x.person.id !== m.person.id && STUDENT_ROLES.includes(x.role.role)).map((x) => <option key={x.role.id} value={x.person.id}>{x.person.display_name}</option>)}
             </Select>
             <Button busy={act.busy} onClick={() => act.run(async () => {
               await api.saveHandover({ org_id: orgId, role: m.role.role, from_person_id: m.person.id, to_person_id: succ[m.role.id] || null, snapshot: await buildSnapshot(orgId), checklist: {}, note: '', signed_out_at: null, signed_in_at: null, signed_liaison_at: null, term_switch_on: m.role.term_end! });
@@ -184,7 +184,7 @@ function Packet({ h, name, isLiaison, onChange, roleMembers }: { h: HandoverPack
               onChange();
             })}>Switch roles now</Button>
           )}
-          {allSigned && <Notice tone="leaf">Fully signed. The faculty liaison presses “Switch roles now” on or before handover day.</Notice>}
+          {allSigned && <Notice tone="leaf">Fully signed. Roles switch automatically on the term date if nobody switches them sooner.</Notice>}
           <ErrorNote>{act.error}</ErrorNote>
         </div>
       </section>

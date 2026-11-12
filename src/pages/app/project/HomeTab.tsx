@@ -41,7 +41,7 @@ export function HomeTab({ b, canEdit, onChange, go, people }: { b: ProjectBundle
   const examples = community.data?.examples.length ?? 0;
   return (
     <div className="space-y-6">
-      {solo && !b.project.mentor_person_id && <Notice tone="clay">No teacher yet, and that is fine. You only need one when you want to verify a stage, move on to the next one or publish. Pick them under “Keeping it going” whenever you are ready.</Notice>}
+      {solo && !b.project.mentor_person_id && <Notice tone="clay">Choose the teacher who will verify your project. You can keep going without one for now, but you need one before you move on from Identify. Pick them under “Keeping it going”.</Notice>}
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <div className="space-y-6">
         <Panel title="What we are doing">

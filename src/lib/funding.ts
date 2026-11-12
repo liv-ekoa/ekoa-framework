@@ -1,4 +1,4 @@
-// Content for the "Fund your project" packet. Static on purpose: Ekoa does not hold or move money.
+// Content for the Funding page. Static on purpose: Ekoa does not hold or move money.
 // Platform rules change; every entry says where to confirm them.
 
 export interface FundingOption {
@@ -23,12 +23,45 @@ const GOFUNDME = (country: string): FundingOption => ({
   confirm: 'Ask what age and ID they require. Some countries need an adult account holder.',
 });
 
+const CHUFFED = (country: string): FundingOption => ({
+  name: 'Chuffed',
+  url: 'https://chuffed.org',
+  kind: 'Crowdfunding',
+  note: `Available in ${country}. Only for social causes and non-profit projects, and it charges campaigners no platform fee (donors can add a tip).`,
+  confirm: 'Check that your country is on its list and who may hold the account.',
+});
+
 export const COUNTRY_GUIDES: CountryGuide[] = [
+  {
+    country: 'United States',
+    summary: 'If your school is a public school, DonorsChoose is the safest route: no money passes through anyone’s hands.',
+    options: [
+      { name: 'DonorsChoose', url: 'https://www.donorschoose.org', kind: 'School or association page', note: 'Only teachers at US public schools (including charter schools) can post a request. Donors fund it, then DonorsChoose buys the items and ships them to the school.', confirm: 'Your teacher signs up and posts the request for the class.' },
+      GOFUNDME('the United States'),
+    ],
+  },
+  {
+    country: 'United Kingdom',
+    summary: 'Schools and PTAs here usually collect the money themselves, through a school page.',
+    options: [
+      { name: 'Crowdfunder UK (schools)', url: 'https://www.crowdfunder.co.uk', kind: 'School or association page', note: 'Schools and PTAs run project pages here, and some partners offer match funding for school projects.', confirm: 'Ask which bank account the money is paid into and whether match funding covers your area.' },
+      { name: 'JustGiving (schools and PTAs)', url: 'https://www.justgiving.com', kind: 'School or association page', note: 'Schools and PTAs that are registered charities can collect donations here, and UK taxpayers can add Gift Aid.', confirm: 'The school or PTA must be registered as a charity on JustGiving.' },
+      GOFUNDME('the United Kingdom'),
+    ],
+  },
   {
     country: 'Kenya',
     summary: 'Mobile money is the usual way to give, so choose a platform that takes it.',
     options: [
       { name: 'M-Changa', url: 'https://www.mchanga.africa', kind: 'Crowdfunding', note: 'Kenyan platform where individuals and groups start campaigns and accept mobile money. GlobalGiving lists it as a partner for individuals in Kenya.', confirm: 'Ask who may open an account and how withdrawals are paid out.' },
+    ],
+  },
+  {
+    country: 'South Africa',
+    summary: 'Use a local platform, with a teacher or guardian holding the account.',
+    options: [
+      { name: 'BackaBuddy', url: 'https://www.backabuddy.co.za', kind: 'Crowdfunding', note: 'South African platform for personal, community and school causes, paid out in rand to a South African bank account.', confirm: 'Ask what ID the account holder needs and what fees apply.' },
+      CHUFFED('South Africa'),
     ],
   },
   {
@@ -40,10 +73,41 @@ export const COUNTRY_GUIDES: CountryGuide[] = [
   },
   {
     country: 'India',
-    summary: 'Adults run the campaign. Ask each platform about donations that come from abroad before you promote it internationally.',
+    summary: 'An adult runs the campaign. Money from donors outside India has strict rules (FCRA), so read the notes before you share it abroad.',
     options: [
-      { name: 'Ketto', url: 'https://www.ketto.org', kind: 'Crowdfunding', note: 'Its terms exclude minors from using the site. An adult or a registered non-profit can run a campaign on behalf of others. Fees were reported at around 6% plus a set-up charge, which may be out of date.', confirm: 'Ask about fees and about foreign donations. We have not verified the rules that apply to money from outside India.' },
-      { name: 'Milaap', url: 'https://milaap.org', kind: 'Crowdfunding', note: 'Focused on social causes and education. Fees were reported at around 5%, which may be out of date.', confirm: 'We have not checked its terms for minors or school projects. Ask them, and ask about foreign donations.' },
+      { name: 'Milaap', url: 'https://milaap.org', kind: 'Crowdfunding', note: 'Focused on social causes and education. A student under 18 needs a parent’s approval to start a fundraiser. Money from donors outside India can only go to an organisation registered under FCRA.', confirm: 'Ask about fees, and whether your school or a partner NGO is FCRA-registered if you expect foreign donors.' },
+      { name: 'Ketto', url: 'https://www.ketto.org', kind: 'Crowdfunding', note: 'Its terms exclude minors, so the teacher or a guardian runs the campaign. Money from donors abroad can only be paid to suppliers, schools or FCRA-registered NGOs, not to a person.', confirm: 'Ask about fees and how foreign donations will be paid out for your project.' },
+    ],
+  },
+  {
+    country: 'Singapore',
+    summary: 'Students can fundraise with a parent or guardian as co-fundraiser.',
+    options: [
+      { name: 'Give.Asia', url: 'https://give.asia', kind: 'Crowdfunding', note: 'The fundraiser must be 18 or over, or have a parent or guardian as co-fundraiser.', confirm: 'Ask about fees and who receives the money.' },
+      CHUFFED('Singapore'),
+    ],
+  },
+  {
+    country: 'Brazil',
+    summary: 'The organiser has to be an adult with a CPF, so the teacher or a guardian opens the campaign.',
+    options: [
+      { name: 'Vakinha', url: 'https://www.vakinha.com.br', kind: 'Crowdfunding', note: 'The best-known Brazilian platform. The organiser must be 18 or over with a CPF. Fees were about 6.4% plus R$0.50 per donation, and R$5 per withdrawal.', confirm: 'Fees change, so check them before you launch.' },
+    ],
+  },
+  {
+    country: 'Germany',
+    summary: 'State schools can raise money as an institution on betterplace.org.',
+    options: [
+      { name: 'betterplace.org', url: 'https://www.betterplace.org', kind: 'School or association page', note: 'State schools can open a project once they send proof of their legal form. Private causes belong on its sister site, GoodCrowd.org.', confirm: 'Ask which documents your school must send, and whether the Förderverein should run it instead.' },
+      GOFUNDME('Germany'),
+    ],
+  },
+  {
+    country: 'France',
+    summary: 'Leetchi works for a simple online pot. If the school’s parents’ association or foyer collects it, donors can get tax receipts.',
+    options: [
+      { name: 'Leetchi', url: 'https://www.leetchi.com', kind: 'Crowdfunding', note: 'Free to open a pot (cagnotte). Leetchi takes a commission when the money is paid to a bank account, and a personal pot gives no tax receipts. Its Leetchi:org option sends the money straight to a registered association, with tax receipts for donors and no Leetchi commission.', confirm: 'We could not confirm the minimum age, so plan for the teacher or the parents’ association to open it.' },
+      GOFUNDME('France'),
     ],
   },
   {
@@ -51,13 +115,15 @@ export const COUNTRY_GUIDES: CountryGuide[] = [
     summary: 'GoFundMe is not available here. Givealittle is the local option.',
     options: [
       { name: 'Givealittle', url: 'https://givealittle.co.nz/help/howgivealittleworks/who', kind: 'Crowdfunding', note: 'Anyone can fundraise. To receive the money you must be over 18 and have a New Zealand bank account. If the person who benefits is under 18, a guardian should receive the funds. Pages are moderated before they go live.', confirm: 'Have the teacher or a guardian be the person who receives the funds.' },
+      CHUFFED('New Zealand'),
     ],
   },
   {
     country: 'Australia',
-    summary: 'GoFundMe works, and state or national school grants are worth checking first.',
+    summary: 'GoFundMe and Chuffed both work, and state or national school grants are worth checking first.',
     options: [
       GOFUNDME('Australia'),
+      CHUFFED('Australia'),
       { name: 'Junior Landcare Grants (Woolworths)', url: 'https://landcareaustralia.com.au', kind: 'Grant', note: 'Reported grants of up to $1,000 for primary schools and early learning centres. Not for every age group.', confirm: 'We could not confirm that it is open this year. Check with Landcare Australia.' },
     ],
   },
@@ -67,14 +133,6 @@ export const COUNTRY_GUIDES: CountryGuide[] = [
     options: [
       GOFUNDME('Ireland'),
       { name: 'Education for Sustainable Development school grants', url: 'https://www.gov.ie/en/department-of-education-and-youth/', kind: 'Grant', note: 'In December 2025 the Department of Education announced grants of €1,000 to €2,500 for 390 primary and post-primary schools.', confirm: 'Ask your teacher to check whether a new round is open.' },
-    ],
-  },
-  {
-    country: 'France',
-    summary: 'The school’s parents’ association or foyer can collect money for you.',
-    options: [
-      { name: 'HelloAsso', url: 'https://www.helloasso.com', kind: 'School or association page', note: 'Free for associations (it asks donors for an optional contribution). Many French school associations and foyers already use it, and it issues tax receipts for donors.', confirm: 'The money goes to the association, which then pays for the project. Ask the association’s treasurer.' },
-      GOFUNDME('France'),
     ],
   },
   {
@@ -92,7 +150,7 @@ export const OTHER_COUNTRY_GUIDE: CountryGuide = {
   summary: 'We do not have a specific guide for your country yet, so start with these and the questions below.',
   options: [
     GOFUNDME('the 20 countries on its list'),
-    { name: 'A fiscal sponsor', url: 'https://support.globalgiving.org/hc/en-us/articles/360026469171-What-is-a-fiscal-sponsor', kind: 'Fiscal sponsor', note: 'A registered non-profit that receives and oversees the money for a project that is not one itself. GlobalGiving accepts unregistered projects through one, but cannot find a sponsor for you.', confirm: 'Both the project and the sponsor apply.' },
+    { name: 'GlobalGiving, through a fiscal sponsor', url: 'https://support.globalgiving.org/hc/en-us/articles/360026469171-What-is-a-fiscal-sponsor', kind: 'Fiscal sponsor', note: 'Works in almost every country. A fiscal sponsor is a registered non-profit that receives and oversees the money for a project that is not one itself. GlobalGiving accepts unregistered projects through one, but cannot find a sponsor for you.', confirm: 'Both the project and the sponsor apply.' },
   ],
 };
 

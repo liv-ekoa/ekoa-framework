@@ -46,7 +46,7 @@ export function AccountBanners() {
           </div>
         </Notice>
       )}
-      {!hasSchool && !data?.joinPending && person.consent_status !== 'withdrawn' && auth.activeOrg?.org_type === 'workspace' && (
+      {!hasSchool && !data?.joinPending && person.consent_status !== 'withdrawn' && auth.activeOrg?.org_type === 'independent' && (
         <Notice tone="sky">You are working on your own. <Link className="font-bold underline" to="/welcome?join=1">Join your school</Link> so a teacher can see your work and you can team up with classmates.</Notice>
       )}
       {data?.joinPending && <Notice tone="sky">Your request to join a school is waiting for a teacher to confirm it.</Notice>}

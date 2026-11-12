@@ -329,6 +329,244 @@ do $$ begin update records set anonymised = false where id = '44444444-0000-0000
 exception when others then perform t('a student cannot name the school on a published anonymised record', true); end $$;
 reset role;
 
+-- ================================================================ October 27 feedback
+-- Fixtures: a circle thread at School A, a steward who can sign in, a photo and policies.
+insert into threads (id, kind, title, circle_id, org_id) select '77777777-0000-0000-0000-000000000001', 'circle', 'Compost tips', id, '11111111-0000-0000-0000-000000000001' from circles where theme = 'waste';
+insert into auth.users (id, email) values ('aaaaaaaa-0000-0000-0000-0000000000a5', 'founder.one@example.org');
+insert into evidence (id, org_id, project_id, file_name, file_type, caption) values ('88888888-0000-0000-0000-000000000001','11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','bins.jpg','image/jpeg','Bins behind the canteen');
+
+-- Inappropriate posts are hidden the moment they are posted, and go to the author's teacher
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into posts (id, thread_id, body) values ('99999999-0000-0000-0000-000000000001','77777777-0000-0000-0000-000000000001','honestly you are so stupid');
+insert into posts (id, thread_id, body) values ('99999999-0000-0000-0000-000000000002','77777777-0000-0000-0000-000000000001','Our bins work best with a lid. Weigh them on Thursdays.');
+insert into posts (id, thread_id, body) values ('99999999-0000-0000-0000-000000000003','77777777-0000-0000-0000-000000000001','sometimes i want to die');
+select t('a bullying post is hidden at once, even from its author', (select count(*) from posts where id = '99999999-0000-0000-0000-000000000001') = 0);
+select t('an ordinary post stays up', (select count(*) from posts where id = '99999999-0000-0000-0000-000000000002') = 1);
+do $$ begin insert into threads (kind, title, circle_id, org_id, created_by) select 'circle', 'you are all losers', id, '11111111-0000-0000-0000-000000000001', '22222222-0000-0000-0000-00000000000b' from circles where theme = 'waste'; perform t('an abusive thread title is refused', false);
+exception when others then perform t('an abusive thread title is refused', true); end $$;
+reset role;
+select t('the filter flagged the bullying post for School A', (select reason = 'bullying' and source = 'filter' and org_id = '11111111-0000-0000-0000-000000000001' from content_flags where target_id = '99999999-0000-0000-0000-000000000001'));
+select t('a self-harm post also reaches the safeguarding lead', (select count(*) from safeguarding_reports where category = 'wellbeing' and details like '%at risk%') = 1);
+
+-- Anyone can report: the post disappears at once, and only adults decide
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+insert into posts (id, thread_id, body) values ('99999999-0000-0000-0000-000000000004','77777777-0000-0000-0000-000000000001','Remember to log the weights before Friday.');
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into content_flags (target_kind, target_id, reason, source) values ('post','99999999-0000-0000-0000-000000000004','other','filter');
+select t('a reported post is hidden from students immediately', (select count(*) from posts where id = '99999999-0000-0000-0000-000000000004') = 0);
+select t('a student cannot file a flag as the filter', (select source = 'report' from content_flags where target_id = '99999999-0000-0000-0000-000000000004'));
+update content_flags set status = 'restored' where target_id = '99999999-0000-0000-0000-000000000004';
+reset role;
+select t('a student cannot decide a flag', (select status = 'open' from content_flags where target_id = '99999999-0000-0000-0000-000000000004'));
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('another school''s student sees none of School A''s flags', (select count(*) from content_flags) = 0);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+select t('the liaison sees the flags for their school', (select count(*) from content_flags where org_id = '11111111-0000-0000-0000-000000000001') >= 3);
+update content_flags set status = 'restored' where target_id = '99999999-0000-0000-0000-000000000004';
+update content_flags set status = 'removed' where target_id = '99999999-0000-0000-0000-000000000001';
+reset role;
+select t('restoring brings the post back', (select not hidden from posts where id = '99999999-0000-0000-0000-000000000004'));
+select t('removing replaces the text', (select body = '[Removed by a moderator]' from posts where id = '99999999-0000-0000-0000-000000000001'));
+
+-- Photos: a report hides the photo from students, not from the teacher
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into content_flags (target_kind, target_id, reason) values ('evidence','88888888-0000-0000-0000-000000000001','sexual');
+select t('a reported photo is hidden from students', (select count(*) from evidence where id = '88888888-0000-0000-0000-000000000001') = 0);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+select t('the liaison can still see the reported photo to review it', (select count(*) from evidence where id = '88888888-0000-0000-0000-000000000001') = 1);
+reset role;
+
+-- Helpful links on a policy
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into policy_links (policy_id, url, title, note) values ('66666666-0000-0000-0000-000000000001','https://docs.google.com/document/d/abc','Our compost rota','Who empties the bins each week');
+insert into policy_links (policy_id, url, title) values ('66666666-0000-0000-0000-000000000001','https://example.org/x','send nudes');
+select t('a student can add a link to their school''s policy', (select count(*) from policy_links where title = 'Our compost rota') = 1);
+select t('an inappropriate link is hidden at once', (select count(*) from policy_links where title = 'send nudes') = 0);
+do $$ begin insert into policy_links (policy_id, url, title) values ('66666666-0000-0000-0000-000000000001','javascript:alert(1)','Bad link'); perform t('only https links are accepted', false);
+exception when others then perform t('only https links are accepted', true); end $$;
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('other schools cannot see a school''s policy links', (select count(*) from policy_links) = 0);
+do $$ begin insert into policy_links (policy_id, url, title) values ('66666666-0000-0000-0000-000000000001','https://example.org/y','Sneaky'); perform t('other schools cannot add links to a school''s policy', false);
+exception when others then perform t('other schools cannot add links to a school''s policy', true); end $$;
+reset role;
+
+-- Collaborator schools from policy similarity
+update organisations set status = 'active' where id in ('11111111-0000-0000-0000-000000000001','11111111-0000-0000-0000-000000000002');
+update policies set sections = (select jsonb_agg(jsonb_build_object('key', section, 'title', title, 'body', body, 'clause_id', id)) from policy_clauses where section in ('documentation','measurement','reflection','continuity'))
+  where id = '66666666-0000-0000-0000-000000000001';
+insert into policies (org_id, title, sections) select '11111111-0000-0000-0000-000000000002', 'B policy', jsonb_agg(jsonb_build_object('key', section, 'title', title, 'body', body, 'clause_id', id)) from policy_clauses where section in ('documentation','measurement','reflection','workshops');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+select t('a school sees schools with similar policies', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000001') where org_id = '11111111-0000-0000-0000-000000000002') = 1);
+select t('the shared clauses are named', (select cardinality(shared_clauses) >= 3 from collaborator_suggestions('11111111-0000-0000-0000-000000000001') where org_id = '11111111-0000-0000-0000-000000000002'));
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('a student without cross-school consent gets no suggestions', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000002')) = 0);
+reset role;
+update consent_records set scope = '{"account":true,"cross_school":true,"photos":false,"name_on_records":false}' where token = 'tok-d';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('the match works both ways', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000002') where org_id = '11111111-0000-0000-0000-000000000001') = 1);
+reset role;
+update organisations set public_visible = false where id = '11111111-0000-0000-0000-000000000001';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('a school that is not public is not suggested to others', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000002')) = 0);
+reset role;
+update organisations set public_visible = true where id = '11111111-0000-0000-0000-000000000001';
+update consent_records set scope = '{"account":true,"cross_school":false,"photos":false,"name_on_records":false}' where token = 'tok-d';
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('nobody can ask on behalf of another school', (select count(*) from collaborator_suggestions('11111111-0000-0000-0000-000000000001')) = 0);
+reset role;
+
+-- Independent students
+insert into auth.users (id, email) values ('aaaaaaaa-0000-0000-0000-0000000000b1','indy.minor@x.org'), ('aaaaaaaa-0000-0000-0000-0000000000b2','indy.adult@x.org');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000b1',false);
+do $$ begin perform register_independent_student('Indy Minor','16-17','Valley Public School','India','Delhi','',''); perform t('an under-18 needs a guardian email to join', false);
+exception when others then perform t('an under-18 needs a guardian email to join', true); end $$;
+select register_independent_student('Indy Minor','16-17','Valley Public School','India','Delhi','Guardian Minor','guardian.indy@x.org');
+select t('an under-18 independent student waits for guardian consent', (select count(*) from projects) = 0 and (select public.active_person_id()) is null);
+do $$ begin perform register_independent_student('Indy Again','18+','X','India','','',''); perform t('nobody registers twice', false);
+exception when others then perform t('nobody registers twice', true); end $$;
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000b2',false);
+select register_independent_student('Indy Adult','18+','Hill School','India','Pune','','');
+insert into projects (org_id, title, category) select org_id, 'My solo audit', 'Waste' from role_assignments where person_id = public.active_person_id();
+select t('an independent student leads projects in their own workspace', (select count(*) from projects where title = 'My solo audit') = 1);
+select t('an independent student sees no school''s people', (select count(*) from people) = 1);
+do $$ begin perform assign_student('indy.adult@x.org','','', '11111111-0000-0000-0000-000000000001','project_lead','','','',true); perform t('only admins can assign roles', false);
+exception when others then perform t('only admins can assign roles', true); end $$;
+reset role;
+select t('the minor''s consent link goes to the guardian, not the student', (select count(*) from consent_records c join people p on p.id = c.person_id where p.email = 'indy.minor@x.org' and c.guardian_email = 'guardian.indy@x.org' and c.granted_at is null) = 1);
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a5',false);
+select assign_student('indy.adult@x.org','','', '11111111-0000-0000-0000-000000000001','implementation_team','Eco club','','',true);
+do $$ begin perform assign_student('listed.kid@x.org','Listed Kid','13-15','11111111-0000-0000-0000-000000000001','implementation_team','','',''); perform t('a listed under-18 student needs a guardian email', false);
+exception when others then perform t('a listed under-18 student needs a guardian email', true); end $$;
+select assign_student('listed.kid@x.org','Listed Kid','13-15','11111111-0000-0000-0000-000000000001','implementation_team','','Guardian Kid','guardian.kid@x.org',false);
+reset role;
+select t('an admin moves an independent student and their project into the school', (select org_id = '11111111-0000-0000-0000-000000000001' from projects where title = 'My solo audit'));
+select t('a listed student is created waiting for consent', (select consent_status = 'pending' from people where email = 'listed.kid@x.org'));
+
+-- School registrations with student emails
+set role anon; select set_config('request.jwt.claim.sub','',false);
+insert into applications (name, email, organisation, student_emails) values ('Teacher T','t@school.org','New School', array['a@school.org','b@school.org']);
+do $$ begin insert into applications (name, email, org_id) values ('X','x@y.z','11111111-0000-0000-0000-000000000001'); perform t('visitors cannot file for an existing school', false);
+exception when others then perform t('visitors cannot file for an existing school', true); end $$;
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+insert into applications (name, email, kind, org_id, student_emails) values ('Liaison A','liaison.a@x.org','students','11111111-0000-0000-0000-000000000001', array['c@school.org']);
+do $$ begin insert into applications (name, email, kind, org_id) values ('Liaison A','liaison.a@x.org','students','11111111-0000-0000-0000-000000000002'); perform t('a liaison sends student emails only for their own school', false);
+exception when others then perform t('a liaison sends student emails only for their own school', true); end $$;
+reset role;
+select t('student email lists reach the admins', (select count(*) from applications where cardinality(student_emails) > 0) = 2);
+
+-- Cross-school spaces need cross-school consent, even when your own school started them
+insert into threads (id, kind, title, circle_id, org_id) select '77777777-0000-0000-0000-000000000002', 'circle', 'B circle thread', id, '11111111-0000-0000-0000-000000000002' from circles where theme = 'energy';
+insert into threads (id, kind, title, org_id, org_b) values ('77777777-0000-0000-0000-000000000003', 'twin', 'A and B', '11111111-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000002');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('a student without cross-school consent cannot read their school''s circle threads', (select count(*) from threads where id = '77777777-0000-0000-0000-000000000002') = 0);
+select t('or a school-to-school conversation', (select count(*) from threads where id = '77777777-0000-0000-0000-000000000003') = 0);
+do $$ begin insert into threads (kind, title, org_id, org_b, created_by) values ('twin', 'Hi A', '11111111-0000-0000-0000-000000000002', '11111111-0000-0000-0000-000000000001', '22222222-0000-0000-0000-00000000000d'); perform t('or start one', false);
+exception when others then perform t('or start one', true); end $$;
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+select t('a student with cross-school consent can join the conversation', (select count(*) from threads where id = '77777777-0000-0000-0000-000000000003') = 1);
+reset role;
+
+-- Review fixes: phone numbers, guardian emails, moved photos
+select t('a date is not a phone number', public.moderation_hit('Weighed the bins on 22 10 2026 at 3') is null);
+select t('a long number list from a measurement is not a phone number', public.moderation_hit('Weights 12 34 56 in kg') is null);
+select t('a real phone number is still held', public.moderation_hit('call me on 98765 43210') = 'contact');
+do $$ begin insert into consent_records (person_id, guardian_email, terms_version) values ('22222222-0000-0000-0000-00000000000b', 'Student.A@x.org', '2026-10'); perform t('a student cannot be their own guardian', false);
+exception when others then perform t('a student cannot be their own guardian', true); end $$;
+
+insert into evidence (id, org_id, file_name, file_type, storage_path) values ('88888888-0000-0000-0000-000000000009','11111111-0000-0000-0000-000000000001','moved.jpg','image/jpeg','99999999-0000-0000-0000-000000000009/moved.jpg');
+insert into storage.objects (bucket_id, name) values ('evidence', '99999999-0000-0000-0000-000000000009/moved.jpg');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+select t('a photo moved to a school from an old workspace folder is readable by that school', (select count(*) from storage.objects where name = '99999999-0000-0000-0000-000000000009/moved.jpg') = 1);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('and not by another school', (select count(*) from storage.objects where name = '99999999-0000-0000-0000-000000000009/moved.jpg') = 0);
+reset role;
+
+-- Public Policy library: adopted policies are public, drafts are not
+set role anon; select set_config('request.jwt.claim.sub','',false);
+select t('visitors see adopted policies in the library', (select count(*) from public_policies where id = '66666666-0000-0000-0000-000000000001') = 1);
+select t('but never a draft', (select count(*) from public_policies where title = 'B policy') = 0);
+do $$ begin perform t('visitors cannot read the policies table itself', (select count(*) from policies) = 0);
+exception when others then perform t('visitors cannot read the policies table itself', true); end $$;
+do $$ begin update public_policies set title = 'x'; perform t('the library cannot be written to', false);
+exception when others then perform t('the library cannot be written to', true); end $$;
+reset role;
+
+-- Admins add a school's real adopted policy; a school member cannot add one for another school
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a5',false);
+insert into policies (id, org_id, title, status, adopted_at, sections) values ('66666666-0000-0000-0000-0000000000a1', '11111111-0000-0000-0000-000000000002', 'B waste policy', 'adopted', now(), '[{"key":"s1","title":"Purpose","body":"Less waste.","clause_id":null}]');
+select t('an admin can add an adopted policy for any school', (select count(*) from policies where id = '66666666-0000-0000-0000-0000000000a1') = 1);
+reset role;
+set role anon; select set_config('request.jwt.claim.sub','',false);
+select t('which is public in the library at once', (select count(*) from public_policies where id = '66666666-0000-0000-0000-0000000000a1') = 1);
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+do $$ begin insert into policies (org_id, title, status) values ('11111111-0000-0000-0000-000000000002', 'Fake', 'adopted'); perform t('a student cannot add a policy for another school', false);
+exception when others then perform t('a student cannot add a policy for another school', true); end $$;
+delete from policies where id = '66666666-0000-0000-0000-0000000000a1';
+reset role;
+select t('or delete one', (select count(*) from policies where id = '66666666-0000-0000-0000-0000000000a1') = 1);
+-- Library policies: members submit, a steward approves, only approved ones are public
+insert into organisations (id, name, org_type, country, city, status, public_visible) values ('11111111-0000-0000-0000-0000000000e0','Ekoa','ekoa','India','Delhi','active',false) on conflict do nothing;
+insert into auth.users (id,email) values ('aaaaaaaa-0000-0000-0000-0000000000e1','steward.t@x.org');
+insert into people (id, auth_user_id, display_name, email, age_band, is_minor, consent_status) values ('22222222-0000-0000-0000-0000000000e1','aaaaaaaa-0000-0000-0000-0000000000e1','Steward T','steward.t@x.org','18+',false,'not_needed');
+insert into role_assignments (person_id, org_id, role) select '22222222-0000-0000-0000-0000000000e1', id, 'steward' from organisations where org_type = 'ekoa' limit 1;
+set role anon;
+do $$ begin insert into library_policies (title, school_name, topic, category, summary, url, submitted_by) values ('Anon policy','X school','Waste','Waste','A summary that is long enough to pass.','https://example.org/p','22222222-0000-0000-0000-00000000000b'); perform t('a visitor cannot add a library policy', false);
+exception when others then perform t('a visitor cannot add a library policy', true); end $$;
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into library_policies (id, title, school_name, topic, category, summary, url, submitted_by, status) values ('66666666-0000-0000-0000-000000000001','Compost policy','School A','Waste','Waste','Food scraps are composted on site every week.','https://example.org/compost','22222222-0000-0000-0000-00000000000d','approved');
+select t('a member can submit a policy, and it starts pending and in their own name', (select status = 'pending' and submitted_by = '22222222-0000-0000-0000-00000000000b' from library_policies where id = '66666666-0000-0000-0000-000000000001'));
+do $$ begin insert into library_policies (title, school_name, topic, category, summary, url, submitted_by) values ('Bad link','School A','Waste','Waste','A summary that is long enough to pass.','javascript:alert(1)','22222222-0000-0000-0000-00000000000b'); perform t('a policy link must be https', false);
+exception when others then perform t('a policy link must be https', true); end $$;
+do $$ begin update library_policies set status = 'approved' where id = '66666666-0000-0000-0000-000000000001'; perform t('a member cannot approve their own policy', (select status = 'pending' from library_policies where id = '66666666-0000-0000-0000-000000000001'));
+exception when others then perform t('a member cannot approve their own policy', true); end $$;
+select t('a submitter can see their own pending policy', (select count(*) from library_policies) >= 1);
+reset role;
+set role anon;
+select t('a pending policy is not public', (select count(*) from public_policy_links where id = '66666666-0000-0000-0000-000000000001') = 0);
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('a member of another school cannot read someone else''s pending policy', (select count(*) from library_policies where id = '66666666-0000-0000-0000-000000000001') = 0);
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000e1',false);
+update library_policies set status = 'approved' where id = '66666666-0000-0000-0000-000000000001';
+select t('a steward can approve a policy and is recorded as the reviewer', (select status = 'approved' and reviewed_by = '22222222-0000-0000-0000-0000000000e1' and reviewed_at is not null from library_policies where id = '66666666-0000-0000-0000-000000000001'));
+reset role;
+set role anon;
+select t('an approved policy is public', (select count(*) from public_policy_links where id = '66666666-0000-0000-0000-000000000001') = 1);
+select t('the public view never shows who submitted a policy', (select count(*) from information_schema.columns where table_name = 'public_policy_links' and column_name in ('submitted_by', 'reviewed_by')) = 0);
+reset role;
+insert into auth.users (id,email) values ('aaaaaaaa-0000-0000-0000-0000000000f1','minor.new@x.org');
+insert into people (id, auth_user_id, display_name, email, age_band, is_minor, consent_status) values ('22222222-0000-0000-0000-0000000000f1','aaaaaaaa-0000-0000-0000-0000000000f1','New Minor','minor.new@x.org','13-15',true,'pending');
+insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-0000000000f1','11111111-0000-0000-0000-000000000001','implementation_team');
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000f1',false);
+do $$ begin insert into library_policies (title, school_name, topic, category, summary, url, submitted_by) values ('Minor policy','School A','Waste','Waste','A summary that is long enough to pass.','https://example.org/m','22222222-0000-0000-0000-0000000000f1'); perform t('a minor without guardian consent cannot add a policy', false);
+exception when others then perform t('a minor without guardian consent cannot add a policy', true); end $$;
+reset role;
+
+-- Every student can draft a policy; only adults publish (adopted policies are public)
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into policies (id, org_id, title) values ('66666666-0000-0000-0000-0000000000b1', '11111111-0000-0000-0000-000000000001', 'Student draft');
+select t('a student can start a draft policy for their school', (select count(*) from policies where id = '66666666-0000-0000-0000-0000000000b1') = 1);
+do $$ begin insert into policies (org_id, title, status) values ('11111111-0000-0000-0000-000000000001', 'Sneaky', 'adopted'); perform t('a student cannot create a policy as adopted', false);
+exception when others then perform t('a student cannot create a policy as adopted', true); end $$;
+do $$ begin update policies set status = 'amended' where id = '66666666-0000-0000-0000-0000000000b1'; perform t('or publish one by marking it amended', false);
+exception when others then perform t('or publish one by marking it amended', true); end $$;
+do $$ begin update policies set sections = '[{"key":"x","title":"X","body":"changed","clause_id":null}]' where id = '66666666-0000-0000-0000-000000000001'; perform t('or change the text of an adopted policy', false);
+exception when others then perform t('or change the text of an adopted policy', true); end $$;
+update policies set title = 'Student draft, edited' where id = '66666666-0000-0000-0000-0000000000b1';
+select t('but can keep editing their draft', (select title = 'Student draft, edited' from policies where id = '66666666-0000-0000-0000-0000000000b1'));
+reset role;
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+update policies set status = 'adopted', adopted_at = now() where id = '66666666-0000-0000-0000-0000000000b1';
+select t('the faculty liaison adopts it', (select status = 'adopted' from policies where id = '66666666-0000-0000-0000-0000000000b1'));
+reset role;
+set role anon; select set_config('request.jwt.claim.sub','',false);
+select t('and it is public at once', (select count(*) from public_policies where id = '66666666-0000-0000-0000-0000000000b1') = 1);
+reset role;
+
 -- Individual student projects
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
 insert into projects (id, org_id, title, category, scope, lead_person_id, mentor_person_id) values ('33333333-0000-0000-0000-0000000000a1','11111111-0000-0000-0000-000000000001','Solo shampoo','Waste','individual','22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000a');
@@ -387,27 +625,21 @@ do $$ begin update projects set mentor_person_id = '22222222-0000-0000-0000-0000
 exception when others then perform t('a student cannot swap the teacher once chosen', true); end $$;
 reset role;
 
--- Clause offers: teacher offers, steward accepts
-insert into auth.users (id,email) values ('aaaaaaaa-0000-0000-0000-0000000000e1','steward.test@x.org');
-insert into people (id, auth_user_id, display_name, email, age_band, is_minor, consent_status) values ('22222222-0000-0000-0000-0000000000e1','aaaaaaaa-0000-0000-0000-0000000000e1','Steward Test','steward.test@x.org','18+',false,'not_needed');
-insert into organisations (id, name, org_type, country, city, status, public_visible) values ('11111111-0000-0000-0000-0000000000e1','Ekoa Test Stewards','ekoa','India','Delhi','active',false) on conflict do nothing;
-insert into role_assignments (person_id, org_id, role) values ('22222222-0000-0000-0000-0000000000e1','11111111-0000-0000-0000-0000000000e1','steward');
-set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
-insert into clause_offers (id, org_id, section, title, body) values ('55555555-0000-0000-0000-000000000001','11111111-0000-0000-0000-000000000001','Waste','Weigh before you plan','Every project starts with five school days of weighed baseline data before any change is made.');
-select t('a teacher can offer a clause to the library', (select count(*) from clause_offers) = 1);
-select t('an offer starts pending and records the teacher', (select status = 'pending' and offered_by = '22222222-0000-0000-0000-00000000000a' from clause_offers limit 1));
-do $$ begin perform public.accept_clause_offer('55555555-0000-0000-0000-000000000001'); perform t('a teacher cannot accept their own offer', false);
-exception when others then perform t('a teacher cannot accept their own offer', true); end $$;
-reset role; set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
-do $$ begin insert into clause_offers (org_id, section, title, body) values ('11111111-0000-0000-0000-000000000001','Waste','Student offer','A student should not be able to offer clauses to the library.'); perform t('a student cannot offer a clause', false);
-exception when others then perform t('a student cannot offer a clause', true); end $$;
-select t('a student cannot read clause offers', (select count(*) from clause_offers) = 0);
-reset role; set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
-select t('another school cannot read clause offers', (select count(*) from clause_offers) = 0);
-reset role; set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000e1',false);
-select public.accept_clause_offer('55555555-0000-0000-0000-000000000001');
-select t('a steward accepts an offer into the shared library', (select count(*) from policy_clauses where title = 'Weigh before you plan' and source_org_id = '11111111-0000-0000-0000-000000000001') = 1);
-select t('the offer is marked accepted', (select status = 'accepted' from clause_offers limit 1));
+-- People privacy: classmates see a name, only the teacher sees the full record
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+select t('a student can read their own full record', (select email = 'student.a@x.org' from people where id = '22222222-0000-0000-0000-00000000000b'));
+select t('a student cannot read a classmate''s email or consent status', (select count(*) from people where id = '22222222-0000-0000-0000-00000000000c') = 0);
+select t('a student cannot read their teacher''s record either', (select count(*) from people where id = '22222222-0000-0000-0000-00000000000a') = 0);
+select t('but a student sees their classmates and teacher by name', (select count(*) from school_directory where id in ('22222222-0000-0000-0000-00000000000a','22222222-0000-0000-0000-00000000000c')) = 2);
+select t('and the directory shows who is a student', (select is_minor from school_directory where id = '22222222-0000-0000-0000-00000000000c'));
+select t('another school''s people are not in the directory', (select count(*) from school_directory where id = '22222222-0000-0000-0000-00000000000d') = 0);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
+select t('the teacher reads their students'' full records', (select count(*) from people where id in ('22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000c')) = 2);
+select t('but not another school''s', (select count(*) from people where id = '22222222-0000-0000-0000-00000000000d') = 0);
+reset role;
+set role anon;
+do $$ begin perform t('visitors cannot read the directory', (select count(*) from school_directory) = 0);
+exception when others then perform t('visitors cannot read the directory', true); end $$;
 reset role;
 
 -- ================================================================ Drafts before consent
@@ -532,7 +764,7 @@ do $$ begin perform signup_student('Nia Again', '13-15'); perform t('signup: a s
 exception when others then perform t('signup: a second signup is refused', true); end $$;
 reset role;
 select t('signup: student starts pending with a consent link ready', (select p.consent_status = 'pending' and p.is_minor and exists (select 1 from consent_records c where c.person_id = p.id and length(c.token) > 10) from people p where p.email = 'nia.student@x.org'));
-select t('signup: student gets a private workspace', (select o.org_type = 'workspace' and not o.public_visible from role_assignments r join organisations o on o.id = r.org_id join people p on p.id = r.person_id where p.email = 'nia.student@x.org'));
+select t('signup: student gets a private independent workspace', (select o.org_type = 'independent' and not o.public_visible from role_assignments r join organisations o on o.id = r.org_id join people p on p.id = r.person_id where p.email = 'nia.student@x.org'));
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a2',false);
 do $$ begin perform signup_student('Bad Age', '9'); perform t('signup: an invalid age group is refused', false);
 exception when others then perform t('signup: an invalid age group is refused', true); end $$;
@@ -541,7 +773,7 @@ reset role;
 set role anon; select set_config('request.jwt.claim.sub','',false);
 do $$ begin perform signup_student('Anon', '13-15'); perform t('signup: visitors who are not signed in cannot sign up', false);
 exception when others then perform t('signup: visitors who are not signed in cannot sign up', true); end $$;
-select t('signup: workspaces are invisible to visitors', (select count(*) from organisations where org_type = 'workspace') = 0);
+select t('signup: independent workspaces are invisible to visitors', (select count(*) from organisations where org_type = 'independent') = 0);
 reset role;
 
 -- Nia works in her workspace, finds a school, asks to join
@@ -571,7 +803,7 @@ select t('join: the school''s teacher sees the request', (select count(*) from p
 select t('join: confirming moves the draft project into the school', (select decide_join_request((select id from join_requests where status = 'requested' limit 1), true)) = 1);
 reset role;
 select t('join: the student now holds a team seat', (select count(*) from role_assignments r join people p on p.id = r.person_id where p.email = 'nia.student@x.org' and r.org_id = '11111111-0000-0000-0000-000000000001' and r.role = 'implementation_team') = 1);
-select t('join: the empty workspace is gone', (select count(*) from role_assignments r join organisations o on o.id = r.org_id join people p on p.id = r.person_id where p.email = 'nia.student@x.org' and o.org_type = 'workspace') = 0);
+select t('join: the empty workspace is gone', (select count(*) from role_assignments r join organisations o on o.id = r.org_id join people p on p.id = r.person_id where p.email = 'nia.student@x.org' and o.org_type = 'independent') = 0);
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a1',false);
 select t('join: the student sees the school''s projects, including their own', (select count(*) from projects where id = '33333333-0000-0000-0000-0000000000f1') = 1);
 select t('join: still no view of the other school', (select count(*) from projects where org_id = '11111111-0000-0000-0000-000000000002') = 0);
@@ -622,7 +854,7 @@ select t('adult sign-up needs no guardian consent', (select consent_status = 'no
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000a',false);
 select t('join: a project with evidence is left in the workspace', (select decide_join_request((select id from join_requests where status = 'requested' limit 1), true)) = 0);
 reset role;
-select t('join: that workspace is kept', (select count(*) from projects pr join organisations o on o.id = pr.org_id where pr.id = '33333333-0000-0000-0000-0000000000f2' and o.org_type = 'workspace') = 1);
+select t('join: that workspace is kept', (select count(*) from projects pr join organisations o on o.id = pr.org_id where pr.id = '33333333-0000-0000-0000-0000000000f2' and o.org_type = 'independent') = 1);
 
 -- ================================================================ Unverified schools score less
 insert into organisations (id, name, org_type, country, city, status, public_visible) values

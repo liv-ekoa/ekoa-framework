@@ -1,12 +1,12 @@
--- Rollback for the four 20261114 migrations (draft before consent, direct signup, unverified
+-- Rollback for the four 20261115 migrations (draft before consent, direct signup, unverified
 -- scoring, unverified public records). NOT a migration: it lives outside supabase/migrations so it
 -- never runs by accident.
 --
 -- APPLY ORDER (forward), after reading each file:
---   1. 20261114000001_draft_before_consent.sql
---   2. 20261114000002_direct_signup.sql
---   3. 20261114000003_unverified_scoring.sql
---   4. 20261114000004_unverified_public_records.sql
+--   1. 20261115000001_draft_before_consent.sql
+--   2. 20261115000002_direct_signup.sql
+--   3. 20261115000003_unverified_scoring.sql
+--   4. 20261115000004_unverified_public_records.sql
 --   Also add https://ekoa-framework.org/welcome** (and your local address) to Supabase Auth, URL
 --   configuration, redirect URLs, or the sign-up email link will fail.
 --
@@ -14,20 +14,10 @@
 -- 4, 3, 2, 1 in that order and restores the previous version of every function and the ranking view.
 --
 -- WHAT YOU LOSE: comments on drafts, join requests, and draft-extension dates. Pending minors go
--- back to having no access until a guardian approves. If students have signed up directly there are
--- personal workspaces (and projects in them); the script stops and tells you how many, because
--- removing them would delete those students' work. Move or delete those yourself, then re-run.
+-- back to having no access until a guardian approves. Independent student workspaces created by
+-- direct signup are left in place (that organisation type already existed).
 
 begin;
-
-do $$
-declare n int;
-begin
-  select count(*) into n from public.organisations where org_type = 'workspace';
-  if n > 0 then
-    raise exception 'Rollback stopped: % personal workspace(s) exist (students who signed up directly). Move or delete their projects first, then delete the workspaces and run this again.', n;
-  end if;
-end $$;
 
 -- ---------------------------------------------------------------- Undo 4 and 3: guards and ranking
 create or replace function public.guard_record() returns trigger
@@ -107,8 +97,6 @@ begin
 end $$;
 revoke execute on function public.guard_role_school() from public, anon, authenticated;
 alter table public.organisations drop column if exists join_code;
-alter table public.organisations drop constraint organisations_org_type_check;
-alter table public.organisations add constraint organisations_org_type_check check (org_type in ('school', 'partner', 'ekoa'));
 
 -- ---------------------------------------------------------------- Undo 1: drafts before consent
 drop function if exists public.extend_draft_access(uuid, int);

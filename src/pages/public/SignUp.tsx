@@ -16,7 +16,7 @@ export default function SignUp() {
   const act = useAction();
 
   if (!auth.loading && auth.person) return <Navigate to="/app" replace />;
-  if (!auth.loading && auth.email) return <Navigate to={`/welcome?as=${kind}`} replace />;
+  if (!auth.loading && auth.authEmail) return <Navigate to={`/welcome?as=${kind}`} replace />;
 
   const options: { key: Kind; title: string; text: string; icon: typeof School }[] = [
     { key: 'student', title: 'I’m a student', text: 'Start your own project now. Add classmates and a teacher whenever you like.', icon: GraduationCap },

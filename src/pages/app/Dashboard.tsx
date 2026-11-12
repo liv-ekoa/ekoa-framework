@@ -10,7 +10,7 @@ import { seriesFor, formatMetric, completeness } from '@/lib/metrics';
 import { fmtDateTime, plural, relative, daysBetween } from '@/lib/format';
 import { StageRing } from '@/components/Logo';
 import { EkoaMascot, useMoments } from '@/components/EkoaMascot';
-import { Badge, Empty, LinkButton, Loading, Meter, PageHeader, Panel, cx } from '@/components/ui';
+import { Badge, Empty, LinkButton, Loading, Meter, PageHeader, Panel, cx, Notice } from '@/components/ui';
 import type { RoleKey } from '@/lib/types';
 
 export default function Dashboard() {
@@ -54,8 +54,8 @@ function SchoolDashboard() {
   const moments = useMoments();
   const { data, loading } = useData(async () => {
     if (!orgId) return null;
-    const [s, threads, posts, circles, ranking, verifs] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolLeaderboard(), api.listVerifications()]);
-    return { s, threads, posts, circles, ranking, audits: verifs.filter((v) => v.verifier_org === orgId && v.requested_tier === 3 && (v.status === 'requested' || v.status === 'in_progress')) };
+    const [s, threads, posts, circles, ranking, verifs, flags] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolLeaderboard(), api.listVerifications(), auth.has('faculty_liaison', orgId) ? api.listFlags() : Promise.resolve([])]);
+    return { s, threads, posts, circles, ranking, openFlags: flags.filter((f) => f.org_id === orgId && f.status === 'open'), audits: verifs.filter((v) => v.verifier_org === orgId && v.requested_tier === 3 && (v.status === 'requested' || v.status === 'in_progress')) };
   }, [orgId]);
   const myRank = data?.ranking.find((r) => r.org_id === orgId)?.position;
   useEffect(() => {
@@ -72,6 +72,7 @@ function SchoolDashboard() {
   const { s } = data;
   const isLiaison = auth.has('faculty_liaison');
   const alerts = schoolAlerts(s, { isLiaison, personId: auth.person?.id });
+  if (data.openFlags.length) alerts.unshift({ tone: data.openFlags.some((f) => f.reason === 'self_harm') ? 'alert' : 'clay', text: `${data.openFlags.length} ${data.openFlags.length === 1 ? 'post or photo was' : 'posts or photos were'} hidden for safety and ${data.openFlags.length === 1 ? 'needs' : 'need'} your decision.`, to: '/app/school?tab=safety' });
   const myRoles = auth.roles.filter((r) => r.org_id === orgId && r.status === 'active').map((r) => r.role as RoleKey);
   const myTasks = s.tasks.filter((t) => t.status !== 'done' && (myRoles.includes(t.owner_role) || (myRoles.includes('project_lead') && t.owner_role === 'board_member')));
   const active = s.projects.filter((p) => p.status === 'active' || p.status === 'stalled');
@@ -85,6 +86,10 @@ function SchoolDashboard() {
         lead={`${s.org.name}. ${active.length} active ${active.length === 1 ? 'project' : 'projects'}, ${s.records.filter((r) => r.status === 'published').length} published records.`}
         actions={<LinkButton to="/app/projects/new" variant="dark">Start a project</LinkButton>}
       />
+
+      {auth.isIndependent && (
+        <Notice tone="sky">This is your own workspace as an independent student. Plan projects and log measurements here. Stage gates need a teacher to sign, so when your school joins Ekoa, the Ekoa team moves you and your projects there. Tell your teacher they can <Link to="/join" className="font-bold underline">register the school</Link>.</Notice>
+      )}
 
       {incoming && (
         <div className="rounded-panel border border-sky/30 bg-sky-100 p-5">
@@ -202,8 +207,8 @@ function LeaderboardCard({ ranking, orgId }: { ranking: api.LeaderboardRow[]; or
       {me ? (
         <>
           <div className="flex items-center justify-between gap-3">
-          <p className="mt-1 font-display text-4xl font-semibold italic">{Math.round(me.score * 10) / 10} <span className="font-sans text-base not-italic text-paper/80">points</span></p>
-          {me.position <= 5 && <EkoaMascot pose="jump" size={72} className="-my-2 shrink-0 text-paper" />}
+            <p className="mt-1 font-display text-4xl font-semibold italic">{Math.round(me.score * 10) / 10} <span className="font-sans text-base not-italic text-paper/80">points</span></p>
+            {me.position <= 5 && <EkoaMascot pose="jump" size={72} className="-my-2 shrink-0 text-paper" />}
           </div>
           <p className="mt-1 text-sm text-paper/85">Earned from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
         </>
@@ -225,7 +230,7 @@ function StewardDashboard() {
   const held = data.posts.filter((p) => p.hidden && p.flagged);
   return (
     <div className="space-y-6">
-      <PageHeader title={<Greeting />} lead="Network health across member schools." actions={<LinkButton to="/app/steward" variant="dark">Open steward console</LinkButton>} />
+      <PageHeader title={<Greeting />} lead="Network health across member schools." actions={<LinkButton to="/app/steward" variant="dark">Open admin console</LinkButton>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <Link to="/app/steward?tab=applications" className="rounded-panel border border-paper-line bg-white p-5 hover:border-ink/40"><p className="text-sm text-ink-mute">New applications</p><p className="font-display text-3xl font-bold">{data.apps.filter((a) => a.status === 'new').length}</p></Link>
         <Link to="/app/steward?tab=safeguarding" className={cx('rounded-panel border p-5 hover:border-ink/40', openReports.length ? 'border-alert/40 bg-alert-100' : 'border-paper-line bg-white')}><p className="text-sm text-ink-mute">Open safeguarding reports</p><p className="font-display text-3xl font-bold">{openReports.length}</p></Link>

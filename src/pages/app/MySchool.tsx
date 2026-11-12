@@ -1,37 +1,42 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, Copy, Download, Plus, Trash2 } from 'lucide-react';
 import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useAction, useData } from '@/lib/hooks';
 import { loadSchool } from '@/lib/bundle';
-import { JoinRequestsPanel } from '@/components/JoinRequestsPanel';
 import { MINIMUM_TEAM, ROLES, STAGES, roleTitle } from '@/lib/ekoa';
 import { download } from '@/lib/csv';
 import { fmtDate } from '@/lib/format';
 import type { ContextProfile, GovernanceStep, Organisation, Person, RoleKey } from '@/lib/types';
-import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, PageHeader, Panel, Select, Tabs } from '@/components/ui';
+import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea } from '@/components/ui';
+import { SafetyQueue } from '@/components/SafetyQueue';
+import { JoinRequestsPanel } from '@/components/JoinRequestsPanel';
 
-type Tab = 'profile' | 'people' | 'governance' | 'archive';
+type Tab = 'profile' | 'people' | 'governance' | 'archive' | 'safety';
 
 export default function MySchool() {
   const auth = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'profile';
   const orgId = auth.activeOrg!.id;
+  // Students never see the school's roster, grade counts or approval chain: this page is for the teacher.
+  const isLiaisonHere = auth.has('faculty_liaison');
   const { data, reload } = useData(async () => {
     const [s, consents, policies, evidence] = await Promise.all([loadSchool(orgId), api.listConsents(), api.listPolicies(), api.listEvidence()]);
     return { s, consents, policies: policies.filter((p) => p.org_id === orgId), evidence: evidence.filter((e) => e.org_id === orgId) };
   }, [orgId]);
+  if (!isLiaisonHere) return <Navigate to="/app" replace />;
   if (!data) return <Loading />;
-  const isLiaison = auth.has('faculty_liaison');
+  const isLiaison = isLiaisonHere;
   return (
     <div>
       <PageHeader title={data.s.org.name} lead={`${data.s.org.city}, ${data.s.org.country}. The faculty liaison owns this workspace and keeps its memory across student cohorts.`} />
-      {isLiaison && <div className="mb-6"><JoinRequestsPanel org={data.s.org} /></div>}
-      <Tabs label="School sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'profile', label: 'Profile and context' }, { key: 'people', label: 'People and terms', count: data.s.members.length }, { key: 'governance', label: 'Approval chain', count: data.s.steps.length }, { key: 'archive', label: 'Archive' }]} />
+      <div className="mb-6"><JoinRequestsPanel org={data.s.org} /></div>
+      <Tabs label="School sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'profile', label: 'Profile and context' }, { key: 'people', label: 'People and terms', count: data.s.members.length }, { key: 'governance', label: 'Approval chain', count: data.s.steps.length }, { key: 'archive', label: 'Archive' }, ...(isLiaison ? [{ key: 'safety' as Tab, label: 'Safety' }] : [])]} />
       {tab === 'profile' && <Profile org={data.s.org} canEdit={isLiaison} onChange={() => { void reload(); void auth.refresh(); }} />}
-      {tab === 'people' && <People d={data} canEdit={isLiaison} onChange={reload} />}
+      {tab === 'people' && <>{isLiaison && <StudentEmails org={data.s.org} />}<People d={data} canEdit={isLiaison} onChange={reload} /></>}
+      {tab === 'safety' && isLiaison && <SafetyQueue orgId={orgId} />}
       {tab === 'governance' && <Chain steps={data.s.steps} orgId={orgId} canEdit={isLiaison} onChange={reload} />}
       {tab === 'archive' && <Archive d={data} />}
     </div>
@@ -76,9 +81,9 @@ type Data = { s: Awaited<ReturnType<typeof loadSchool>>; consents: Awaited<Retur
 function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange: () => void }) {
   const auth = useAuth();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ name: '', email: '', age_band: '13-15' as Person['age_band'], role: 'implementation_team' as RoleKey, local_title: '', term_end: '', starts_on: '', guardian_name: '', guardian_email: '' });
+  const [f, setF] = useState({ name: '', email: '', age_band: '13-15' as Person['age_band'], role: 'implementation_team' as RoleKey, local_title: '', term_end: '', guardian_name: '', guardian_email: '' });
   const [link, setLink] = useState<string | null>(null);
-  const [extra, setExtra] = useState<{ person: Person; role: RoleKey; local_title: string; starts_on: string } | null>(null);
+  const [extra, setExtra] = useState<{ person: Person; role: RoleKey; local_title: string } | null>(null);
   const act = useAction();
   const order: RoleKey[] = ['faculty_liaison', 'project_lead', 'ekoa_rep', 'board_member', 'implementation_team', 'auditor', 'approver', 'alumni'];
   const roleChoices: RoleKey[] = ['implementation_team', 'board_member', 'ekoa_rep', 'project_lead', 'approver', 'faculty_liaison', ...(d.s.org.audit_school ? ['auditor' as RoleKey] : [])];
@@ -115,7 +120,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
                         {person.consent_status === 'pending' && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.extendDraftAccess(person.id, 30); onChange(); })}>Extend draft time</Button>}
                         {cl && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(cl); setLink(cl); }}><Copy className="h-4 w-4" /> Consent link</Button>}
                         {role.status !== 'alumni' && members.find((m) => m.person.id === person.id)?.role.id === role.id && (
-                          <Button size="sm" variant="quiet" onClick={() => setExtra({ person, role: 'ekoa_rep', local_title: '', starts_on: '' })}><Plus className="h-4 w-4" /> Role</Button>
+                          <Button size="sm" variant="quiet" onClick={() => setExtra({ person, role: 'ekoa_rep', local_title: '' })}><Plus className="h-4 w-4" /> Role</Button>
                         )}
                       </div>
                     </td>
@@ -144,7 +149,6 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
               <Field label="Role" id="iv-r" hint={ROLES[f.role].description}><Select id="iv-r" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as RoleKey })}>{roleChoices.map((r) => <option key={r} value={r}>{ROLES[r].label}</option>)}</Select></Field>
               <Field label="What your school calls it (optional)" id="iv-lt" hint="Shown next to the role, e.g. Eco Club President."><Input id="iv-lt" maxLength={80} value={f.local_title} onChange={(e) => setF({ ...f, local_title: e.target.value })} /></Field>
               <Field label="Term ends" id="iv-t" hint="Stagger end dates across the board."><Input id="iv-t" type="date" value={f.term_end} onChange={(e) => setF({ ...f, term_end: e.target.value })} /></Field>
-              <Field label="Starts on (optional)" id="iv-s" hint="Leave empty to start today. A future date makes them the incoming successor: they can read and comment until the handover."><Input id="iv-s" type="date" value={f.starts_on} onChange={(e) => setF({ ...f, starts_on: e.target.value })} /></Field>
             </div>
             {f.age_band !== '18+' && (
               <div className="grid gap-4 rounded-field bg-paper p-4 sm:grid-cols-2">
@@ -158,7 +162,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
               if (!f.name.trim() || !/\S+@\S+\.\S+/.test(f.email)) throw new Error('Add a name and a valid email.');
               if (ROLES[f.role].adult && f.age_band !== '18+') throw new Error('Adult roles need someone aged 18 or over.');
               if (f.age_band !== '18+' && !/\S+@\S+\.\S+/.test(f.guardian_email)) throw new Error('Students under 18 need a guardian email for consent.');
-              const res = await api.inviteMember(auth.activeOrg!.id, { ...f, term_end: f.term_end || null, starts_on: f.starts_on || null }, auth.person!.id);
+              const res = await api.inviteMember(auth.activeOrg!.id, { ...f, term_end: f.term_end || null }, auth.person!.id);
               setLink(res.consentToken ? `${window.location.origin}/consent/${res.consentToken}` : `${window.location.origin}/signin`);
               onChange();
             })}>Create invitation</Button>
@@ -175,9 +179,8 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
               </Select>
             </Field>
             <Field label="What your school calls it (optional)" id="xr-t"><Input id="xr-t" maxLength={80} value={extra.local_title} onChange={(e) => setExtra({ ...extra, local_title: e.target.value })} /></Field>
-            <Field label="Starts on (optional)" id="xr-s" hint="A future date makes this the incoming role: read and comment until the handover."><Input id="xr-s" type="date" value={extra.starts_on} onChange={(e) => setExtra({ ...extra, starts_on: e.target.value })} /></Field>
             <ErrorNote>{act.error}</ErrorNote>
-            <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.addRole(auth.activeOrg!.id, extra.person.id, extra.role, extra.local_title, null, auth.person!.id, extra.starts_on || null); setExtra(null); onChange(); })}>Add role</Button>
+            <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.addRole(auth.activeOrg!.id, extra.person.id, extra.role, extra.local_title, null, auth.person!.id); setExtra(null); onChange(); })}>Add role</Button>
           </div>
         )}
       </Modal>
@@ -242,5 +245,28 @@ function Archive({ d }: { d: Data & { policies: Awaited<ReturnType<typeof api.li
         <Panel title="Policies">{d.policies.length ? <ul className="space-y-1.5 text-sm">{d.policies.map((p) => <li key={p.id}><Link to={`/app/governance/policy/${p.id}`} className="font-bold hover:underline">{p.title}</Link> <span className="text-ink-mute">v{p.version}, {p.status.replace('_', ' ')}</span></li>)}</ul> : <p className="text-sm text-ink-mute">None yet.</p>}</Panel>
       </div>
     </div>
+  );
+}
+
+/** A liaison sends the Ekoa team the emails of students who should be on Ekoa. The Ekoa admins
+ *  give each one a role, so students never have to wait on a school-made account. */
+function StudentEmails({ org }: { org: Organisation }) {
+  const auth = useAuth();
+  const act = useAction();
+  const [text, setText] = useState('');
+  const [sent, setSent] = useState(0);
+  const emails = api.parseEmails(text);
+  return (
+    <Panel title="Add students by email" className="mb-6">
+      <p className="mb-3 text-sm text-ink-soft">Paste the emails of the students who should use Ekoa. The Ekoa team gives each one a role here and they can sign in straight away (students under 18 after a guardian consents).</p>
+      {sent > 0 && <div className="mb-3"><Notice tone="leaf">Sent {sent} {sent === 1 ? 'email' : 'emails'} to the Ekoa team. You will see the students under People once they have a role.</Notice></div>}
+      <Field label="Student emails" id="se-t" hint={emails.length ? `${emails.length} found` : 'One per line, or separated by commas'}><Textarea id="se-t" rows={4} value={text} onChange={(e) => setText(e.target.value)} /></Field>
+      <ErrorNote>{act.error}</ErrorNote>
+      <Button className="mt-3" busy={act.busy} disabled={!emails.length} onClick={() => act.run(async () => {
+        if (emails.length > 500) throw new Error('Send up to 500 emails at a time.');
+        await api.submitApplication({ name: auth.person?.display_name ?? '', email: auth.person?.email ?? auth.authEmail ?? '', organisation: org.name, country: org.country, role: 'Faculty liaison', message: `Please add these ${emails.length} students to ${org.name}.`, has_lead: 'yes', lead_plan: '', kind: 'students', org_id: org.id, student_emails: emails });
+        setSent(emails.length); setText('');
+      })}>Send to the Ekoa team</Button>
+    </Panel>
   );
 }

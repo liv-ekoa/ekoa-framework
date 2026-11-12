@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, GraduationCap, HandHelping, Home, Landmark, LogOut, Menu, Network,
+  BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, HandHelping, Home, Landmark, LogOut, Menu, Network,
   PiggyBank, Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
 } from 'lucide-react';
 import { Logo } from './Logo';
@@ -16,29 +16,29 @@ type Auth = ReturnType<typeof useAuth>;
 interface NavItem { to: string; label: string; icon: typeof Gauge; end?: boolean; show: (a: Auth) => boolean }
 
 const inSchool = (a: Auth) => a.activeOrg?.org_type === 'school';
-// A student's own workspace can hold projects too, before they join a school.
-const canWork = (a: Auth) => a.activeOrg?.org_type === 'school' || a.activeOrg?.org_type === 'workspace';
+/** A school, or the private workspace of a student who joined on their own. */
+const inWorkspace = (a: Auth) => inSchool(a) || a.activeOrg?.org_type === 'independent';
+/** Only the teacher who owns the school workspace manages its people, context and approval chain. */
+const teacher = (a: Auth) => inSchool(a) && a.has('faculty_liaison');
 const auditor = (a: Auth) => !!a.activeOrg?.audit_school && a.has(['auditor', 'faculty_liaison']);
 
-// The main tabs follow the Villars layout: Home, your profile (My school), the Wall and Connections.
+// The main tabs: Projects holds the metrics, Network holds the Wall and Connections, and
+// Governance and Funding sit on the bar itself.
 const TABS: NavItem[] = [
   { to: '/app', label: 'Home', icon: Home, end: true, show: () => true },
-  { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: canWork },
-  { to: '/app/teacher', label: 'Teacher desk', icon: GraduationCap, show: (a) => inSchool(a) && a.has('faculty_liaison') },
-  { to: '/app/school', label: 'My school', icon: School, show: inSchool },
-  { to: '/app/network', label: 'Wall', icon: Users, show: () => true },
-  { to: '/app/connections', label: 'Connections', icon: Network, show: () => true },
+  { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: inWorkspace },
+  { to: '/app/school', label: 'My school', icon: School, show: teacher },
+  { to: '/app/network', label: 'Network', icon: Network, show: () => true },
   { to: '/app/library', label: 'Library', icon: BookOpenText, show: () => true },
+  { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
+  { to: '/app/funding', label: 'Funding', icon: PiggyBank, show: inWorkspace },
+  { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
+  { to: '/leaderboard', label: 'Leaderboard', icon: Trophy, show: () => true },
 ];
 const MORE: NavItem[] = [
   { to: '/app/audit', label: 'Audit desk', icon: ClipboardCheck, show: auditor },
-  { to: '/app/funding', label: 'Fund your project', icon: PiggyBank, show: inSchool },
-  { to: '/app/metrics', label: 'Metrics', icon: Gauge, show: inSchool },
-  { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
-  { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
   { to: '/app/reports', label: 'Reports', icon: FileBarChart, show: (a) => inSchool(a) || a.isSteward },
-  { to: '/leaderboard', label: 'School leaderboard', icon: Trophy, show: () => true },
-  { to: '/app/steward', label: 'Steward console', icon: ShieldCheck, show: (a) => a.isSteward },
+  { to: '/app/steward', label: 'Admin console', icon: ShieldCheck, show: (a) => a.isSteward },
   { to: '/app/partner', label: 'Partner desk', icon: HandHelping, show: (a) => a.isPartner },
   { to: '/app/settings', label: 'Settings', icon: Settings, show: () => true },
 ];
@@ -67,12 +67,12 @@ export function AppLayout() {
   useEffect(() => { setDrawer(false); setMore(false); setMe(false); }, [loc.pathname]);
 
   if (auth.loading) return <FullScreenLoading />;
-  if (!auth.person) return auth.email ? <Navigate to="/welcome" replace /> : <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
+  if (!auth.person) return auth.authEmail ? <Navigate to="/welcome" replace /> : <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
 
   const tabs = TABS.filter((n) => n.show(auth));
   const moreItems = MORE.filter((n) => n.show(auth));
   const myRoles = auth.roles.filter((r) => r.org_id === auth.activeOrg?.id && r.status !== 'incoming').map((r) => roleTitle(r));
-  const canLog = inSchool(auth) && auth.has(['implementation_team', 'project_lead', 'board_member', 'ekoa_rep', 'faculty_liaison']);
+  const canLog = inWorkspace(auth) && auth.has(['implementation_team', 'project_lead', 'board_member', 'ekoa_rep', 'faculty_liaison']);
   const moreActive = moreItems.some((n) => loc.pathname.startsWith(n.to));
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
@@ -105,7 +105,7 @@ export function AppLayout() {
       <header className="no-print sticky top-0 z-40 border-b border-paper-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1280px] items-center gap-4 px-4 sm:px-6">
           <Link to="/" aria-label="Public site" className="shrink-0 py-3"><Logo compact /></Link>
-          <nav aria-label="App" className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+          <nav aria-label="App" className="hidden min-w-0 flex-1 items-center justify-center xl:flex">
             {tabs.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={tabClass}>{n.label}</NavLink>)}
             <div ref={moreRef} className="relative">
               <button onClick={() => setMore((m) => !m)} aria-expanded={more} aria-haspopup="menu" className={cx('relative inline-flex items-center gap-1 px-3 py-4 text-sm font-bold', moreActive ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-full after:bg-clay' : 'text-ink-mute hover:text-ink')}>
@@ -122,7 +122,7 @@ export function AppLayout() {
               )}
             </div>
           </nav>
-          <div className="ml-auto hidden items-center gap-2 lg:flex">
+          <div className="ml-auto hidden items-center gap-2 xl:flex">
             {orgSwitch}
             {canLog && (
               <Link to="/app/log" className="inline-flex items-center gap-1.5 rounded-full bg-clay-600 px-3.5 py-1.5 text-sm font-bold text-white hover:bg-clay-700">
@@ -149,12 +149,12 @@ export function AppLayout() {
               )}
             </div>
           </div>
-          <button onClick={() => setDrawer(true)} className="ml-auto rounded-field p-2 lg:hidden" aria-label="Open menu"><Menu /></button>
+          <button onClick={() => setDrawer(true)} className="ml-auto rounded-field p-2 xl:hidden" aria-label="Open menu"><Menu /></button>
         </div>
       </header>
 
       {drawer && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="fixed inset-0 z-50 flex xl:hidden">
           <div className="flex w-[84%] max-w-xs flex-col gap-5 overflow-y-auto bg-paper px-3 py-5">
             <div className="flex items-center justify-between px-2"><Logo compact /><button onClick={() => setDrawer(false)} aria-label="Close menu" className="rounded-field p-1"><X /></button></div>
             {orgSwitch && <div className="px-2">{orgSwitch}</div>}
@@ -172,16 +172,16 @@ export function AppLayout() {
         </div>
       )}
 
-      <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-14">
+      <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 xl:pb-14">
         <AccountBanners />
         <Outlet />
       </main>
 
       {/* Mobile bottom bar */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-paper-line bg-white lg:hidden" aria-label="Quick">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-paper-line bg-white xl:hidden" aria-label="Quick">
         {[
           { to: '/app', label: 'Home', icon: Home, end: true },
-          { to: '/app/network', label: 'Wall', icon: Users },
+          { to: '/app/network', label: 'Network', icon: Users },
         ].map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold', isActive ? 'text-clay-700' : 'text-ink-mute')}>
             <n.icon className="h-5 w-5" aria-hidden />{n.label}
@@ -190,8 +190,8 @@ export function AppLayout() {
         <Link to={canLog ? '/app/log' : '/app/library'} className="-mt-4 flex flex-col items-center justify-center" aria-label={canLog ? 'Log a measurement' : 'Library'}>
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-clay-600 text-white shadow-md">{canLog ? <Plus className="h-6 w-6" /> : <BookOpenText className="h-6 w-6" />}</span>
         </Link>
-        <NavLink to="/app/connections" className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold', isActive ? 'text-clay-700' : 'text-ink-mute')}>
-          <Network className="h-5 w-5" aria-hidden />Connections
+        <NavLink to={inWorkspace(auth) ? '/app/projects' : '/app/library'} className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold', isActive ? 'text-clay-700' : 'text-ink-mute')}>
+          {inWorkspace(auth) ? <><ClipboardList className="h-5 w-5" aria-hidden />Projects</> : <><BookOpenText className="h-5 w-5" aria-hidden />Library</>}
         </NavLink>
         <button onClick={() => setDrawer(true)} className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold text-ink-mute">
           <Menu className="h-5 w-5" aria-hidden />More

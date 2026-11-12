@@ -6,7 +6,6 @@ import { useAction } from '@/lib/hooks';
 import { fmtDate } from '@/lib/format';
 import type { ProjectBundle } from '@/lib/bundle';
 import type { Proposal } from '@/lib/types';
-import { useMoments } from '@/components/EkoaMascot';
 import { Badge, Button, Empty, ErrorNote, Field, Input, Panel, Textarea, cx } from '@/components/ui';
 
 const DAY = 86_400_000;
@@ -75,7 +74,6 @@ export function ApprovalsTab({ b, canEdit, onChange }: { b: ProjectBundle; canEd
   const [title, setTitle] = useState('');
   const [ask, setAsk] = useState('');
   const act = useAction();
-  const moments = useMoments();
   const canDecide = auth.has(['approver', 'faculty_liaison'], b.project.org_id);
   return (
     <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
@@ -86,7 +84,7 @@ export function ApprovalsTab({ b, canEdit, onChange }: { b: ProjectBundle; canEd
       {canEdit && (
         <Panel title="Submit a proposal">
           {b.steps.length ? (
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { if (!title.trim() || !ask.trim()) throw new Error('Add a title and what you are asking for.'); await createProposal(b.project, title.trim(), ask.trim(), auth.person!.id); setTitle(''); setAsk(''); moments.thumbsUp('Proposal submitted'); onChange(); }); }}>
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { if (!title.trim() || !ask.trim()) throw new Error('Add a title and what you are asking for.'); await createProposal(b.project, title.trim(), ask.trim(), auth.person!.id); setTitle(''); setAsk(''); onChange(); }); }}>
               <Field label="Title" id="pr-t"><Input id="pr-t" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
               <Field label="What are you asking for?" id="pr-a" hint="Money, permission, space or a policy change. Be specific."><Textarea id="pr-a" rows={3} value={ask} onChange={(e) => setAsk(e.target.value)} /></Field>
               <p className="text-sm text-ink-mute">It goes through {b.steps.length} steps, starting with {b.steps[0].body}. Typical total: {b.steps.reduce((a, s) => a + s.typical_days, 0)} days.</p>
@@ -94,7 +92,7 @@ export function ApprovalsTab({ b, canEdit, onChange }: { b: ProjectBundle; canEd
               <Button type="submit" variant="dark" busy={act.busy}>Submit proposal</Button>
             </form>
           ) : (
-            <p className="text-sm text-ink-soft">Your school has no approval chain mapped yet. <Link to="/app/school?tab=governance" className="font-bold text-leaf-600 underline">Map it under My School</Link>.</p>
+            <p className="text-sm text-ink-soft">Your school has no approval chain mapped yet. {auth.has('faculty_liaison') ? <><Link to="/app/school?tab=governance" className="font-bold text-leaf-600 underline">Map it under My school</Link>.</> : 'Ask your teacher to map it.'}</p>
           )}
         </Panel>
       )}

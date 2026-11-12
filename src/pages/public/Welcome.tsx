@@ -25,7 +25,7 @@ export default function Welcome() {
   const [searched, setSearched] = useState(false);
 
   if (auth.loading) return <div className="mx-auto max-w-lg p-10"><Loading /></div>;
-  if (!auth.email) return <Navigate to="/signup" replace />;
+  if (!auth.authEmail) return <Navigate to="/signup" replace />;
   if (auth.person && !joinOnly) return <Navigate to="/app" replace />;
 
   const search = () => act.run(async () => {
@@ -79,7 +79,7 @@ export default function Welcome() {
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-14">
       <h1 className="text-3xl">{kind === 'school' ? 'Set up your school' : 'Welcome to Ekoa'}</h1>
-      <p className="text-ink-soft">Signed in as {auth.email}. Two quick details and you’re in.</p>
+      <p className="text-ink-soft">Signed in as {auth.authEmail}. Two quick details and you’re in.</p>
       <Field label="Your full name" id="w-name"><Input id="w-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
       {kind === 'student' ? (
         <>

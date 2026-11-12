@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { lazy, Suspense, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useData } from '@/lib/hooks';
 import { loadSchool } from '@/lib/bundle';
@@ -7,22 +7,41 @@ import { STAGES, metricByCode } from '@/lib/ekoa';
 import { seriesFor, formatMetric } from '@/lib/metrics';
 import { fmtDate } from '@/lib/format';
 import { StageRing } from '@/components/Logo';
-import { Badge, Empty, LinkButton, Loading, PageHeader, Tabs } from '@/components/ui';
+import { Badge, Empty, LinkButton, Loading, PageHeader, Tabs, cx } from '@/components/ui';
+
+const Metrics = lazy(() => import('./Metrics'));
 import type { ProjectStatus } from '@/lib/types';
 
 const STATUS_TONE: Record<ProjectStatus, 'leaf' | 'clay' | 'lesson' | 'mute' | 'sky'> = { active: 'leaf', stalled: 'clay', paused: 'mute', completed: 'sky', ended: 'lesson' };
 
 export default function Projects() {
   const auth = useAuth();
+  const [params, setParams] = useSearchParams();
+  const view = params.get('view') === 'metrics' ? 'metrics' : 'projects';
   const [tab, setTab] = useState<'open' | 'closed'>('open');
   const { data } = useData(() => (auth.activeOrg ? loadSchool(auth.activeOrg.id) : Promise.resolve(null)), [auth.activeOrg?.id]);
   if (!data) return <Loading />;
   const open = data.projects.filter((p) => ['active', 'stalled', 'paused'].includes(p.status));
   const closed = data.projects.filter((p) => ['completed', 'ended'].includes(p.status));
   const list = tab === 'open' ? open : closed;
+  const independent = auth.activeOrg?.org_type === 'independent';
+  const switcher = (
+    <div role="tablist" aria-label="Projects or metrics" className="inline-flex rounded-full border border-paper-line bg-white p-1">
+      {([['projects', 'Projects'], ['metrics', 'Metrics']] as const).map(([k, label]) => (
+        <button key={k} role="tab" aria-selected={view === k} onClick={() => setParams(k === 'metrics' ? { view: 'metrics' } : {})} className={cx('rounded-full px-4 py-1.5 text-sm font-bold', view === k ? 'bg-moss text-paper' : 'text-ink-soft hover:text-ink')}>{label}</button>
+      ))}
+    </div>
+  );
+  if (view === 'metrics')
+    return (
+      <div>
+        <PageHeader title="Projects" lead="Comparable numbers with fixed units and protocols, for every project. Participation is tracked, but never reported as impact." actions={<><LinkButton to="/app/log" variant="clay">Log a measurement</LinkButton><LinkButton to="/app/projects/new" variant="dark">Start a project</LinkButton></>}>{switcher}</PageHeader>
+        <Suspense fallback={<Loading />}><Metrics embedded /></Suspense>
+      </div>
+    );
   return (
     <div>
-      <PageHeader title="Projects" lead="Every project belongs to the school, not to the students who start it." actions={<LinkButton to="/app/projects/new" variant="dark">Start a project</LinkButton>} />
+      <PageHeader title="Projects" lead={independent ? 'Projects you lead on your own. When your school joins Ekoa, an Ekoa admin can move them to your school.' : 'Every project belongs to the school, not to the students who start it.'} actions={<LinkButton to="/app/projects/new" variant="dark">Start a project</LinkButton>}>{switcher}</PageHeader>
       <Tabs label="Project status" value={tab} onChange={setTab} tabs={[{ key: 'open', label: 'Open', count: open.length }, { key: 'closed', label: 'Completed and ended', count: closed.length }]} />
       {list.length ? (
         <div className="grid gap-4 md:grid-cols-2">

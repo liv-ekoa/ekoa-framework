@@ -5,7 +5,7 @@ import { useData } from '@/lib/hooks';
 import { fmtDate } from '@/lib/format';
 
 export default function Reports() {
-  // The first cohort report appears once a steward publishes it from the app.
+  // The first cohort report appears once an Ekoa admin publishes it from the app.
   const { data: first } = useData(() => getPublishedReport('pilot-01').catch(() => null));
   return (
     <div className="mx-auto max-w-page px-4 py-16 sm:px-6">

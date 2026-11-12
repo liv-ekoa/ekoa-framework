@@ -9,18 +9,16 @@ import { OUTCOMES, TIERS } from '@/lib/ekoa';
 import { fmtDate } from '@/lib/format';
 import type { ProjectBundle } from '@/lib/bundle';
 import { RecordTag } from '@/components/RecordTag';
-import { useMoments } from '@/components/EkoaMascot';
 import { Badge, Button, Empty, ErrorNote, LinkButton, Notice, Panel, Select } from '@/components/ui';
 
 export function RecordTab({ b, canEdit, onChange }: { b: ProjectBundle; canEdit: boolean; onChange: () => void }) {
   const auth = useAuth();
   const nav = useNavigate();
-  const moments = useMoments();
   const act = useAction();
   const isLiaison = auth.has('faculty_liaison', b.project.org_id);
   const { data } = useData(async () => {
-    const [circles, orgs, twins, verifs] = await Promise.all([api.listCircles(), api.listOrgs(), api.listTwins(), api.listVerifications()]);
-    return { circles, orgs, twins, verifs };
+    const [circles, orgs, verifs] = await Promise.all([api.listCircles(), api.listOrgs(), api.listVerifications()]);
+    return { circles, orgs, verifs };
   });
   const [circle, setCircle] = useState('');
   const [verifier, setVerifier] = useState('');
@@ -69,15 +67,15 @@ export function RecordTab({ b, canEdit, onChange }: { b: ProjectBundle; canEdit:
             <div className="space-y-5">
               <div className="flex flex-wrap gap-2">
                 <LinkButton to={`/app/records/${r.id}/edit`} variant="ghost">Edit the record</LinkButton>
-                {r.status === 'draft' && <Button busy={act.busy} onClick={() => act.run(async () => { await api.saveRecord({ id: r.id, org_id: r.org_id, status: 'in_review' }); moments.thumbsUp('Sent to faculty review'); onChange(); })}>Send to faculty review</Button>}
+                {r.status === 'draft' && <Button busy={act.busy} onClick={() => act.run(async () => { await api.saveRecord({ id: r.id, org_id: r.org_id, status: 'in_review' }); onChange(); })}>Send to faculty review</Button>}
               </div>
               {isLiaison && r.status !== 'published' && (
                 <div className="space-y-2 rounded-field border border-paper-line p-4">
                   <p className="font-bold">Publish</p>
                   <p className="text-sm text-ink-mute">Check that no student is named and photos show no identifiable people. Public records show school-level data only.</p>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.publishRecord(r, 'network', auth.person!.id); moments.thumbsUp('Published to the network'); onChange(); })}>Publish to the network</Button>
-                    <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.publishRecord(r, 'public', auth.person!.id); moments.thumbsUp('Published to the public library'); onChange(); })}>Publish to the public library</Button>
+                    <Button variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.publishRecord(r, 'network', auth.person!.id); onChange(); })}>Publish to the network</Button>
+                    <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.publishRecord(r, 'public', auth.person!.id); onChange(); })}>Publish to the public library</Button>
                   </div>
                   {r.tier < 2 && <p className="text-xs text-ink-mute">This record is not verified yet. It can go public labelled “Unverified” and earns half points. Verify it (T2) for full points.</p>}
                 </div>
@@ -105,7 +103,7 @@ export function RecordTab({ b, canEdit, onChange }: { b: ProjectBundle; canEdit:
                     <optgroup label="Peer audit (T3)">{auditSchools.map((o) => <option key={o.id} value={`3:${o.id}`}>{o.name}</option>)}</optgroup>
                     <optgroup label="Partner verification (T4)">{partners.map((o) => <option key={o.id} value={`4:${o.id}`}>{o.name}</option>)}</optgroup>
                   </Select>
-                  <Button variant="ghost" disabled={!verifier} busy={act.busy} onClick={() => act.run(async () => { const [t, org] = verifier.split(':'); await api.requestVerification({ record_id: r.id, requested_tier: Number(t) as 3 | 4, requested_by_org: b.project.org_id, verifier_org: org, notes: '' }); setVerifier(''); moments.thumbsUp('Audit request sent'); onChange(); })}>Send request</Button>
+                  <Button variant="ghost" disabled={!verifier} busy={act.busy} onClick={() => act.run(async () => { const [t, org] = verifier.split(':'); await api.requestVerification({ record_id: r.id, requested_tier: Number(t) as 3 | 4, requested_by_org: b.project.org_id, verifier_org: org, notes: '' }); setVerifier(''); onChange(); })}>Send request</Button>
                 </div>
                 {myVerifs.length > 0 && (
                   <ul className="mt-2 space-y-1 text-sm">

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { deleteBudgetLine, removeProjectMetric, saveBudget, saveBudgetLine, setProjectMetric, updateProject } from '@/lib/api';
 import { useAction } from '@/lib/hooks';
@@ -137,22 +138,32 @@ function BudgetPanel({ b, canEdit, onChange }: { b: ProjectBundle; canEdit: bool
 
   return (
     <Panel title="Budget" action={<span className="text-xs text-ink-mute">Every project states its budget</span>} className="xl:col-span-2">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="max-w-sm">
         <Field label="Where the money comes from" id="bs">
           <Select id="bs" disabled={!canEdit} value={f.source_type} onChange={(e) => setF({ ...f, source_type: e.target.value as BudgetPathway['source_type'] })}>
             <option value="school_budget">School budget</option><option value="parent_association">Parent association</option><option value="grant">Grant</option><option value="sponsor">Sponsor</option><option value="zero_cost">Zero-cost</option>
           </Select>
         </Field>
-        <Field label="Status" id="bst">
-          <Select id="bst" disabled={!canEdit} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as BudgetPathway['status'] })}>
-            {['planned', 'requested', 'approved', 'released', 'refused'].map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
-          </Select>
-        </Field>
-        <Field label="Currency" id="bc">
-          <Select id="bc" disabled={!canEdit} value={currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select>
-        </Field>
-        <Field label="Who approves the money" id="bap"><Input id="bap" disabled={!canEdit} value={f.approver ?? ''} onChange={(e) => setF({ ...f, approver: e.target.value })} /></Field>
       </div>
+      <details className="mt-3 rounded-field border border-paper-line px-4 py-3 text-sm">
+        <summary className="cursor-pointer font-bold text-ink-soft">More detail (optional): status, currency, who approves, funding rules</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Status" id="bst">
+            <Select id="bst" disabled={!canEdit} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as BudgetPathway['status'] })}>
+              {['planned', 'requested', 'approved', 'released', 'refused'].map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
+            </Select>
+          </Field>
+          <Field label="Currency" id="bc">
+            <Select id="bc" disabled={!canEdit} value={currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select>
+          </Field>
+          <Field label="Who approves the money" id="bap"><Input id="bap" disabled={!canEdit} value={f.approver ?? ''} onChange={(e) => setF({ ...f, approver: e.target.value })} /></Field>
+        </div>
+        <div className="mt-3">
+          <Field label="Budget rigidities" id="br" hint="Rules that made funding hard. Other schools learn from these.">
+            <Textarea id="br" rows={2} disabled={!canEdit} value={f.rigidity_notes ?? ''} onChange={(e) => setF({ ...f, rigidity_notes: e.target.value })} />
+          </Field>
+        </div>
+      </details>
 
       {zero ? (
         <p className="mt-5 rounded-field border border-dashed border-paper-line px-4 py-3 text-sm text-ink-soft">Marked zero-cost. If you end up buying anything, switch the source back and list it, so the next school sees the real cost.</p>
@@ -198,6 +209,7 @@ function BudgetPanel({ b, canEdit, onChange }: { b: ProjectBundle; canEdit: bool
             </table>
           </div>
           {!lines.length && <p className="py-3 text-sm text-ink-mute">No budget lines yet. List what you will buy or pay for, with a planned amount for each.</p>}
+          {lines.length > 0 && b.budgetLines.length > 0 && <p className="mt-2 text-sm"><Link to={`/app/funding?project=${b.project.id}#ask`} className="font-bold text-leaf-600 hover:underline">Need to raise this money? Write the funding ask</Link></p>}
           {canEdit && <Button variant="quiet" size="sm" className="mt-2" onClick={() => setLines([...lines, { category: 'materials', item: '', planned: 0, actual: null, note: '' }])}><Plus className="h-4 w-4" /> Add a line</Button>}
           {allActual && planned > 0 && (
             <div className="mt-4">
@@ -207,11 +219,6 @@ function BudgetPanel({ b, canEdit, onChange }: { b: ProjectBundle; canEdit: bool
           )}
         </div>
       )}
-      <div className="mt-5">
-        <Field label="Budget rigidities" id="br" hint="Rules that made funding hard. These become findings in the cohort report.">
-          <Textarea id="br" rows={2} disabled={!canEdit} value={f.rigidity_notes ?? ''} onChange={(e) => setF({ ...f, rigidity_notes: e.target.value })} />
-        </Field>
-      </div>
       <ErrorNote>{act.error}</ErrorNote>
       {canEdit && <Button className="mt-4" busy={act.busy} onClick={() => void save()}>Save budget</Button>}
     </Panel>

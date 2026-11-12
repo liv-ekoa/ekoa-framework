@@ -142,7 +142,7 @@ export function schoolAlerts(s: SchoolData, opts: { isLiaison: boolean; personId
     }
   }
   for (const role of ['project_lead', 'ekoa_rep', 'faculty_liaison'] as const) {
-    if (!s.members.some((m) => m.role.role === role && (m.role.status === 'active' || m.role.status === 'outgoing'))) {
+    if (opts.isLiaison && !s.members.some((m) => m.role.role === role && (m.role.status === 'active' || m.role.status === 'outgoing'))) {
       out.push({ tone: 'alert', text: `No active ${role.replace(/_/g, ' ')}. Fill the role so the school keeps its link to the network.`, to: '/app/school' });
     }
   }
@@ -170,7 +170,7 @@ export function schoolAlerts(s: SchoolData, opts: { isLiaison: boolean; personId
     const pending = s.members.filter((m) => m.person.consent_status === 'pending');
     if (pending.length) out.push({ tone: 'sky', text: `${pending.length} student ${pending.length === 1 ? 'account is' : 'accounts are'} waiting for guardian consent.`, to: '/app/school?tab=people' });
     const unverified = s.measurements.filter((m) => m.tier < 2 && !m.is_baseline).length;
-    if (unverified) out.push({ tone: 'sky', text: `${unverified} measurements are waiting for your verification.`, to: '/app/metrics?tab=verify' });
+    if (unverified) out.push({ tone: 'sky', text: `${unverified} measurements are waiting for your verification.`, to: '/app/projects?view=metrics&tab=verify' });
   }
   return out;
 }

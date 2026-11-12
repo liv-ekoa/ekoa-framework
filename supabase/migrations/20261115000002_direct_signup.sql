@@ -1,6 +1,6 @@
 -- Ekoa: anyone can sign up directly, as a student or as a school, and start working.
 --
--- A student gets a private personal workspace straight away and can ask to join a school. A
+-- A student gets a private independent workspace straight away and can ask to join a school. A
 -- teacher at that school confirms them with one click, and their projects move into the school.
 -- A school registers itself (unverified until a steward checks it) and gets a join code to share.
 -- Joining a school always needs a teacher's confirmation, so a stranger can never read a school's
@@ -9,20 +9,16 @@
 -- Everything here goes through narrow functions. There are still no direct insert rights on
 -- people, organisations or roles for ordinary users.
 
--- A personal workspace is its own kind of organisation, so it never shows up in school lists.
-alter table public.organisations drop constraint organisations_org_type_check;
-alter table public.organisations add constraint organisations_org_type_check check (org_type in ('school', 'partner', 'ekoa', 'workspace'));
-
 -- A short code a school shares so its students can find it even before the school is verified.
 alter table public.organisations add column join_code text unique default upper(encode(extensions.gen_random_bytes(5), 'hex'));
 update public.organisations set join_code = upper(encode(extensions.gen_random_bytes(5), 'hex')) where join_code is null;
 
--- Someone who only has a personal workspace is not yet "in another school".
+-- Someone who only has an independent (personal) workspace is not yet "in another school".
 create or replace function public.guard_role_school() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if public.is_admin_context() or public.is_steward() then return new; end if;
-  if exists (select 1 from role_assignments r join organisations o on o.id = r.org_id where r.person_id = new.person_id and r.org_id <> new.org_id and o.org_type <> 'workspace')
+  if exists (select 1 from role_assignments r join organisations o on o.id = r.org_id where r.person_id = new.person_id and r.org_id <> new.org_id and o.org_type <> 'independent')
      and not exists (select 1 from role_assignments r where r.person_id = new.person_id and r.org_id = new.org_id and r.id is distinct from new.id) then
     raise exception 'This person belongs to another school. Ask an Ekoa steward to add them.';
   end if;
@@ -67,8 +63,8 @@ begin
   insert into people (id, auth_user_id, display_name, email, age_band, is_minor, locale, consent_status)
   values (pid, uid, trim(p_name), em, p_age_band, minor, 'en', case when minor then 'pending' else 'not_needed' end);
   insert into organisations (id, name, org_type, status, public_visible)
-  values (wid, left(split_part(trim(p_name), ' ', 1), 40) || '''s workspace', 'workspace', 'onboarding', false);
-  insert into role_assignments (person_id, org_id, role) values (pid, wid, 'project_lead');
+  values (wid, left(trim(p_name), 70) || ' (independent)', 'independent', 'active', false);
+  insert into role_assignments (person_id, org_id, role, local_title) values (pid, wid, 'project_lead', 'Independent student');
   if minor then
     insert into consent_records (person_id, terms_version) values (pid, '2026-10');
   end if;
@@ -173,7 +169,7 @@ begin
     if not exists (select 1 from role_assignments where person_id = j.person_id and org_id = j.org_id) then
       insert into role_assignments (person_id, org_id, role) values (j.person_id, j.org_id, 'implementation_team');
     end if;
-    for w in select r.org_id from role_assignments r join organisations o on o.id = r.org_id where r.person_id = j.person_id and o.org_type = 'workspace' loop
+    for w in select r.org_id from role_assignments r join organisations o on o.id = r.org_id where r.person_id = j.person_id and o.org_type = 'independent' loop
       with moving as (
         select pr.id from projects pr
         where pr.org_id = w
