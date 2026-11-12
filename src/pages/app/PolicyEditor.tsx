@@ -7,6 +7,7 @@ import { useAction, useData } from '@/lib/hooks';
 import { fmtDate } from '@/lib/format';
 import type { Policy, PolicySection } from '@/lib/types';
 import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, Panel, Textarea, cx } from '@/components/ui';
+import { PolicyLinks } from '@/components/PolicyLinks';
 
 const FLOW: Policy['status'][] = ['draft', 'internal_review', 'approved', 'adopted'];
 const LABEL: Record<Policy['status'], string> = { draft: 'Draft', internal_review: 'Internal review', approved: 'Approved', adopted: 'Adopted', amended: 'Adopted and amended' };
@@ -38,9 +39,10 @@ export default function PolicyEditor() {
   const act = useAction();
   useEffect(() => { if (data) setP(data.p); }, [data]);
   if (!p || !data) return <Loading />;
-  const canEdit = auth.has(['project_lead', 'board_member', 'faculty_liaison'], p.org_id);
-  const canAdvance = auth.has(['faculty_liaison', 'approver'], p.org_id);
+  const canAdvance = auth.isSteward || auth.has(['faculty_liaison', 'approver'], p.org_id);
   const adopted = p.status === 'adopted' || p.status === 'amended';
+  // Adopted policies are public, so only adults change them. Every student can work on a draft.
+  const canEdit = adopted ? canAdvance : canAdvance || auth.has(['project_lead', 'board_member', 'implementation_team', 'ekoa_rep'], p.org_id);
   const dirty = JSON.stringify(p.sections) !== JSON.stringify(data.p.sections) || p.title !== data.p.title;
   const setSection = (i: number, patch: Partial<PolicySection>) => setP({ ...p, sections: p.sections.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
   const move = (i: number, d: number) => {
@@ -116,6 +118,7 @@ export default function PolicyEditor() {
               <Button variant="quiet" onClick={() => setP({ ...p, sections: [...p.sections, { key: `custom-${Date.now()}`, title: 'New section', body: '', clause_id: null }] })}>Add a blank section</Button>
             </div>
           )}
+          <PolicyLinks policyId={p.id} orgId={p.org_id} />
         </div>
 
         <aside className="no-print space-y-4">
@@ -137,6 +140,13 @@ export default function PolicyEditor() {
               </div>
               {!canAdvance && <p className="mt-2 text-xs text-ink-mute">Only the faculty liaison or an approver can change the status.</p>}
               {dirty && canAdvance && <p className="mt-2 text-xs text-ink-mute">Save your changes first.</p>}
+              <p className="mt-3 text-xs text-ink-mute">When the policy is adopted it is published in the public Policy library, where any school can read and copy it. Drafts stay private to your school.</p>
+            </Panel>
+          )}
+          {adopted && (
+            <Panel title="In the Policy library">
+              <p className="text-sm text-ink-soft">Adopted policies are public, so other schools can learn from yours. Amendments you adopt appear there at once.</p>
+              <Link to={`/app/library/policies/${p.id}`} className="mt-2 inline-block text-sm font-bold text-leaf-600 hover:underline">See it in the library</Link>
             </Panel>
           )}
           <Panel title="Amendment log">

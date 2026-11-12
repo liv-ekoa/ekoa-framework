@@ -13,7 +13,12 @@ interface AuthState {
   orgs: Organisation[];
   activeOrg: Organisation | null;
   setActiveOrg: (id: UUID) => void;
-  sendMagicLink: (email: string) => Promise<void>;
+  /** Email the sign-in link. `next` is the page to open after signing in. */
+  sendMagicLink: (email: string, next?: string) => Promise<void>;
+  /** The signed-in email, even before an Ekoa account exists for it. */
+  authEmail: string | null;
+  /** The active workspace is an independent student's, not a school's. */
+  isIndependent: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   /** Role checks scoped to the active organisation unless an org id is given. */
@@ -48,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<RoleAssignment[]>([]);
   const [orgs, setOrgs] = useState<Organisation[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<UUID | null>(safeGet(ORG_KEY));
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
 
   const loadPerson = useCallback(async (p: Person | null) => {
     if (!p) {
@@ -70,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const { data } = await supabase.auth.getUser();
+      setAuthEmail(data.user?.email ?? null);
       if (data.user) {
         const { data: p } = await supabase.from('people').select('*').eq('auth_user_id', data.user.id).maybeSingle();
         await loadPerson((p as Person) ?? null);
@@ -104,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActiveOrgId(id);
         safeSet(ORG_KEY, id);
       },
-      sendMagicLink: async (email) => {
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/app`, shouldCreateUser: true } });
+      sendMagicLink: async (email, next = '/app') => {
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}${next}`, shouldCreateUser: true } });
         if (error) throw new Error(error.message);
       },
       signOut: async () => {
@@ -113,6 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         await loadPerson(null);
       },
+      authEmail,
+      isIndependent: activeOrg?.org_type === 'independent',
       refresh,
       has,
       isSteward: current.some((r) => r.role === 'steward'),
@@ -120,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdult: person?.age_band === '18+',
       needsConsent: !!person?.is_minor && person.consent_status !== 'granted',
     };
-  }, [loading, person, roles, orgs, activeOrgId, refresh, loadPerson]);
+  }, [loading, person, roles, orgs, activeOrgId, authEmail, refresh, loadPerson]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

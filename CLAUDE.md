@@ -4,7 +4,7 @@ Guidance for Claude when working in this repository.
 
 ## What this is
 
-Ekoa, the implementation network for student-led school sustainability, served at ekoa-framework.org. Public site plus a member app: projects move through the six-stage Ekoa cycle, end as Implementation Records (failures included), are peer-audited by the two Ekoa audit schools, and feed a school ranking. See README.md for the full map of modules.
+Ekoa, the implementation network for student-led school sustainability, served at ekoa-framework.org. Public site plus a member app: projects move through the six-stage Ekoa cycle, end as Implementation Records (failures included), are peer-audited by the two Ekoa audit schools, and feed a school leaderboard. See README.md for the full map of modules.
 
 ## Commands
 
@@ -29,3 +29,4 @@ npm run test:db -- -h /tmp -p 5432   # database security tests on a throwaway lo
 - Design tokens live in `tailwind.config.js` (cream paper, moss, sage, clay). Fonts are self-hosted in `src/fonts/`. The logo is `src/components/EkoaLogo.tsx`.
 - The Ekoa method (stages, gates, roles, tiers, metrics) is data in `src/lib/ekoa.ts`. Every read and write goes through `src/lib/api.ts`.
 - Security is enforced in the database (`supabase/migrations/*_security.sql`), and `supabase/tests/security_test.sql` must keep passing. New schema changes go in a new numbered file in `supabase/migrations/`, never by editing an applied one. The platform is built for minors: never weaken consent, cross-school or peer-audit rules.
+- Moderation word lists live in `src/lib/moderation.ts`. After changing them, run `npm run moderation:sql` and put the output in a new migration.

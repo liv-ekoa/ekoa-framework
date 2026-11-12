@@ -71,6 +71,8 @@ export function GatePanel({ b, stage, onChange, people }: { b: ProjectBundle; st
           <p className="text-sm text-ink-mute">
             {!mayActOnProject
               ? `The project is ${b.project.status}. Resume it to sign gates.`
+              : !allowed && auth.isIndependent
+                ? 'This gate needs a teacher to sign it. When your school joins Ekoa and the Ekoa team moves your project there, your faculty liaison can sign it.'
               : !allowed
                 ? def.signer === 'faculty_liaison' ? 'Signed by the Faculty Liaison.' : `Signed by the ${ROLES[def.signer].label} or the Faculty Liaison.`
                 : !allOk

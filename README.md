@@ -23,8 +23,14 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 - **No sustainability head needed.** The role is now **Project Lead**, any student. The minimum team is one teacher (Faculty Liaison) and one student. Members can carry their school's own title, hold several roles, or co-lead. The Join form asks whether the school has a lead. The Implement gate asks for the next Project Lead to be named.
 - **Peer audit.** T3 audits come only from the two Ekoa audit schools, Shiv Nadar School, Faridabad and Green School, Bali, never from the school being audited. Auditors work from **More → Audit desk** and see numbers and evidence, never people. Enforced in the database (`guard_verification_request`, `complete_verification`).
 - **Budget on every project.** Line-by-line planned spend at Design (required by the gate) and actual spend at Implement (also required). Records show planned against actual; the library filters by cost.
-- **School ranking** at `/ranking`, scored only on verified, named, public records and on adoptions by other schools. The formula is on the page and in the `public_school_ranking` view.
-- **Villars-style workspace.** Top tabs (Home, Projects, My school, Wall, Connections, Library, More) and a **Connections** map centred on your school, with filters, depth, back and forward, and labelled links. Other schools appear as schools, never as people.
+- **School leaderboard** at `/leaderboard`, scored only on verified, named, public records and on adoptions by other schools. The formula is on the page and in the `public_school_ranking` view.
+- **Villars-style workspace.** Top tabs (Home, Projects, My school, Network, Library, Governance, Funding, More). **Network** holds the Wall, the **Connections** map (centred on your school, other schools appear as schools, never as people) and **Possible collaborators**. **Projects** holds the Metrics view.
+- **Safety.** Posts, photo captions, policy links and thread titles are screened for bullying, sexual content, violence, hate, self-harm and contact details (`src/lib/moderation.ts`, mirrored in the database as `moderation_hit`). Photos get an in-browser nudity check before upload. Anything caught or reported is hidden at once and goes to the school's liaison (My school, Safety) and the Ekoa admins, who remove it for good or restore it.
+- **Possible collaborators.** Schools whose policies share clauses, sections and wording are suggested to each other (`collaborator_suggestions`). This replaced school twins.
+- **Helpful links on policies.** Any member can add a Google Doc or other https link to a policy; anyone can report one.
+- **Two ways in.** Sign in as a school, or join as an independent student with a private workspace (`/join/student`). Schools list student emails when they register or from My school; Ekoa admins assign roles and can move an independent student's projects into their school (Steward console, Students).
+- **Policy library.** Every policy a school adopts is public at once in Library → Policies (`public_policies` view). Drafts stay private. Ekoa admins can add a school's adopted policy directly from the Admin console. Any school can copy a policy as its own draft.
+- **Funding.** Starts from each project's budget and writes a funding ask, with a platform list per country.
 - **One name: Ekoa.** The site is called Ekoa everywhere, including role names (Ekoa Representative, Ekoa Steward), emails and the database. The official logo is traced to vector in `src/components/EkoaLogo.tsx`, with static copies in `public/logo/`, and the O symbol is the favicon and app icon. The contact address is still `hello@ekoagsin.org` until a new mailbox exists; change `VITE_CONTACT_EMAIL` and `EMAIL_FROM` when it does.
 - **Live-site copy.** The problem and solution sections and the closing quote from the original ekoa-framework.org are on the new homepage.
 
@@ -36,16 +42,16 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 | M2 Accounts, roles, consent | `src/lib/auth.tsx`, `src/pages/public/SignIn.tsx`, `GuardianConsent.tsx`, `src/pages/app/MySchool.tsx` |
 | M3 Project workspace (Ekoa cycle) | `src/pages/app/project/*`, `src/lib/gates.ts`, `src/lib/ekoa.ts` |
 | M4 Implementation Record and Library | `src/components/RecordTag.tsx`, `RecordDetail.tsx`, `LibraryBrowser.tsx`, `src/pages/app/Library.tsx`, `RecordView.tsx`, `RecordEditor.tsx` |
-| M5 Failure Ledger and obstacles | `src/pages/app/Library.tsx` (Failure Ledger, Resistance patterns), `project/ObstaclesTab.tsx`, `project/StatusControl.tsx` |
+| M5 Learning Ledger and obstacles | `src/pages/app/Library.tsx` (Learning Ledger, Resistance patterns), `project/ObstaclesTab.tsx`, `project/StatusControl.tsx` |
 | M6 Governance and Policy Builder | `src/pages/app/Governance.tsx`, `PolicyEditor.tsx`, `project/ApprovalsTab.tsx` |
 | M7 Metrics and verification | `src/lib/metrics.ts`, `src/pages/app/QuickLog.tsx`, `Metrics.tsx`, `Kiosk.tsx` |
 | M8 Continuity | `src/pages/app/Handover.tsx`, `src/lib/handover.ts`, alerts in `src/lib/bundle.ts` |
-| M9 Network | `src/pages/app/Network.tsx` (the Wall), `Connections.tsx` with `src/lib/connections.ts`, `ThreadView.tsx` |
+| M9 Network | `src/pages/app/Network.tsx` (the Wall, Connections, Possible collaborators), `Connections.tsx` with `src/lib/connections.ts`, `ThreadView.tsx` |
 | M10 Reports | `src/pages/app/AppReports.tsx`, `CohortReport.tsx` |
 | M11 AI assist | `src/lib/ai.ts`, `supabase/functions/ai-draft` |
 | M12 Safeguarding | `src/components/ReportConcern.tsx`, post screening in `src/lib/api.ts` and the database trigger `screen_post` |
 | M13 Steward console | `src/pages/app/Steward.tsx`, `PartnerDesk.tsx`, `AuditDesk.tsx` |
-| Ranking | `src/pages/public/Ranking.tsx`, view `public_school_ranking` in the security migration |
+| Leaderboard | `src/pages/public/Leaderboard.tsx`, view `public_school_ranking` in the security migration |
 | Budgets | `src/lib/budget.ts`, budget panel in `project/PlanTab.tsx`, `BudgetBox` in `RecordDetail.tsx` |
 
 The method itself — stages, gate checklists, roles, obstacle taxonomy, metric library, templates — is data in `src/lib/ekoa.ts`. Change the method there.
@@ -126,7 +132,7 @@ The platform is built for minors, so these are launch requirements, not extras:
 
 ## Security tests
 
-`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the ranking: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
+`supabase/tests/security_test.sql` checks 86 rules, including peer audit (no self-audit, only audit schools, access ends when an audit closes), budget lines and the leaderboard: students cannot see other schools, cannot verify their own data or publish, unconsented minors see nothing, contact details in posts are held, anonymised public records hide the school, guardians can consent without an account, and more. Run `npm run test:db -- -h <host> -p <port> -U <user>` against a throwaway local PostgreSQL 15 or newer: it builds a fresh database from `supabase/tests/supabase_stubs.sql`, the migrations and the seed, then runs the tests. Every line should print PASS. Never run the stubs on Supabase.
 
 ## Scripts
 
