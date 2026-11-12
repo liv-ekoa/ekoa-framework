@@ -373,6 +373,20 @@ export interface PolicyClause {
   adoption_count: number;
 }
 
+export interface ProjectFile {
+  id: UUID;
+  org_id: UUID;
+  project_id: UUID;
+  title: string;
+  file_name: string | null;
+  file_type: string | null;
+  size_bytes: number | null;
+  storage_path: string | null;
+  link_url: string | null;
+  added_by: UUID | null;
+  created_at: string;
+}
+
 export interface Evidence {
   id: UUID;
   org_id: UUID;

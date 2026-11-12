@@ -6,7 +6,7 @@ import type {
   Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
   HandoverPacket, ImplementationRecord, Measurement, MetricDefinition, Obstacle, Organisation, Person,
-  Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, ProjectScope, Proposal, RoleAssignment, RoleKey,
+  Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectFile, ProjectMetric, ProjectScope, Proposal, RoleAssignment, RoleKey,
   SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, Twin, UUID, Verification,
 } from './types';
 
@@ -124,7 +124,7 @@ export const updateProject = (id: UUID, patch: Partial<Project>) => must(db.from
 
 export async function createProject(
   orgId: UUID,
-  input: { title: string; category: string; template_key: string | null; adapted_from_record_id?: UUID | null; problem?: string; scope?: ProjectScope; lead_person_id?: UUID | null; mentor_person_id?: UUID | null; successor_person_id?: UUID | null },
+  input: { title: string; category: string; template_key: string | null; adapted_from_record_id?: UUID | null; problem?: string; solution?: string; scope?: ProjectScope; lead_person_id?: UUID | null; mentor_person_id?: UUID | null; successor_person_id?: UUID | null },
   actor: UUID,
 ) {
   const t = templateByKey(input.template_key);
@@ -132,7 +132,7 @@ export async function createProject(
     db.from('projects').insert({
       org_id: orgId, title: input.title, category: input.category, stage: 'identify', status: 'active',
       owner_role: 'project_lead', scope: input.scope ?? 'school', lead_person_id: input.lead_person_id ?? null, mentor_person_id: input.mentor_person_id ?? null, successor_person_id: input.successor_person_id ?? null, template_key: input.template_key, starts_on: today(), ends_on: null,
-      adapted_from_record_id: input.adapted_from_record_id ?? null, problem: input.problem ?? '', solution: '',
+      adapted_from_record_id: input.adapted_from_record_id ?? null, problem: input.problem ?? '', solution: input.solution ?? '',
       monitoring_plan: t?.monitoring ?? [], risks: t?.risks ?? [], updated_at: nowIso(),
     }).select().single(),
   );
@@ -154,6 +154,7 @@ export async function createProject(
 
 export const listGates = (projectId: UUID) => must<StageGate[]>(db.from('stage_gates').select('*').eq('project_id', projectId));
 export async function signGate(project: Project, stage: StageKey, personId: UUID, checklist: Record<string, boolean>) {
+  if (project.scope === 'individual' && !project.mentor_person_id) throw new Error('Choose the teacher who verifies this project first. You can do that on the project Home page.');
   // The database checks who may sign, stamps the signer, and only then lets the stage move on.
   await must(db.from('stage_gates').insert({ project_id: project.id, stage, checklist, signed_by: personId, signed_at: nowIso() }));
   const next = nextStage(stage);
@@ -370,6 +371,47 @@ export async function uploadEvidence(orgId: UUID, projectId: UUID | null, file: 
     }).select().single(),
   );
 }
+// ---------------- Project files: documents, slides, spreadsheets and links ----------------
+export const FILE_TYPES: Record<string, string> = {
+  pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  odt: 'application/vnd.oasis.opendocument.text', odp: 'application/vnd.oasis.opendocument.presentation', ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  csv: 'text/csv', txt: 'text/plain',
+};
+export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export const listProjectFiles = (projectId: UUID) => must<ProjectFile[]>(db.from('project_files').select('*').eq('project_id', projectId).order('created_at', { ascending: false }));
+export async function uploadProjectFile(orgId: UUID, projectId: UUID, file: File, title: string) {
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  if (!FILE_TYPES[ext]) throw new Error('That file type is not accepted. Use PDF, Word, PowerPoint, Excel, CSV or text. For Keynote or Pages, export to PDF first. Photos go in Evidence.');
+  if (file.size > MAX_FILE_BYTES) throw new Error('That file is over 25 MB. Make it smaller, or add a link to it instead.');
+  const storage_path = `${orgId}/${projectId}/${uuid()}.${ext}`;
+  const { error } = await supabase.storage.from('project-files').upload(storage_path, file, { contentType: FILE_TYPES[ext] });
+  if (error) throw new Error(error.message);
+  try {
+    return await must<ProjectFile>(db.from('project_files').insert({ org_id: orgId, project_id: projectId, title: title.trim() || file.name, file_name: file.name, file_type: FILE_TYPES[ext], size_bytes: file.size, storage_path }).select().single());
+  } catch (e) {
+    await supabase.storage.from('project-files').remove([storage_path]);
+    throw e;
+  }
+}
+export async function addProjectLink(orgId: UUID, projectId: UUID, title: string, url: string) {
+  const clean = url.trim();
+  if (!/^https:\/\/[^\s]+$/i.test(clean)) throw new Error('Paste a full link that starts with https://');
+  if (!title.trim()) throw new Error('Give the link a short name.');
+  return must<ProjectFile>(db.from('project_files').insert({ org_id: orgId, project_id: projectId, title: title.trim(), link_url: clean }).select().single());
+}
+export async function projectFileUrl(f: ProjectFile): Promise<string | null> {
+  if (f.link_url) return f.link_url;
+  if (!f.storage_path) return null;
+  const { data } = await supabase.storage.from('project-files').createSignedUrl(f.storage_path, 3600, { download: f.file_name ?? true });
+  return data?.signedUrl ?? null;
+}
+export async function deleteProjectFile(f: ProjectFile) {
+  await must(db.from('project_files').delete().eq('id', f.id));
+  if (f.storage_path) await supabase.storage.from('project-files').remove([f.storage_path]);
+}
+
 /** Signed links last an hour, so evidence never sits at a public address. */
 export async function evidenceUrl(e: Evidence): Promise<string | null> {
   if (!e.storage_path) return e.data_url;

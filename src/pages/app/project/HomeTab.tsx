@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, ListChecks, MessagesSquare, ShieldCheck, Sprout, Users } from 'lucide-react';
+import { ArrowRight, Check, FolderOpen, ListChecks, MessagesSquare, ShieldCheck, Sprout, Users } from 'lucide-react';
 import { membersOf, updateProject } from '@/lib/api';
 import { useAction, useData } from '@/lib/hooks';
 import { TIERS } from '@/lib/ekoa';
 import { relative } from '@/lib/format';
 import type { ProjectBundle } from '@/lib/bundle';
-import { Button, ErrorNote, Field, Panel, Select, Textarea, cx } from '@/components/ui';
+import { Button, ErrorNote, Field, Notice, Panel, Select, Textarea, cx } from '@/components/ui';
 import type { Tier } from '@/lib/types';
 import { QuickAddTask, TaskRow } from './TasksTab';
 import { useProjectChat } from './ChatTab';
 import { useCommunity } from './CommunityTab';
+import { useProjectFiles } from './FilesTab';
 
 /** The first screen of a project: what we are doing, what is next, who is talking, who else is doing this. */
 const NEXT_TIER: Record<Tier, string> = {
@@ -28,27 +29,31 @@ export function HomeTab({ b, canEdit, onChange, go, people }: { b: ProjectBundle
   const act = useAction();
   const chat = useProjectChat(b.project.id);
   const community = useCommunity(b);
+  const files = useProjectFiles(b.project.id);
   const open = b.tasks.filter((t) => t.status !== 'done');
   const solo = b.project.scope === 'individual';
   const { data: members } = useData(() => membersOf(b.project.org_id), [b.project.org_id]);
   const students = [...new Map((members ?? []).filter((m) => m.person.is_minor || ['project_lead', 'implementation_team', 'board_member'].includes(m.role.role)).map((m) => [m.person.id, m.person])).values()].filter((p) => p.id !== b.project.lead_person_id);
+  const teachers = (members ?? []).filter((m) => m.role.role === 'faculty_liaison' && !m.person.is_minor && ['active', 'outgoing'].includes(m.role.status));
   const handover = b.handovers.find((h) => h.role === 'project_lead');
   const tier = (b.record?.tier ?? 0) as Tier;
   const last = chat.data?.posts.filter((p) => !p.hidden).slice(-1)[0];
   const examples = community.data?.examples.length ?? 0;
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+    <div className="space-y-6">
+      {solo && !b.project.mentor_person_id && <Notice tone="clay">Choose the teacher who will verify your project. You can keep going without one for now, but you need one before you move on from Identify. Pick them under “Keeping it going”.</Notice>}
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <div className="space-y-6">
         <Panel title="What we are doing">
           <div className="space-y-4">
-            <Field label="Why does this matter?" id="h-why" hint="What is going wrong, and how do you know? A sentence or two is plenty.">
-              <Textarea id="h-why" rows={3} disabled={!canEdit} value={problem} onChange={(e) => setProblem(e.target.value)} />
-            </Field>
-            <Field label="What will we do about it?" id="h-do" hint="Say what, who and where. You can change this as you learn.">
+            <Field label="Short description (required)" id="h-do" hint="What the project is, in a sentence or two. You can change it as you learn.">
               <Textarea id="h-do" rows={3} disabled={!canEdit} value={solution} onChange={(e) => setSolution(e.target.value)} />
             </Field>
+            <Field label="Why it matters (optional)" id="h-why" hint="What is going wrong, and how do you know?">
+              <Textarea id="h-why" rows={3} disabled={!canEdit} value={problem} onChange={(e) => setProblem(e.target.value)} />
+            </Field>
             <ErrorNote>{act.error}</ErrorNote>
-            {canEdit && dirty && <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await updateProject(b.project.id, { problem, solution }); onChange(); })}>Save</Button>}
+            {canEdit && dirty && <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { if (!solution.trim()) throw new Error('The short description cannot be empty. Say what the project is in a sentence.'); await updateProject(b.project.id, { problem, solution: solution.trim() }); onChange(); })}>Save</Button>}
           </div>
         </Panel>
 
@@ -69,7 +74,12 @@ export function HomeTab({ b, canEdit, onChange, go, people }: { b: ProjectBundle
           {solo ? (
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between gap-3"><dt className="text-ink-mute">Led by</dt><dd className="font-bold">{people[b.project.lead_person_id ?? ''] ?? 'a student'}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-ink-mute">Mentor</dt><dd className="font-bold">{people[b.project.mentor_person_id ?? ''] ?? 'a teacher'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-ink-mute">Verified by</dt>
+                <dd className="font-bold">{b.project.mentor_person_id ? (people[b.project.mentor_person_id] ?? 'a teacher') : canEdit ? (
+                  <Select aria-label="Teacher who verifies this project" className="py-1 text-sm" value="" onChange={(e) => e.target.value && act.run(async () => { await updateProject(b.project.id, { mentor_person_id: e.target.value }); onChange(); })}>
+                    <option value="">Choose your teacher</option>{teachers.map((m) => <option key={m.person.id} value={m.person.id}>{m.person.display_name}</option>)}
+                  </Select>
+                ) : 'Not chosen yet'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-ink-mute">Carries it on</dt>
                 <dd className="font-bold">{canEdit ? (
                   <Select aria-label="Who carries this project on" className="py-1 text-sm" value={b.project.successor_person_id ?? ''} onChange={(e) => act.run(async () => { await updateProject(b.project.id, { successor_person_id: e.target.value || null }); onChange(); })}>
@@ -96,6 +106,13 @@ export function HomeTab({ b, canEdit, onChange, go, people }: { b: ProjectBundle
           <p className="mt-3 text-sm"><button className="font-bold text-leaf-600 hover:underline" onClick={() => go('record')}>Open the record</button></p>
         </Panel>
 
+        <Panel title="Project files" action={<FolderOpen className="h-4 w-4 text-ink-mute" aria-hidden />}>
+          {files.data?.length ? (
+            <ul className="space-y-1 text-sm">{files.data.slice(0, 3).map((f) => <li key={f.id} className="truncate font-bold">{f.title}</li>)}{files.data.length > 3 && <li className="text-ink-mute">and {files.data.length - 3} more</li>}</ul>
+          ) : <p className="text-sm text-ink-soft">Keep your documents, slides, PDFs and links in one place, so nobody has to go searching.</p>}
+          <Button variant="ghost" className="mt-3" onClick={() => go('files')}>{files.data?.length ? 'Open the files' : 'Add the first file'} <ArrowRight className="h-4 w-4" /></Button>
+        </Panel>
+
         <Panel title="Team chat" action={<MessagesSquare className="h-4 w-4 text-ink-mute" aria-hidden />}>
           {last ? (
             <p className="text-sm text-ink-soft"><span className="font-bold text-ink">{last.author_name}</span> <span className="text-ink-mute">{relative(last.created_at)}</span><span className="mt-1 line-clamp-3 block text-ink">{last.body}</span></p>
@@ -116,6 +133,7 @@ export function HomeTab({ b, canEdit, onChange, go, people }: { b: ProjectBundle
           </ul>
           <p className="mt-3 text-xs text-ink-mute">Other schools will be able to build on what you write down, so keep notes as you go. <Link to="/app/library" className="font-bold underline">See examples</Link></p>
         </Panel>
+      </div>
       </div>
     </div>
   );

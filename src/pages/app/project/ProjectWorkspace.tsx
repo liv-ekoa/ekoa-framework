@@ -21,8 +21,9 @@ import { EvidenceTab } from './EvidenceTab';
 import { HomeTab } from './HomeTab';
 import { ChatTab } from './ChatTab';
 import { CommunityTab } from './CommunityTab';
+import { FilesTab } from './FilesTab';
 
-type TabKey = 'home' | 'chat' | 'community' | 'plan' | 'tasks' | 'approvals' | 'measures' | 'obstacles' | 'record' | 'evidence';
+type TabKey = 'files' | 'home' | 'chat' | 'community' | 'plan' | 'tasks' | 'approvals' | 'measures' | 'obstacles' | 'record' | 'evidence';
 
 export default function ProjectWorkspace() {
   const { id } = useParams();
@@ -48,6 +49,7 @@ export default function ProjectWorkspace() {
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: 'home', label: 'Home' },
     { key: 'tasks', label: 'To-do', count: b.tasks.filter((t) => t.status !== 'done').length },
+    { key: 'files', label: 'Files' },
     { key: 'chat', label: 'Chat' },
     { key: 'community', label: 'Community' },
     { key: 'plan', label: 'Plan and budget' },
@@ -99,6 +101,7 @@ export default function ProjectWorkspace() {
             </details>
           </div>
         )}
+        {tab === 'files' && <FilesTab b={b} canEdit={member} people={people} />}
         {tab === 'chat' && <ChatTab b={b} />}
         {tab === 'community' && <CommunityTab b={b} />}
         {tab === 'plan' && <PlanTab b={b} canEdit={canEdit} onChange={refresh} />}

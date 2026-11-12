@@ -332,8 +332,6 @@ reset role;
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
 insert into projects (id, org_id, title, category, scope, lead_person_id, mentor_person_id) values ('33333333-0000-0000-0000-0000000000a1','11111111-0000-0000-0000-000000000001','Solo shampoo','Waste','individual','22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000a');
 select t('a student can start an individual project with a teacher mentor', (select count(*) from projects where id = '33333333-0000-0000-0000-0000000000a1') = 1);
-do $$ begin insert into projects (org_id, title, category, scope, lead_person_id, mentor_person_id) values ('11111111-0000-0000-0000-000000000001','Solo, no teacher','Waste','individual','22222222-0000-0000-0000-00000000000b',null); perform t('an individual project needs a teacher', false);
-exception when others then perform t('an individual project needs a teacher', true); end $$;
 do $$ begin insert into projects (org_id, title, category, scope, lead_person_id, mentor_person_id) values ('11111111-0000-0000-0000-000000000001','Solo, student mentor','Waste','individual','22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000c'); perform t('a student cannot be the mentor', false);
 exception when others then perform t('a student cannot be the mentor', true); end $$;
 do $$ begin insert into projects (org_id, title, category, scope, lead_person_id, mentor_person_id) values ('11111111-0000-0000-0000-000000000001','Solo, someone else','Waste','individual','22222222-0000-0000-0000-00000000000c','22222222-0000-0000-0000-00000000000a'); perform t('a student cannot start a project in another student''s name', false);
@@ -356,4 +354,34 @@ reset role; set role authenticated; select set_config('request.jwt.claim.sub','a
 select t('another school cannot read a project chat', (select count(*) from threads where kind='project') = 0);
 do $$ begin insert into threads (kind, org_id, project_id, title) values ('project','11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Intruder'); perform t('another school cannot start a chat in this project', false);
 exception when others then perform t('another school cannot start a chat in this project', true); end $$;
+reset role;
+
+-- Project files: school-only
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into project_files (org_id, project_id, title, file_name, file_type, size_bytes, storage_path) values ('11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Baseline notes','notes.pdf','application/pdf',1000,'11111111-0000-0000-0000-000000000001/p/notes.pdf');
+insert into project_files (org_id, project_id, title, link_url) values ('11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Slides','https://docs.google.com/presentation/d/abc');
+select t('a student adds a file and a link to their project', (select count(*) from project_files) = 2);
+select t('the file records who added it', (select count(*) from project_files where added_by = '22222222-0000-0000-0000-00000000000b') = 2);
+do $$ begin insert into project_files (org_id, project_id, title, link_url) values ('11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Bad','http://insecure.example'); perform t('only secure links are accepted', false);
+exception when others then perform t('only secure links are accepted', true); end $$;
+do $$ begin insert into project_files (org_id, project_id, title, file_name, storage_path) values ('11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Wrong folder','x.pdf','11111111-0000-0000-0000-000000000002/x.pdf'); perform t('a file cannot be stored in another school''s folder', false);
+exception when others then perform t('a file cannot be stored in another school''s folder', true); end $$;
+reset role; set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('another school cannot read project files', (select count(*) from project_files) = 0);
+do $$ begin insert into project_files (org_id, project_id, title, link_url) values ('11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Intruder','https://example.org/x'); perform t('another school cannot add files to this project', false);
+exception when others then perform t('another school cannot add files to this project', true); end $$;
+reset role;
+
+-- Choosing the verifying teacher later
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into projects (id, org_id, title, category, scope, lead_person_id, mentor_person_id) values ('33333333-0000-0000-0000-0000000000a2','11111111-0000-0000-0000-000000000001','No teacher yet','Waste','individual','22222222-0000-0000-0000-00000000000b',null);
+select t('a student can start an individual project before choosing a teacher', (select count(*) from projects where id = '33333333-0000-0000-0000-0000000000a2') = 1);
+update projects set problem = 'Bins are mixed' where id = '33333333-0000-0000-0000-0000000000a2';
+select t('the project can be edited while no teacher is chosen', (select problem = 'Bins are mixed' from projects where id = '33333333-0000-0000-0000-0000000000a2'));
+do $$ begin update projects set stage = 'design' where id = '33333333-0000-0000-0000-0000000000a2'; perform t('a project cannot move on without a teacher', false);
+exception when others then perform t('a project cannot move on without a teacher', true); end $$;
+update projects set mentor_person_id = '22222222-0000-0000-0000-00000000000a' where id = '33333333-0000-0000-0000-0000000000a2';
+select t('the student lead can choose the teacher later', (select mentor_person_id is not null from projects where id = '33333333-0000-0000-0000-0000000000a2'));
+do $$ begin update projects set mentor_person_id = '22222222-0000-0000-0000-00000000000b' where id = '33333333-0000-0000-0000-0000000000a2'; perform t('a student cannot swap the teacher once chosen', false);
+exception when others then perform t('a student cannot swap the teacher once chosen', true); end $$;
 reset role;
