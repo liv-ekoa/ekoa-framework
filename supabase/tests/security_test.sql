@@ -327,3 +327,33 @@ set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000
 do $$ begin update records set anonymised = false where id = '44444444-0000-0000-0000-000000000001'; perform t('a student cannot name the school on a published anonymised record', false);
 exception when others then perform t('a student cannot name the school on a published anonymised record', true); end $$;
 reset role;
+
+-- Individual student projects
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into projects (id, org_id, title, category, scope, lead_person_id, mentor_person_id) values ('33333333-0000-0000-0000-0000000000a1','11111111-0000-0000-0000-000000000001','Solo shampoo','Waste','individual','22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000a');
+select t('a student can start an individual project with a teacher mentor', (select count(*) from projects where id = '33333333-0000-0000-0000-0000000000a1') = 1);
+do $$ begin insert into projects (org_id, title, category, scope, lead_person_id, mentor_person_id) values ('11111111-0000-0000-0000-000000000001','Solo, no teacher','Waste','individual','22222222-0000-0000-0000-00000000000b',null); perform t('an individual project needs a teacher', false);
+exception when others then perform t('an individual project needs a teacher', true); end $$;
+do $$ begin insert into projects (org_id, title, category, scope, lead_person_id, mentor_person_id) values ('11111111-0000-0000-0000-000000000001','Solo, student mentor','Waste','individual','22222222-0000-0000-0000-00000000000b','22222222-0000-0000-0000-00000000000c'); perform t('a student cannot be the mentor', false);
+exception when others then perform t('a student cannot be the mentor', true); end $$;
+do $$ begin insert into projects (org_id, title, category, scope, lead_person_id, mentor_person_id) values ('11111111-0000-0000-0000-000000000001','Solo, someone else','Waste','individual','22222222-0000-0000-0000-00000000000c','22222222-0000-0000-0000-00000000000a'); perform t('a student cannot start a project in another student''s name', false);
+exception when others then perform t('a student cannot start a project in another student''s name', true); end $$;
+do $$ begin update projects set successor_person_id = '22222222-0000-0000-0000-00000000000d' where id = '33333333-0000-0000-0000-0000000000a1'; perform t('a successor from another school is refused', false);
+exception when others then perform t('a successor from another school is refused', true); end $$;
+update projects set successor_person_id = '22222222-0000-0000-0000-00000000000c' where id = '33333333-0000-0000-0000-0000000000a1';
+select t('a student can name a future student from their school to continue', (select successor_person_id is not null from projects where id = '33333333-0000-0000-0000-0000000000a1'));
+do $$ begin update projects set mentor_person_id = '22222222-0000-0000-0000-00000000000b' where id = '33333333-0000-0000-0000-0000000000a1'; perform t('a student cannot change the mentor', false);
+exception when others then perform t('a student cannot change the mentor', true); end $$;
+reset role;
+
+-- Project chat: school-only
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000b',false);
+insert into threads (kind, org_id, project_id, title) values ('project','11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Team chat');
+select t('a student starts a team chat for their school project', (select count(*) from threads where kind='project' and project_id='33333333-0000-0000-0000-000000000001') = 1);
+do $$ begin insert into threads (kind, org_id, project_id, title) values ('project','11111111-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000001','Wrong school'); perform t('a project chat cannot be filed under another school', false);
+exception when others then perform t('a project chat cannot be filed under another school', true); end $$;
+reset role; set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-00000000000d',false);
+select t('another school cannot read a project chat', (select count(*) from threads where kind='project') = 0);
+do $$ begin insert into threads (kind, org_id, project_id, title) values ('project','11111111-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','Intruder'); perform t('another school cannot start a chat in this project', false);
+exception when others then perform t('another school cannot start a chat in this project', true); end $$;
+reset role;

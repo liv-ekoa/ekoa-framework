@@ -6,7 +6,7 @@ import type {
   Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
   HandoverPacket, ImplementationRecord, Measurement, MetricDefinition, Obstacle, Organisation, Person,
-  Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, Proposal, RoleAssignment, RoleKey,
+  Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, ProjectScope, Proposal, RoleAssignment, RoleKey,
   SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, Twin, UUID, Verification,
 } from './types';
 
@@ -42,9 +42,14 @@ export async function membersOf(orgId: UUID) {
     .filter((m) => m.person);
 }
 
+/** A start date in the future makes the role 'incoming': the person can read and comment (shadow access) until the handover switches them to active. */
+function startFields(startsOn?: string | null): { term_start: string; status: 'active' | 'incoming' } {
+  return startsOn && startsOn > today() ? { term_start: startsOn, status: 'incoming' } : { term_start: today(), status: 'active' };
+}
+
 export async function inviteMember(
   orgId: UUID,
-  input: { name: string; email: string; age_band: Person['age_band']; role: RoleKey; term_end: string | null; local_title?: string; guardian_name?: string; guardian_email?: string },
+  input: { name: string; email: string; age_band: Person['age_band']; role: RoleKey; term_end: string | null; starts_on?: string | null; local_title?: string; guardian_name?: string; guardian_email?: string },
   actor: UUID,
 ) {
   const minor = input.age_band !== '18+';
@@ -56,7 +61,7 @@ export async function inviteMember(
   });
   if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa steward to add them to your school.' : error.message);
   await must(db.from('role_assignments').insert({
-    person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, term_start: today(), term_end: input.term_end, status: 'active',
+    person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, ...startFields(input.starts_on), term_end: input.term_end,
   }));
   let consentToken: string | null = null;
   if (minor) {
@@ -79,10 +84,10 @@ export async function inviteMember(
 }
 
 /** Give an existing member another role, e.g. the Project Lead who is also the Ekoa Representative at a small school. */
-export async function addRole(orgId: UUID, personId: UUID, role: RoleKey, localTitle: string, termEnd: string | null, actor: UUID) {
+export async function addRole(orgId: UUID, personId: UUID, role: RoleKey, localTitle: string, termEnd: string | null, actor: UUID, startsOn?: string | null) {
   const existing = (await listRolesForOrg(orgId)).find((r) => r.person_id === personId && r.role === role && r.status !== 'alumni');
   if (existing) throw new Error('They already hold this role.');
-  await must(db.from('role_assignments').insert({ person_id: personId, org_id: orgId, role, seat: null, local_title: localTitle.trim() || null, term_start: today(), term_end: termEnd, status: 'active' }));
+  await must(db.from('role_assignments').insert({ person_id: personId, org_id: orgId, role, seat: null, local_title: localTitle.trim() || null, ...startFields(startsOn), term_end: termEnd }));
   await audit(actor, `added role ${role}`, 'role_assignments', personId);
 }
 
@@ -119,21 +124,29 @@ export const updateProject = (id: UUID, patch: Partial<Project>) => must(db.from
 
 export async function createProject(
   orgId: UUID,
-  input: { title: string; category: string; template_key: string | null; adapted_from_record_id?: UUID | null; problem?: string },
+  input: { title: string; category: string; template_key: string | null; adapted_from_record_id?: UUID | null; problem?: string; scope?: ProjectScope; lead_person_id?: UUID | null; mentor_person_id?: UUID | null; successor_person_id?: UUID | null },
   actor: UUID,
 ) {
   const t = templateByKey(input.template_key);
   const project = await must<Project>(
     db.from('projects').insert({
       org_id: orgId, title: input.title, category: input.category, stage: 'identify', status: 'active',
-      owner_role: 'project_lead', template_key: input.template_key, starts_on: today(), ends_on: null,
+      owner_role: 'project_lead', scope: input.scope ?? 'school', lead_person_id: input.lead_person_id ?? null, mentor_person_id: input.mentor_person_id ?? null, successor_person_id: input.successor_person_id ?? null, template_key: input.template_key, starts_on: today(), ends_on: null,
       adapted_from_record_id: input.adapted_from_record_id ?? null, problem: input.problem ?? '', solution: '',
       monitoring_plan: t?.monitoring ?? [], risks: t?.risks ?? [], updated_at: nowIso(),
     }).select().single(),
   );
   if (t) {
-    await must(db.from('tasks').insert(t.tasks.map((k) => ({ project_id: project.id, title: k.title, owner_role: k.owner, status: 'todo', due_on: null }))));
-    await must(db.from('project_metrics').insert(t.metrics.map((m) => ({ project_id: project.id, metric_code: m, baseline: null, target: null }))));
+    const seed = async () => {
+      await must(db.from('tasks').insert(t.tasks.map((k) => ({ project_id: project.id, title: k.title, owner_role: k.owner, status: 'todo', due_on: null }))));
+      await must(db.from('project_metrics').insert(t.metrics.map((m) => ({ project_id: project.id, metric_code: m, baseline: null, target: null }))));
+    };
+    // The project row is already saved. Retry the starter to-dos once, then say plainly what happened.
+    try { await seed(); } catch {
+      const have = await must<{ id: string }[]>(db.from('tasks').select('id').eq('project_id', project.id)).catch(() => []);
+      if (have.length) throw new Error('Your project was created, but some starter to-dos did not save. Open it from Projects to check.');
+      try { await seed(); } catch { throw new Error('Your project was created, but the starter to-dos did not save. Open it from Projects and add them there.'); }
+    }
   }
   await audit(actor, 'created project', 'projects', project.id);
   return project;
@@ -408,7 +421,7 @@ export async function addPost(thread: Thread, author: Person, body: string, meta
   const held = !back || back.hidden ? hit ?? 'contact detail' : null;
   return { held };
 }
-export async function createThread(row: Pick<Thread, 'kind' | 'title' | 'circle_id' | 'org_id' | 'record_id'> & { org_b?: UUID | null }, author: Person, body: string, meta: { role?: string; org?: string } = {}) {
+export async function createThread(row: Pick<Thread, 'kind' | 'title' | 'circle_id' | 'org_id' | 'record_id'> & { org_b?: UUID | null; project_id?: UUID | null }, author: Person, body: string, meta: { role?: string; org?: string } = {}) {
   const t = await must<Thread>(db.from('threads').insert({ org_b: null, ...row, created_by: author.id, created_at: nowIso(), status: 'open' }).select().single());
   const res = await addPost(t, author, body, meta);
   return { thread: t, held: res.held };
