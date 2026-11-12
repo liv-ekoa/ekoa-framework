@@ -616,3 +616,30 @@ export async function publishReport(slug: string, title: string, data: unknown, 
   else await must(db.from('reports').insert({ slug, title, data, published_at: nowIso() }));
   await audit(actor, `published report ${slug}`, 'reports', slug);
 }
+
+// ---------------- Direct sign-up and joining a school ----------------
+export interface SchoolHit { id: UUID; name: string; city: string; country: string }
+export interface JoinRequest { id: UUID; person_id: UUID; org_id: UUID; status: 'requested' | 'confirmed' | 'declined'; requested_at: string }
+export interface PendingJoin { request_id: UUID; display_name: string; age_band: string; requested_at: string }
+
+const rpc = async <T,>(fn: string, args: Record<string, unknown>) => {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+};
+export const signupStudent = (name: string, ageBand: string) => rpc<string>('signup_student', { p_name: name, p_age_band: ageBand });
+export const signupSchool = (name: string, school: string, country: string, city: string) => rpc<string>('signup_school', { p_name: name, p_school: school, p_country: country, p_city: city });
+export const findSchools = (q: string) => rpc<SchoolHit[]>('find_schools', { p_query: q });
+export const schoolByCode = (code: string) => rpc<SchoolHit[]>('school_by_code', { p_code: code });
+export const requestToJoinSchool = (orgId: UUID, code?: string) => rpc<string>('request_to_join_school', { p_org: orgId, p_code: code ?? null });
+export const pendingJoinRequests = (orgId: UUID) => rpc<PendingJoin[]>('pending_join_requests', { p_org: orgId });
+export const decideJoinRequest = (requestId: UUID, accept: boolean) => rpc<number>('decide_join_request', { p_request: requestId, p_accept: accept });
+export const myJoinRequests = () => must<JoinRequest[]>(db.from('join_requests').select('*').eq('status', 'requested'));
+
+// ---------------- Feedback on drafts ----------------
+export interface ProjectComment { id: UUID; org_id: UUID; project_id: UUID; person_id: UUID | null; author_name: string; author_role: string; body: string; created_at: string }
+export const listProjectComments = (projectId: UUID) => must<ProjectComment[]>(db.from('project_comments').select('*').eq('project_id', projectId).order('created_at'));
+export const addProjectComment = (orgId: UUID, projectId: UUID, body: string) => must(db.from('project_comments').insert({ org_id: orgId, project_id: projectId, body: body.trim() }));
+export const deleteProjectComment = (id: UUID) => must(db.from('project_comments').delete().eq('id', id));
+/** A teacher at the student's school, or a steward, keeps a paused account working a little longer. */
+export const extendDraftAccess = (personId: UUID, days = 30) => rpc<null>('extend_draft_access', { p_person: personId, p_days: days });

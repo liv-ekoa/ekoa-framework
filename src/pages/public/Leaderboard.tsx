@@ -12,6 +12,9 @@ export const SCORE_RULES: [string, string][] = [
   ['Each verified record that partly worked', '6 points'],
   ['Each verified record that did not work, with its lessons', '4 points'],
   ['Each adaptation of your model that worked', '4 points'],
+  ['A record not verified by a teacher (T0 or T1)', 'Half points, five records at most'],
+  ['A school Ekoa has not verified yet', 'Half points on its records'],
+  ['Adaptations by a school Ekoa has not verified yet', 'Do not count yet'],
   ['Peer-audited (T3) or partner-verified (T4) records', '× 1.5'],
 ];
 
@@ -70,7 +73,7 @@ export default function Leaderboard() {
                 </div>
               ))}
             </dl>
-            <p className="mt-4 text-xs leading-relaxed text-paper/80">Only published, named records at tier T2 or higher count. Sign-ups, posts and unverified numbers never do. Schools that publish anonymously are left out of the table.</p>
+            <p className="mt-4 text-xs leading-relaxed text-paper/80">Only published, named records count. Records verified to tier T2 or higher earn full points; unverified ones earn half, and at most five count per school. Sign-ups and posts never do. Schools that publish anonymously are left out of the table.</p>
           </div>
           <div className="rounded-panel border border-paper-line bg-white p-5 text-sm text-ink-soft">
             <p>Want to be featured? Publish a verified record, then ask an Ekoa audit school for a T3 peer audit. <Link to="/how-it-works#peer-audit" className="font-bold text-leaf-600 underline">How peer audit works</Link>.</p>

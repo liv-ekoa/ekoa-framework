@@ -75,9 +75,9 @@ export function RecordTab({ b, canEdit, onChange }: { b: ProjectBundle; canEdit:
                   <p className="text-sm text-ink-mute">Check that no student is named and photos show no identifiable people. Public records show school-level data only.</p>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.publishRecord(r, 'network', auth.person!.id); onChange(); })}>Publish to the network</Button>
-                    <Button variant="dark" busy={act.busy} disabled={r.tier < 2} onClick={() => act.run(async () => { await api.publishRecord(r, 'public', auth.person!.id); onChange(); })}>Publish to the public library</Button>
+                    <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.publishRecord(r, 'public', auth.person!.id); onChange(); })}>Publish to the public library</Button>
                   </div>
-                  {r.tier < 2 && <p className="text-xs text-ink-mute">Public records need tier T2 or higher.</p>}
+                  {r.tier < 2 && <p className="text-xs text-ink-mute">This record is not verified yet. It can go public labelled “Unverified” and earns half points. Verify it (T2) for full points.</p>}
                 </div>
               )}
               <div className="space-y-2 rounded-field border border-paper-line p-4">

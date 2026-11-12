@@ -21,7 +21,8 @@ const Contact = lazy(() => import('./pages/public/Contact'));
 const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
 const TermsOfUse = lazy(() => import('./pages/public/TermsOfUse'));
 const SignIn = lazy(() => import('./pages/public/SignIn'));
-const JoinStudent = lazy(() => import('./pages/public/JoinStudent'));
+const SignUp = lazy(() => import('./pages/public/SignUp'));
+const Welcome = lazy(() => import('./pages/public/Welcome'));
 const GuardianConsent = lazy(() => import('./pages/public/GuardianConsent'));
 const WaitingConsent = lazy(() => import('./pages/public/WaitingConsent'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
@@ -77,13 +78,15 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
           <Route path="join" element={<Join />} />
-          <Route path="join/student" element={<JoinStudent />} />
+          <Route path="join/student" element={<Navigate to="/welcome?as=student" replace />} />
           <Route path="about" element={<About />} />
           <Route path="safeguarding" element={<Safeguarding />} />
           <Route path="contact" element={<Contact />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="terms-of-use" element={<TermsOfUse />} />
           <Route path="signin" element={<SignIn />} />
+          <Route path="signup" element={<SignUp />} />
+          <Route path="welcome" element={<Welcome />} />
           <Route path="consent/:token" element={<GuardianConsent />} />
           <Route path="waiting-for-consent" element={<WaitingConsent />} />
           <Route path="*" element={<NotFound />} />

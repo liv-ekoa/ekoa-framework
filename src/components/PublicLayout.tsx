@@ -56,7 +56,8 @@ export function PublicLayout() {
           </nav>
           <div className="hidden items-center gap-2 lg:flex">
             <Link to={person ? '/app' : '/signin'} className="rounded-field px-3 py-2 text-sm font-bold text-ink-soft hover:text-ink">{person ? 'Open the app' : 'Sign in'}</Link>
-            <Link to="/join" className="rounded-full bg-moss px-4 py-2 text-sm font-bold text-paper hover:bg-moss-800">Join the founding cohort</Link>
+            {!person && <Link to="/signup" className="rounded-full bg-moss px-4 py-2 text-sm font-bold text-paper hover:bg-moss-800">Sign up</Link>}
+            <Link to="/join" className="rounded-field px-3 py-2 text-sm font-bold text-ink-soft hover:text-ink">Founding cohort</Link>
           </div>
           <button className="rounded-field p-2 lg:hidden" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Menu">
             {open ? <X /> : <Menu />}
@@ -68,7 +69,8 @@ export function PublicLayout() {
               <Link key={n.to} to={n.to} className="block rounded-field px-2 py-2.5 font-bold text-ink">{n.label}</Link>
             ))}
             <Link to={person ? '/app' : '/signin'} className="block rounded-field px-2 py-2.5 font-bold text-ink-soft">{person ? 'Open the app' : 'Sign in'}</Link>
-            <Link to="/join" className="mt-2 block rounded-full bg-moss px-3 py-2.5 text-center font-bold text-paper">Join the founding cohort</Link>
+            {!person && <Link to="/signup" className="mt-2 block rounded-full bg-moss px-3 py-2.5 text-center font-bold text-paper">Sign up</Link>}
+            <Link to="/join" className="block rounded-field px-2 py-2.5 font-bold text-ink-soft">Founding cohort</Link>
           </nav>
         )}
       </header>}

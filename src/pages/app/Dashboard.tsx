@@ -213,7 +213,7 @@ function LeaderboardCard({ ranking, orgId }: { ranking: api.LeaderboardRow[]; or
           <p className="mt-1 text-sm text-paper/85">Earned from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
         </>
       ) : (
-        <p className="mt-1 text-sm text-paper/85">Not on the leaderboard yet. Publish a verified record (T2 or higher) to appear.</p>
+        <p className="mt-1 text-sm text-paper/85">Not on the leaderboard yet. Publish a record to appear. Verified records (T2 or higher) earn full points.</p>
       )}
     </Link>
   );

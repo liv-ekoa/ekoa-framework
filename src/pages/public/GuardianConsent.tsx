@@ -19,14 +19,14 @@ export default function GuardianConsent() {
   if (done)
     return (
       <div className="mx-auto max-w-xl px-4 py-20">
-        <Notice tone="leaf">Thank you. Your choices are saved, and {first}’s account is {scope.account ? 'now active' : 'still switched off'}. You can change or withdraw consent at any time by writing to the school or to Ekoa.</Notice>
+        <Notice tone="leaf">Thank you. Your choices are saved, and {first}’s account is {scope.account ? 'now fully active' : 'still limited'}. You can change or withdraw consent at any time by writing to the school or to Ekoa.</Notice>
       </div>
     );
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-bold">Consent for {first} to use Ekoa</h1>
-      <p className="mt-3 text-ink-soft">{first}’s school has invited them to take part in a student sustainability network. Their account stays switched off until you decide. Choose exactly what you allow.</p>
+      <p className="mt-3 text-ink-soft">{first}’s school has invited them to take part in a student sustainability network. Their account stays limited until you decide: they can draft privately, but nothing is published, no photos of people are shared and they cannot message other schools. Choose exactly what you allow.</p>
       <div className="mt-6 space-y-3 rounded-panel border border-paper-line bg-white p-6 text-sm text-ink-soft">
         <p className="font-bold text-ink">What we store about {first}</p>
         <ul className="list-disc space-y-1 pl-5">
