@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Link, type LinkProps } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
+import { EkoaMascot } from './EkoaMascot';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 export { cx };
@@ -124,8 +125,9 @@ export function Empty({ title, children, action }: { title: string; children?: R
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 py-10 text-ink-mute" role="status">
-      <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> {label}
+    <div className="flex flex-col items-center gap-2 py-10 text-moss" role="status">
+      <EkoaMascot pose="loading" size={96} />
+      <span className="text-sm text-ink-mute">{label}</span>
     </div>
   );
 }

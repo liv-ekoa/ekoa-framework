@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, CalendarDays, Info, MessagesSquare } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
@@ -8,6 +9,7 @@ import { ROLES, STAGES, metricByCode } from '@/lib/ekoa';
 import { seriesFor, formatMetric, completeness } from '@/lib/metrics';
 import { fmtDateTime, plural, relative, daysBetween } from '@/lib/format';
 import { StageRing } from '@/components/Logo';
+import { EkoaMascot, useMoments } from '@/components/EkoaMascot';
 import { Badge, Empty, LinkButton, Loading, Meter, PageHeader, Panel, cx, Notice } from '@/components/ui';
 import type { RoleKey } from '@/lib/types';
 
@@ -49,11 +51,23 @@ function Upcoming() {
 function SchoolDashboard() {
   const auth = useAuth();
   const orgId = auth.activeOrg?.id;
+  const moments = useMoments();
   const { data, loading } = useData(async () => {
     if (!orgId) return null;
     const [s, threads, posts, circles, ranking, verifs, flags] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolLeaderboard(), api.listVerifications(), auth.has('faculty_liaison', orgId) ? api.listFlags() : Promise.resolve([])]);
     return { s, threads, posts, circles, ranking, openFlags: flags.filter((f) => f.org_id === orgId && f.status === 'open'), audits: verifs.filter((v) => v.verifier_org === orgId && v.requested_tier === 3 && (v.status === 'requested' || v.status === 'in_progress')) };
   }, [orgId]);
+  const myRank = data?.ranking.find((r) => r.org_id === orgId)?.position;
+  useEffect(() => {
+    // Once per session per position: a school that reaches the top five gets a victory jump.
+    if (!orgId || !myRank || myRank > 5) return;
+    const key = `ekoa-top5-${orgId}-${myRank}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch { /* storage blocked: celebrate anyway */ }
+    moments.victory('Your school is among the leaders on the leaderboard');
+  }, [orgId, myRank, moments]);
   if (loading || !data) return <Loading />;
   const { s } = data;
   const isLiaison = auth.has('faculty_liaison');
@@ -192,7 +206,10 @@ function LeaderboardCard({ ranking, orgId }: { ranking: api.LeaderboardRow[]; or
       <p className="label-caps text-paper/80">School leaderboard</p>
       {me ? (
         <>
-          <p className="mt-1 font-display text-4xl font-semibold italic">{Math.round(me.score * 10) / 10} <span className="font-sans text-base not-italic text-paper/80">points</span></p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="mt-1 font-display text-4xl font-semibold italic">{Math.round(me.score * 10) / 10} <span className="font-sans text-base not-italic text-paper/80">points</span></p>
+            {me.position <= 5 && <EkoaMascot pose="jump" size={72} className="-my-2 shrink-0 text-paper" />}
+          </div>
           <p className="mt-1 text-sm text-paper/85">Earned from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
         </>
       ) : (

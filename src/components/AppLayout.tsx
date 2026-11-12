@@ -8,7 +8,8 @@ import { Logo } from './Logo';
 import { ReportConcern } from './ReportConcern';
 import { useAuth } from '@/lib/auth';
 import { roleTitle } from '@/lib/ekoa';
-import { Avatar, Loading, cx } from './ui';
+import { Avatar, cx } from './ui';
+import { FullScreenLoading } from './EkoaMascot';
 
 type Auth = ReturnType<typeof useAuth>;
 interface NavItem { to: string; label: string; icon: typeof Gauge; end?: boolean; show: (a: Auth) => boolean }
@@ -62,7 +63,7 @@ export function AppLayout() {
   const meRef = useOutside<HTMLDivElement>(me, () => setMe(false));
   useEffect(() => { setDrawer(false); setMore(false); setMe(false); }, [loc.pathname]);
 
-  if (auth.loading) return <div className="p-10"><Loading /></div>;
+  if (auth.loading) return <FullScreenLoading />;
   if (!auth.person) return <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
   if (auth.needsConsent) return <Navigate to="/waiting-for-consent" replace />;
 

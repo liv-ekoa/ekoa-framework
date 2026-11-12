@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
 import { config } from './lib/config';
 import App from './App';
+import { MomentProvider } from './components/EkoaMascot';
 import './fonts/fonts.css';
 import '@fontsource/caveat/500.css';
 import '@fontsource/caveat/700.css';
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     {config.configured ? (
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <MomentProvider>
+            <App />
+          </MomentProvider>
         </AuthProvider>
       </BrowserRouter>
     ) : (
