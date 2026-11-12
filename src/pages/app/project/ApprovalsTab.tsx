@@ -92,7 +92,7 @@ export function ApprovalsTab({ b, canEdit, onChange }: { b: ProjectBundle; canEd
               <Button type="submit" variant="dark" busy={act.busy}>Submit proposal</Button>
             </form>
           ) : (
-            <p className="text-sm text-ink-soft">Your school has no approval chain mapped yet. <Link to="/app/school?tab=governance" className="font-bold text-leaf-600 underline">Map it under My School</Link>.</p>
+            <p className="text-sm text-ink-soft">Your school has no approval chain mapped yet. {auth.has('faculty_liaison') ? <><Link to="/app/school?tab=governance" className="font-bold text-leaf-600 underline">Map it under My school</Link>.</> : 'Ask your teacher to map it.'}</p>
           )}
         </Panel>
       )}

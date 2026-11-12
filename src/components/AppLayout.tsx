@@ -17,6 +17,8 @@ interface NavItem { to: string; label: string; icon: typeof Gauge; end?: boolean
 const inSchool = (a: Auth) => a.activeOrg?.org_type === 'school';
 /** A school, or the private workspace of a student who joined on their own. */
 const inWorkspace = (a: Auth) => inSchool(a) || a.activeOrg?.org_type === 'independent';
+/** Only the teacher who owns the school workspace manages its people, context and approval chain. */
+const teacher = (a: Auth) => inSchool(a) && a.has('faculty_liaison');
 const auditor = (a: Auth) => !!a.activeOrg?.audit_school && a.has(['auditor', 'faculty_liaison']);
 
 // The main tabs: Projects holds the metrics, Network holds the Wall and Connections, and
@@ -24,17 +26,17 @@ const auditor = (a: Auth) => !!a.activeOrg?.audit_school && a.has(['auditor', 'f
 const TABS: NavItem[] = [
   { to: '/app', label: 'Home', icon: Home, end: true, show: () => true },
   { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: inWorkspace },
-  { to: '/app/school', label: 'My school', icon: School, show: inSchool },
+  { to: '/app/school', label: 'My school', icon: School, show: teacher },
   { to: '/app/network', label: 'Network', icon: Network, show: () => true },
   { to: '/app/library', label: 'Library', icon: BookOpenText, show: () => true },
   { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
   { to: '/app/funding', label: 'Funding', icon: PiggyBank, show: inWorkspace },
+  { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
+  { to: '/leaderboard', label: 'Leaderboard', icon: Trophy, show: () => true },
 ];
 const MORE: NavItem[] = [
   { to: '/app/audit', label: 'Audit desk', icon: ClipboardCheck, show: auditor },
-  { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
   { to: '/app/reports', label: 'Reports', icon: FileBarChart, show: (a) => inSchool(a) || a.isSteward },
-  { to: '/leaderboard', label: 'School leaderboard', icon: Trophy, show: () => true },
   { to: '/app/steward', label: 'Admin console', icon: ShieldCheck, show: (a) => a.isSteward },
   { to: '/app/partner', label: 'Partner desk', icon: HandHelping, show: (a) => a.isPartner },
   { to: '/app/settings', label: 'Settings', icon: Settings, show: () => true },
@@ -103,7 +105,7 @@ export function AppLayout() {
       <header className="no-print sticky top-0 z-40 border-b border-paper-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1280px] items-center gap-4 px-4 sm:px-6">
           <Link to="/" aria-label="Public site" className="shrink-0 py-3"><Logo compact /></Link>
-          <nav aria-label="App" className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+          <nav aria-label="App" className="hidden min-w-0 flex-1 items-center justify-center xl:flex">
             {tabs.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={tabClass}>{n.label}</NavLink>)}
             <div ref={moreRef} className="relative">
               <button onClick={() => setMore((m) => !m)} aria-expanded={more} aria-haspopup="menu" className={cx('relative inline-flex items-center gap-1 px-3 py-4 text-sm font-bold', moreActive ? 'text-ink after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-full after:bg-clay' : 'text-ink-mute hover:text-ink')}>
@@ -120,7 +122,7 @@ export function AppLayout() {
               )}
             </div>
           </nav>
-          <div className="ml-auto hidden items-center gap-2 lg:flex">
+          <div className="ml-auto hidden items-center gap-2 xl:flex">
             {orgSwitch}
             {canLog && (
               <Link to="/app/log" className="inline-flex items-center gap-1.5 rounded-full bg-clay-600 px-3.5 py-1.5 text-sm font-bold text-white hover:bg-clay-700">
@@ -147,12 +149,12 @@ export function AppLayout() {
               )}
             </div>
           </div>
-          <button onClick={() => setDrawer(true)} className="ml-auto rounded-field p-2 lg:hidden" aria-label="Open menu"><Menu /></button>
+          <button onClick={() => setDrawer(true)} className="ml-auto rounded-field p-2 xl:hidden" aria-label="Open menu"><Menu /></button>
         </div>
       </header>
 
       {drawer && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="fixed inset-0 z-50 flex xl:hidden">
           <div className="flex w-[84%] max-w-xs flex-col gap-5 overflow-y-auto bg-paper px-3 py-5">
             <div className="flex items-center justify-between px-2"><Logo compact /><button onClick={() => setDrawer(false)} aria-label="Close menu" className="rounded-field p-1"><X /></button></div>
             {orgSwitch && <div className="px-2">{orgSwitch}</div>}
@@ -170,12 +172,12 @@ export function AppLayout() {
         </div>
       )}
 
-      <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-14">
+      <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 xl:pb-14">
         <Outlet />
       </main>
 
       {/* Mobile bottom bar */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-paper-line bg-white lg:hidden" aria-label="Quick">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-paper-line bg-white xl:hidden" aria-label="Quick">
         {[
           { to: '/app', label: 'Home', icon: Home, end: true },
           { to: '/app/network', label: 'Network', icon: Users },

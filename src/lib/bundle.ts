@@ -142,7 +142,7 @@ export function schoolAlerts(s: SchoolData, opts: { isLiaison: boolean; personId
     }
   }
   for (const role of ['project_lead', 'ekoa_rep', 'faculty_liaison'] as const) {
-    if (!s.members.some((m) => m.role.role === role && (m.role.status === 'active' || m.role.status === 'outgoing'))) {
+    if (opts.isLiaison && !s.members.some((m) => m.role.role === role && (m.role.status === 'active' || m.role.status === 'outgoing'))) {
       out.push({ tone: 'alert', text: `No active ${role.replace(/_/g, ' ')}. Fill the role so the school keeps its link to the network.`, to: '/app/school' });
     }
   }
