@@ -1,25 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, HandHelping, Home, Landmark, LogOut, Menu, Network,
+  BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, GraduationCap, HandHelping, Home, Landmark, LogOut, Menu, Network,
   PiggyBank, Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { AccountBanners } from './AccountBanners';
 import { ReportConcern } from './ReportConcern';
 import { useAuth } from '@/lib/auth';
 import { roleTitle } from '@/lib/ekoa';
-import { Avatar, Loading, cx } from './ui';
+import { Avatar, cx } from './ui';
+import { FullScreenLoading } from './EkoaMascot';
 
 type Auth = ReturnType<typeof useAuth>;
 interface NavItem { to: string; label: string; icon: typeof Gauge; end?: boolean; show: (a: Auth) => boolean }
 
 const inSchool = (a: Auth) => a.activeOrg?.org_type === 'school';
+// A student's own workspace can hold projects too, before they join a school.
+const canWork = (a: Auth) => a.activeOrg?.org_type === 'school' || a.activeOrg?.org_type === 'workspace';
 const auditor = (a: Auth) => !!a.activeOrg?.audit_school && a.has(['auditor', 'faculty_liaison']);
 
 // The main tabs follow the Villars layout: Home, your profile (My school), the Wall and Connections.
 const TABS: NavItem[] = [
   { to: '/app', label: 'Home', icon: Home, end: true, show: () => true },
-  { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: inSchool },
+  { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: canWork },
+  { to: '/app/teacher', label: 'Teacher desk', icon: GraduationCap, show: (a) => inSchool(a) && a.has('faculty_liaison') },
   { to: '/app/school', label: 'My school', icon: School, show: inSchool },
   { to: '/app/network', label: 'Wall', icon: Users, show: () => true },
   { to: '/app/connections', label: 'Connections', icon: Network, show: () => true },
@@ -32,7 +37,7 @@ const MORE: NavItem[] = [
   { to: '/app/governance', label: 'Governance', icon: Landmark, show: inSchool },
   { to: '/app/handover', label: 'Handover', icon: Repeat2, show: inSchool },
   { to: '/app/reports', label: 'Reports', icon: FileBarChart, show: (a) => inSchool(a) || a.isSteward },
-  { to: '/ranking', label: 'School ranking', icon: Trophy, show: () => true },
+  { to: '/leaderboard', label: 'School leaderboard', icon: Trophy, show: () => true },
   { to: '/app/steward', label: 'Steward console', icon: ShieldCheck, show: (a) => a.isSteward },
   { to: '/app/partner', label: 'Partner desk', icon: HandHelping, show: (a) => a.isPartner },
   { to: '/app/settings', label: 'Settings', icon: Settings, show: () => true },
@@ -61,9 +66,8 @@ export function AppLayout() {
   const meRef = useOutside<HTMLDivElement>(me, () => setMe(false));
   useEffect(() => { setDrawer(false); setMore(false); setMe(false); }, [loc.pathname]);
 
-  if (auth.loading) return <div className="p-10"><Loading /></div>;
-  if (!auth.person) return <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
-  if (auth.needsConsent) return <Navigate to="/waiting-for-consent" replace />;
+  if (auth.loading) return <FullScreenLoading />;
+  if (!auth.person) return auth.email ? <Navigate to="/welcome" replace /> : <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
 
   const tabs = TABS.filter((n) => n.show(auth));
   const moreItems = MORE.filter((n) => n.show(auth));
@@ -169,6 +173,7 @@ export function AppLayout() {
       )}
 
       <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-14">
+        <AccountBanners />
         <Outlet />
       </main>
 

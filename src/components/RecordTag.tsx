@@ -49,12 +49,18 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
               {formatMetric(lead.metric_code, lead.baseline)} <span className="text-ink-mute">to</span> {formatMetric(lead.metric_code, lead.result)}
             </p>
           </div>
+        ) : r.key_result ? (
+          <div className="max-w-[60%]">
+            <p className="text-xs text-ink-mute">Key result</p>
+            <p className="text-sm font-bold leading-snug text-ink">{r.key_result}</p>
+          </div>
         ) : (
           <span />
         )}
         <div className="flex flex-col items-end gap-1">
           <span className={cx('rounded-tag px-2 py-0.5 text-xs font-bold text-white', band[r.outcome_class])}>{o.label}</span>
           <span className="rounded-tag border border-clay-600/50 bg-clay-100 px-2 py-0.5 text-xs font-bold text-clay-700">Tier {r.tier}</span>
+          {r.tier < 2 && <span className="rounded-tag border border-paper-line bg-paper-deep px-2 py-0.5 text-xs font-bold text-ink-soft">Unverified</span>}
         </div>
       </div>
     </article>

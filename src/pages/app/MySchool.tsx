@@ -5,6 +5,7 @@ import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useAction, useData } from '@/lib/hooks';
 import { loadSchool } from '@/lib/bundle';
+import { JoinRequestsPanel } from '@/components/JoinRequestsPanel';
 import { MINIMUM_TEAM, ROLES, STAGES, roleTitle } from '@/lib/ekoa';
 import { download } from '@/lib/csv';
 import { fmtDate } from '@/lib/format';
@@ -27,6 +28,7 @@ export default function MySchool() {
   return (
     <div>
       <PageHeader title={data.s.org.name} lead={`${data.s.org.city}, ${data.s.org.country}. The faculty liaison owns this workspace and keeps its memory across student cohorts.`} />
+      {isLiaison && <div className="mb-6"><JoinRequestsPanel org={data.s.org} /></div>}
       <Tabs label="School sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'profile', label: 'Profile and context' }, { key: 'people', label: 'People and terms', count: data.s.members.length }, { key: 'governance', label: 'Approval chain', count: data.s.steps.length }, { key: 'archive', label: 'Archive' }]} />
       {tab === 'profile' && <Profile org={data.s.org} canEdit={isLiaison} onChange={() => { void reload(); void auth.refresh(); }} />}
       {tab === 'people' && <People d={data} canEdit={isLiaison} onChange={reload} />}
@@ -74,9 +76,9 @@ type Data = { s: Awaited<ReturnType<typeof loadSchool>>; consents: Awaited<Retur
 function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange: () => void }) {
   const auth = useAuth();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ name: '', email: '', age_band: '13-15' as Person['age_band'], role: 'implementation_team' as RoleKey, local_title: '', term_end: '', guardian_name: '', guardian_email: '' });
+  const [f, setF] = useState({ name: '', email: '', age_band: '13-15' as Person['age_band'], role: 'implementation_team' as RoleKey, local_title: '', term_end: '', starts_on: '', guardian_name: '', guardian_email: '' });
   const [link, setLink] = useState<string | null>(null);
-  const [extra, setExtra] = useState<{ person: Person; role: RoleKey; local_title: string } | null>(null);
+  const [extra, setExtra] = useState<{ person: Person; role: RoleKey; local_title: string; starts_on: string } | null>(null);
   const act = useAction();
   const order: RoleKey[] = ['faculty_liaison', 'project_lead', 'ekoa_rep', 'board_member', 'implementation_team', 'auditor', 'approver', 'alumni'];
   const roleChoices: RoleKey[] = ['implementation_team', 'board_member', 'ekoa_rep', 'project_lead', 'approver', 'faculty_liaison', ...(d.s.org.audit_school ? ['auditor' as RoleKey] : [])];
@@ -94,6 +96,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
         </Notice>
       )}
       {canEdit && <Button variant="dark" onClick={() => { setOpen(true); setLink(null); }}><Plus className="h-4 w-4" /> Invite a member</Button>}
+      <ErrorNote>{act.error}</ErrorNote>
       <div className="overflow-x-auto rounded-panel border border-paper-line bg-white">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-paper-line text-ink-mute"><tr><th className="px-4 py-3 font-bold">Name</th><th className="px-4 py-3 font-bold">Role</th><th className="px-4 py-3 font-bold">Term</th><th className="px-4 py-3 font-bold">Consent</th>{canEdit && <th className="px-4 py-3" />}</tr></thead>
@@ -109,9 +112,10 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1.5">
+                        {person.consent_status === 'pending' && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.extendDraftAccess(person.id, 30); onChange(); })}>Extend draft time</Button>}
                         {cl && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(cl); setLink(cl); }}><Copy className="h-4 w-4" /> Consent link</Button>}
                         {role.status !== 'alumni' && members.find((m) => m.person.id === person.id)?.role.id === role.id && (
-                          <Button size="sm" variant="quiet" onClick={() => setExtra({ person, role: 'ekoa_rep', local_title: '' })}><Plus className="h-4 w-4" /> Role</Button>
+                          <Button size="sm" variant="quiet" onClick={() => setExtra({ person, role: 'ekoa_rep', local_title: '', starts_on: '' })}><Plus className="h-4 w-4" /> Role</Button>
                         )}
                       </div>
                     </td>
@@ -140,6 +144,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
               <Field label="Role" id="iv-r" hint={ROLES[f.role].description}><Select id="iv-r" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as RoleKey })}>{roleChoices.map((r) => <option key={r} value={r}>{ROLES[r].label}</option>)}</Select></Field>
               <Field label="What your school calls it (optional)" id="iv-lt" hint="Shown next to the role, e.g. Eco Club President."><Input id="iv-lt" maxLength={80} value={f.local_title} onChange={(e) => setF({ ...f, local_title: e.target.value })} /></Field>
               <Field label="Term ends" id="iv-t" hint="Stagger end dates across the board."><Input id="iv-t" type="date" value={f.term_end} onChange={(e) => setF({ ...f, term_end: e.target.value })} /></Field>
+              <Field label="Starts on (optional)" id="iv-s" hint="Leave empty to start today. A future date makes them the incoming successor: they can read and comment until the handover."><Input id="iv-s" type="date" value={f.starts_on} onChange={(e) => setF({ ...f, starts_on: e.target.value })} /></Field>
             </div>
             {f.age_band !== '18+' && (
               <div className="grid gap-4 rounded-field bg-paper p-4 sm:grid-cols-2">
@@ -153,7 +158,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
               if (!f.name.trim() || !/\S+@\S+\.\S+/.test(f.email)) throw new Error('Add a name and a valid email.');
               if (ROLES[f.role].adult && f.age_band !== '18+') throw new Error('Adult roles need someone aged 18 or over.');
               if (f.age_band !== '18+' && !/\S+@\S+\.\S+/.test(f.guardian_email)) throw new Error('Students under 18 need a guardian email for consent.');
-              const res = await api.inviteMember(auth.activeOrg!.id, { ...f, term_end: f.term_end || null }, auth.person!.id);
+              const res = await api.inviteMember(auth.activeOrg!.id, { ...f, term_end: f.term_end || null, starts_on: f.starts_on || null }, auth.person!.id);
               setLink(res.consentToken ? `${window.location.origin}/consent/${res.consentToken}` : `${window.location.origin}/signin`);
               onChange();
             })}>Create invitation</Button>
@@ -170,8 +175,9 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
               </Select>
             </Field>
             <Field label="What your school calls it (optional)" id="xr-t"><Input id="xr-t" maxLength={80} value={extra.local_title} onChange={(e) => setExtra({ ...extra, local_title: e.target.value })} /></Field>
+            <Field label="Starts on (optional)" id="xr-s" hint="A future date makes this the incoming role: read and comment until the handover."><Input id="xr-s" type="date" value={extra.starts_on} onChange={(e) => setExtra({ ...extra, starts_on: e.target.value })} /></Field>
             <ErrorNote>{act.error}</ErrorNote>
-            <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.addRole(auth.activeOrg!.id, extra.person.id, extra.role, extra.local_title, null, auth.person!.id); setExtra(null); onChange(); })}>Add role</Button>
+            <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.addRole(auth.activeOrg!.id, extra.person.id, extra.role, extra.local_title, null, auth.person!.id, extra.starts_on || null); setExtra(null); onChange(); })}>Add role</Button>
           </div>
         )}
       </Modal>

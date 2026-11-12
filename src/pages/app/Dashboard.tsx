@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, CalendarDays, Info, MessagesSquare } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
@@ -8,6 +9,7 @@ import { ROLES, STAGES, metricByCode } from '@/lib/ekoa';
 import { seriesFor, formatMetric, completeness } from '@/lib/metrics';
 import { fmtDateTime, plural, relative, daysBetween } from '@/lib/format';
 import { StageRing } from '@/components/Logo';
+import { EkoaMascot, useMoments } from '@/components/EkoaMascot';
 import { Badge, Empty, LinkButton, Loading, Meter, PageHeader, Panel, cx } from '@/components/ui';
 import type { RoleKey } from '@/lib/types';
 
@@ -49,11 +51,23 @@ function Upcoming() {
 function SchoolDashboard() {
   const auth = useAuth();
   const orgId = auth.activeOrg?.id;
+  const moments = useMoments();
   const { data, loading } = useData(async () => {
     if (!orgId) return null;
-    const [s, threads, posts, circles, ranking, verifs] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolRanking(), api.listVerifications()]);
+    const [s, threads, posts, circles, ranking, verifs] = await Promise.all([loadSchool(orgId), api.listThreads(), api.listPosts(), api.listCircles(), api.listSchoolLeaderboard(), api.listVerifications()]);
     return { s, threads, posts, circles, ranking, audits: verifs.filter((v) => v.verifier_org === orgId && v.requested_tier === 3 && (v.status === 'requested' || v.status === 'in_progress')) };
   }, [orgId]);
+  const myRank = data?.ranking.find((r) => r.org_id === orgId)?.position;
+  useEffect(() => {
+    // Once per session per position: a school that reaches the top five gets a victory jump.
+    if (!orgId || !myRank || myRank > 5) return;
+    const key = `ekoa-top5-${orgId}-${myRank}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch { /* storage blocked: celebrate anyway */ }
+    moments.victory('Your school is among the leaders on the leaderboard');
+  }, [orgId, myRank, moments]);
   if (loading || !data) return <Loading />;
   const { s } = data;
   const isLiaison = auth.has('faculty_liaison');
@@ -156,7 +170,7 @@ function SchoolDashboard() {
               <p className="mt-1 text-sm text-ink-soft">Open the audit desk to check them against the protocols.</p>
             </Link>
           )}
-          <RankCard ranking={data.ranking} orgId={s.org.id} />
+          <LeaderboardCard ranking={data.ranking} orgId={s.org.id} />
           <Panel title="From the circles" action={<Link to="/app/network" className="text-sm font-bold text-leaf-600">Wall</Link>}>
             <ul className="space-y-3">
               {recentThreads.map((t) => {
@@ -180,18 +194,21 @@ function SchoolDashboard() {
   );
 }
 
-function RankCard({ ranking, orgId }: { ranking: api.RankRow[]; orgId: string }) {
+function LeaderboardCard({ ranking, orgId }: { ranking: api.LeaderboardRow[]; orgId: string }) {
   const me = ranking.find((r) => r.org_id === orgId);
   return (
-    <Link to="/ranking" className="block rounded-panel bg-moss p-5 text-paper hover:bg-moss-800">
-      <p className="label-caps text-paper/80">School ranking</p>
+    <Link to="/leaderboard" className="block rounded-panel bg-moss p-5 text-paper hover:bg-moss-800">
+      <p className="label-caps text-paper/80">School leaderboard</p>
       {me ? (
         <>
-          <p className="mt-1 font-display text-4xl font-semibold italic">#{me.position} <span className="font-sans text-base not-italic text-paper/80">of {ranking.length}</span></p>
-          <p className="mt-1 text-sm text-paper/85">{Math.round(me.score * 10) / 10} points from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
+          <div className="flex items-center justify-between gap-3">
+          <p className="mt-1 font-display text-4xl font-semibold italic">{Math.round(me.score * 10) / 10} <span className="font-sans text-base not-italic text-paper/80">points</span></p>
+          {me.position <= 5 && <EkoaMascot pose="jump" size={72} className="-my-2 shrink-0 text-paper" />}
+          </div>
+          <p className="mt-1 text-sm text-paper/85">Earned from {plural(me.verified_records, 'verified record')}{me.adopting_schools ? `, adapted by ${plural(me.adopting_schools, 'school')}` : ''}.</p>
         </>
       ) : (
-        <p className="mt-1 text-sm text-paper/85">Not ranked yet. Publish a verified record (T2 or higher) to enter the table.</p>
+        <p className="mt-1 text-sm text-paper/85">Not on the leaderboard yet. Publish a record to appear. Verified records (T2 or higher) earn full points.</p>
       )}
     </Link>
   );

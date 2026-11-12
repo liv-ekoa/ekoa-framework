@@ -3,7 +3,7 @@ import { db, must, supabase, uuid } from './db';
 import { config } from './config';
 import { METRIC_LIBRARY, nextStage, templateByKey } from './ekoa';
 import type {
-  Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
+  ClauseOffer, Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
   HandoverPacket, ImplementationRecord, Measurement, MetricDefinition, Obstacle, Organisation, Person,
   Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectFile, ProjectMetric, ProjectScope, Proposal, RoleAssignment, RoleKey,
@@ -371,6 +371,27 @@ export async function uploadEvidence(orgId: UUID, projectId: UUID | null, file: 
     }).select().single(),
   );
 }
+// ---------------- Teacher desk: past work and clause offers ----------------
+/** Start a record from work that was not run as a project on Ekoa. It stays a private draft until the teacher publishes it. */
+export async function createPastWorkRecord(org: Organisation, input: { title: string; category: string; summary: string }) {
+  return saveRecord({
+    org_id: org.id, title: input.title.trim(), category: input.category, summary: input.summary.trim(),
+    context: { country: org.country, city: org.city, descriptor: '', budget_band: 'low' } as ImplementationRecord['context'],
+    problem: '', intervention: '', timeline: '', budget_summary: '', outcome_class: 'too_early', tier: 0,
+    lessons: '', materials: [], contributors: [], obstacles: [], outcomes: [], anonymised: false,
+  });
+}
+export const listClauseOffers = () => must<ClauseOffer[]>(db.from('clause_offers').select('*').order('created_at', { ascending: false }));
+export async function offerClause(orgId: UUID, policyId: UUID | null, section: string, title: string, body: string, note: string) {
+  if (body.trim().length < 20) throw new Error('A clause needs at least a sentence or two.');
+  return must<ClauseOffer>(db.from('clause_offers').insert({ org_id: orgId, policy_id: policyId, section, title: title.trim(), body: body.trim(), note: note.trim() }).select().single());
+}
+export async function acceptClauseOffer(id: UUID) {
+  const { error } = await supabase.rpc('accept_clause_offer', { p_offer: id });
+  if (error) throw new Error(error.message);
+}
+export const declineClauseOffer = (id: UUID) => must(db.from('clause_offers').update({ status: 'declined', reviewed_at: nowIso() }).eq('id', id));
+
 // ---------------- Project files: documents, slides, spreadsheets and links ----------------
 export const FILE_TYPES: Record<string, string> = {
   pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -490,14 +511,14 @@ export async function submitApplication(row: Pick<Application, 'name' | 'email' 
 export const listApplications = () => must<Application[]>(db.from('applications').select('*').order('created_at', { ascending: false }));
 export const updateApplication = (id: UUID, patch: Partial<Application>) => must(db.from('applications').update(patch).eq('id', id));
 
-// ---------------- School ranking ----------------
-export interface RankRow {
+// ---------------- School leaderboard ----------------
+export interface LeaderboardRow {
   org_id: UUID; name: string; country: string; city: string;
   verified_records: number; audited_records: number; adopting_schools: number; adoptions_that_worked: number;
   score: number; position: number;
 }
 /** Read from the public_school_ranking view, which holds the formula. */
-export const listSchoolRanking = () => must<RankRow[]>(db.from('public_school_ranking').select('*').order('position'));
+export const listSchoolLeaderboard = () => must<LeaderboardRow[]>(db.from('public_school_ranking').select('*').order('position'));
 
 // ---------------- Safeguarding ----------------
 export async function submitConcern(row: Pick<SafeguardingReport, 'reporter_person_id' | 'reporter_contact' | 'subject_ref' | 'category' | 'details'>) {
@@ -515,3 +536,30 @@ export async function publishReport(slug: string, title: string, data: unknown, 
   else await must(db.from('reports').insert({ slug, title, data, published_at: nowIso() }));
   await audit(actor, `published report ${slug}`, 'reports', slug);
 }
+
+// ---------------- Direct sign-up and joining a school ----------------
+export interface SchoolHit { id: UUID; name: string; city: string; country: string }
+export interface JoinRequest { id: UUID; person_id: UUID; org_id: UUID; status: 'requested' | 'confirmed' | 'declined'; requested_at: string }
+export interface PendingJoin { request_id: UUID; display_name: string; age_band: string; requested_at: string }
+
+const rpc = async <T,>(fn: string, args: Record<string, unknown>) => {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+};
+export const signupStudent = (name: string, ageBand: string) => rpc<string>('signup_student', { p_name: name, p_age_band: ageBand });
+export const signupSchool = (name: string, school: string, country: string, city: string) => rpc<string>('signup_school', { p_name: name, p_school: school, p_country: country, p_city: city });
+export const findSchools = (q: string) => rpc<SchoolHit[]>('find_schools', { p_query: q });
+export const schoolByCode = (code: string) => rpc<SchoolHit[]>('school_by_code', { p_code: code });
+export const requestToJoinSchool = (orgId: UUID, code?: string) => rpc<string>('request_to_join_school', { p_org: orgId, p_code: code ?? null });
+export const pendingJoinRequests = (orgId: UUID) => rpc<PendingJoin[]>('pending_join_requests', { p_org: orgId });
+export const decideJoinRequest = (requestId: UUID, accept: boolean) => rpc<number>('decide_join_request', { p_request: requestId, p_accept: accept });
+export const myJoinRequests = () => must<JoinRequest[]>(db.from('join_requests').select('*').eq('status', 'requested'));
+
+// ---------------- Feedback on drafts ----------------
+export interface ProjectComment { id: UUID; org_id: UUID; project_id: UUID; person_id: UUID | null; author_name: string; author_role: string; body: string; created_at: string }
+export const listProjectComments = (projectId: UUID) => must<ProjectComment[]>(db.from('project_comments').select('*').eq('project_id', projectId).order('created_at'));
+export const addProjectComment = (orgId: UUID, projectId: UUID, body: string) => must(db.from('project_comments').insert({ org_id: orgId, project_id: projectId, body: body.trim() }));
+export const deleteProjectComment = (id: UUID) => must(db.from('project_comments').delete().eq('id', id));
+/** A teacher at the student's school, or a steward, keeps a paused account working a little longer. */
+export const extendDraftAccess = (personId: UUID, days = 30) => rpc<null>('extend_draft_access', { p_person: personId, p_days: days });

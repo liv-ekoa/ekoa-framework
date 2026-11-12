@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, RotateCcw, ShieldCheck, Trophy } from 'lucide-react';
-import { listOrgs, listPublicRecords, listSchoolRanking } from '@/lib/api';
+import { listOrgs, listPublicRecords, listSchoolLeaderboard } from '@/lib/api';
 import { useData } from '@/lib/hooks';
 import { STAGES } from '@/lib/ekoa';
 import { RecordTag } from '@/components/RecordTag';
@@ -41,7 +41,7 @@ const AUDIENCE = [
 
 export default function Home() {
   const { data } = useData(async () => {
-    const [records, orgs, ranking] = await Promise.all([listPublicRecords(), listOrgs('school'), listSchoolRanking()]);
+    const [records, orgs, ranking] = await Promise.all([listPublicRecords(), listOrgs('school'), listSchoolLeaderboard()]);
     return { records, orgs: orgs.filter((o) => o.public_visible), ranking };
   });
   const records = data?.records ?? [];
@@ -187,7 +187,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Peer audit and ranking */}
+      {/* Peer audit and leaderboard */}
       <section className="mx-auto max-w-page px-4 py-20 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="flex flex-col rounded-panel border border-paper-line bg-white p-7 sm:p-9">
@@ -200,18 +200,18 @@ export default function Home() {
           </div>
           <div className="flex flex-col rounded-panel border border-paper-line bg-white p-7 sm:p-9">
             <Trophy className="h-8 w-8 text-clay-600" aria-hidden />
-            <h2 className="mt-5 text-3xl sm:text-4xl">Ranked on verified impact.</h2>
-            <p className="mt-3 text-ink-soft">Schools climb by publishing checked results and building models others adapt. Sign-ups don’t count.</p>
+            <h2 className="mt-5 text-3xl sm:text-4xl">A leaderboard of verified impact.</h2>
+            <p className="mt-3 text-ink-soft">Schools earn points by publishing checked results and building models others adapt. Sign-ups don’t count.</p>
             <ol className="mt-5 flex-1 space-y-2">
               {(data?.ranking ?? []).slice(0, 3).map((r) => (
                 <li key={r.org_id} className="flex items-center gap-4 rounded-field bg-paper px-4 py-2.5">
-                  <span className="w-6 font-display text-2xl font-semibold italic text-clay-700">{r.position}</span>
+                  <Trophy className="h-5 w-5 shrink-0 text-clay-600" aria-hidden />
                   <span className="min-w-0 flex-1 truncate font-bold">{r.name}</span>
                   <span className="tabular-nums text-sm text-ink-mute">{Math.round(r.score)} pts</span>
                 </li>
               ))}
             </ol>
-            <Link to="/ranking" className="mt-6 inline-flex items-center gap-1 font-bold text-leaf-600 hover:underline">See the full ranking <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/leaderboard" className="mt-6 inline-flex items-center gap-1 font-bold text-leaf-600 hover:underline">See the full leaderboard <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </div>
       </section>

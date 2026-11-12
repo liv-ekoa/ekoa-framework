@@ -2,7 +2,7 @@
 
 export type UUID = string;
 
-export type OrgType = 'school' | 'partner' | 'ekoa';
+export type OrgType = 'school' | 'partner' | 'ekoa' | 'workspace';
 export type AgeBand = '13-15' | '16-17' | '18+';
 export type ConsentStatus = 'not_needed' | 'pending' | 'granted' | 'withdrawn';
 
@@ -54,6 +54,7 @@ export interface Organisation {
   anonymised_label: string | null;
   /** Ekoa audit schools carry out T3 peer audits of other schools' records. */
   audit_school: boolean;
+  join_code?: string | null;
   created_at: string;
 }
 
@@ -66,6 +67,7 @@ export interface Person {
   is_minor: boolean;
   locale: string;
   consent_status: ConsentStatus;
+  draft_until?: string | null;
   created_at: string;
 }
 
@@ -371,6 +373,20 @@ export interface PolicyClause {
   body: string;
   source_org_id: UUID | null;
   adoption_count: number;
+}
+
+export interface ClauseOffer {
+  id: UUID;
+  org_id: UUID;
+  policy_id: UUID | null;
+  section: string;
+  title: string;
+  body: string;
+  note: string;
+  status: 'pending' | 'accepted' | 'declined';
+  offered_by: UUID | null;
+  created_at: string;
+  reviewed_at: string | null;
 }
 
 export interface ProjectFile {

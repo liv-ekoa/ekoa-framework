@@ -9,11 +9,13 @@ const ORG_KEY = 'ekoa-active-org';
 interface AuthState {
   loading: boolean;
   person: Person | null;
+  /** The signed-in email, even before a profile exists (someone who just signed up). */
+  email: string | null;
   roles: RoleAssignment[];
   orgs: Organisation[];
   activeOrg: Organisation | null;
   setActiveOrg: (id: UUID) => void;
-  sendMagicLink: (email: string) => Promise<void>;
+  sendMagicLink: (email: string, next?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   /** Role checks scoped to the active organisation unless an org id is given. */
@@ -45,6 +47,7 @@ const safeSet = (k: string, v: string | null) => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [person, setPerson] = useState<Person | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [roles, setRoles] = useState<RoleAssignment[]>([]);
   const [orgs, setOrgs] = useState<Organisation[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<UUID | null>(safeGet(ORG_KEY));
@@ -70,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const { data } = await supabase.auth.getUser();
+      setEmail(data.user?.email ?? null);
       if (data.user) {
         const { data: p } = await supabase.from('people').select('*').eq('auth_user_id', data.user.id).maybeSingle();
         await loadPerson((p as Person) ?? null);
@@ -97,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       loading,
       person,
+      email,
       roles,
       orgs,
       activeOrg,
@@ -104,8 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActiveOrgId(id);
         safeSet(ORG_KEY, id);
       },
-      sendMagicLink: async (email) => {
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/app`, shouldCreateUser: true } });
+      sendMagicLink: async (addr, next = '/app') => {
+        const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: `${window.location.origin}${next}`, shouldCreateUser: true } });
         if (error) throw new Error(error.message);
       },
       signOut: async () => {
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdult: person?.age_band === '18+',
       needsConsent: !!person?.is_minor && person.consent_status !== 'granted',
     };
-  }, [loading, person, roles, orgs, activeOrgId, refresh, loadPerson]);
+  }, [loading, person, email, roles, orgs, activeOrgId, refresh, loadPerson]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -10,7 +10,7 @@ import { fmtDate, fmtDateTime, relative } from '@/lib/format';
 import type { Application, MetricDefinition, SafeguardingReport } from '@/lib/types';
 import { Badge, Button, Empty, ErrorNote, Field, Input, Loading, Meter, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
 
-type Tab = 'applications' | 'schools' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
+type Tab = 'offers' | 'applications' | 'schools' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
 const STAGES_APP: Application['status'][] = ['new', 'contacted', 'call_booked', 'agreement_sent', 'onboarded', 'declined'];
 const APP_LABEL: Record<Application['status'], string> = { new: 'New', contacted: 'Contacted', call_booked: 'Call booked', agreement_sent: 'Agreement sent', onboarded: 'Onboarded', declined: 'Declined' };
 
@@ -19,9 +19,9 @@ export default function Steward() {
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'applications';
   const { data, reload } = useData(async () => {
-    const [apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics] = await Promise.all([api.listApplications(), api.listOrgs(), api.listReports(), api.listPosts(), api.listThreads(), api.listPeople(), api.listAudit(), api.listCampaigns(), api.listTwins(), api.listMetricDefs()]);
+    const [offers, apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics] = await Promise.all([api.listClauseOffers(), api.listApplications(), api.listOrgs(), api.listReports(), api.listPosts(), api.listThreads(), api.listPeople(), api.listAudit(), api.listCampaigns(), api.listTwins(), api.listMetricDefs()]);
     const schools = await Promise.all(orgs.filter((o) => o.org_type === 'school').map((o) => loadSchool(o.id)));
-    return { apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics, schools };
+    return { offers, apps, orgs, reports, posts, threads, people, audit, campaigns, twins, metrics, schools };
   });
   if (!auth.isSteward) return <Empty title="Stewards only">This console is for the Ekoa core team.</Empty>;
   if (!data) return <Loading />;
@@ -33,6 +33,7 @@ export default function Steward() {
       <Tabs label="Console sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[
         { key: 'applications', label: 'Applications', count: data.apps.filter((a) => a.status === 'new').length },
         { key: 'schools', label: 'Schools' },
+        { key: 'offers', label: 'Clause offers', count: data.offers.filter((o) => o.status === 'pending').length },
         { key: 'moderation', label: 'Moderation', count: held.length },
         { key: 'safeguarding', label: 'Safeguarding', count: openReports.length },
         { key: 'campaigns', label: 'Campaigns and twins' },
@@ -41,6 +42,7 @@ export default function Steward() {
       ]} />
       {tab === 'applications' && <Applications apps={data.apps} reload={reload} />}
       {tab === 'schools' && <Schools d={data} reload={reload} />}
+      {tab === 'offers' && <ClauseOffers d={data} reload={reload} />}
       {tab === 'moderation' && <Moderation d={data} reload={reload} />}
       {tab === 'safeguarding' && <Safeguarding reports={data.reports} reload={reload} />}
       {tab === 'campaigns' && <CampaignsAdmin d={data} reload={reload} />}
@@ -119,7 +121,7 @@ function Applications({ apps, reload }: { apps: Application[]; reload: () => voi
   );
 }
 
-type D = { schools: Awaited<ReturnType<typeof loadSchool>>[]; orgs: Awaited<ReturnType<typeof api.listOrgs>>; posts: Awaited<ReturnType<typeof api.listPosts>>; threads: Awaited<ReturnType<typeof api.listThreads>>; people: Awaited<ReturnType<typeof api.listPeople>>; campaigns: Awaited<ReturnType<typeof api.listCampaigns>>; twins: Awaited<ReturnType<typeof api.listTwins>> };
+type D = { offers: Awaited<ReturnType<typeof api.listClauseOffers>>; schools: Awaited<ReturnType<typeof loadSchool>>[]; orgs: Awaited<ReturnType<typeof api.listOrgs>>; posts: Awaited<ReturnType<typeof api.listPosts>>; threads: Awaited<ReturnType<typeof api.listThreads>>; people: Awaited<ReturnType<typeof api.listPeople>>; campaigns: Awaited<ReturnType<typeof api.listCampaigns>>; twins: Awaited<ReturnType<typeof api.listTwins>> };
 
 function Schools({ d, reload }: { d: D; reload: () => void }) {
   const [inviteFor, setInviteFor] = useState<{ id: string; name: string } | null>(null);
@@ -302,5 +304,32 @@ function MetricsAdmin({ metrics, reload }: { metrics: MetricDefinition[]; reload
       </Modal>
       <p className="mt-3 text-sm text-ink-mute">Updated {fmtDate(new Date().toISOString())}. Units never change once data exists; add a new metric instead.</p>
     </>
+  );
+}
+
+
+function ClauseOffers({ d, reload }: { d: D; reload: () => void }) {
+  const act = useAction();
+  const pending = d.offers.filter((o) => o.status === 'pending');
+  const done = d.offers.filter((o) => o.status !== 'pending');
+  const school = (id: string) => d.orgs.find((o) => o.id === id)?.name ?? 'A school';
+  return (
+    <div className="space-y-5">
+      <p className="max-w-prose text-ink-soft">Teachers offer clauses from their own school's policies. Read each one, check it names no student or person, then add it to the shared library or decline it.</p>
+      <ErrorNote>{act.error}</ErrorNote>
+      {pending.length ? pending.map((o) => (
+        <article key={o.id} className="rounded-panel border border-paper-line bg-white p-5">
+          <p className="text-sm text-ink-mute">{school(o.org_id)}. {o.section}. Offered {fmtDate(o.created_at)}</p>
+          <h3 className="mt-1 font-display text-lg font-semibold">{o.title}</h3>
+          <p className="mt-2 whitespace-pre-line text-ink-soft">{o.body}</p>
+          {o.note && <p className="mt-2 text-sm text-ink-mute">Note from the teacher: {o.note}</p>}
+          <div className="mt-4 flex gap-2">
+            <Button busy={act.busy} onClick={() => act.run(async () => { await api.acceptClauseOffer(o.id); reload(); })}>Add to the library</Button>
+            <Button variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.declineClauseOffer(o.id); reload(); })}>Decline</Button>
+          </div>
+        </article>
+      )) : <Empty title="No offers waiting">When a teacher offers a clause it appears here.</Empty>}
+      {done.length > 0 && <details><summary className="cursor-pointer text-sm font-bold text-ink-soft">Reviewed ({done.length})</summary><ul className="mt-2 space-y-1 text-sm text-ink-soft">{done.map((o) => <li key={o.id}>{o.title}, {school(o.org_id)}: {o.status}</li>)}</ul></details>}
+    </div>
   );
 }

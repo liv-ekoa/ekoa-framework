@@ -24,7 +24,7 @@ export default function Safeguarding() {
             <li>Every school has a designated safeguarding contact, and Ekoa has a trained safeguarding lead who responds to reports within 24 hours. Concerns are escalated to schools and to authorities as local law requires, including mandatory reporting under India’s POCSO Act, 2012.</li>
           </ul>
           <h2>Consent</h2>
-          <p>Student accounts for anyone under 18 stay switched off until a parent or guardian gives consent through a link from the school. Guardians choose exactly what they allow: the account itself, cross-school circles, photos, and whether a name may appear on records. Consent can be withdrawn at any time.</p>
+          <p>Student accounts for anyone under 18 are limited until a guardian gives consent through a link. Until then a student can draft privately, but cannot publish, upload photos of people or message other schools. Guardians choose exactly what they allow: the account itself, cross-school circles, photos, and whether a name may appear on records. Consent can be withdrawn at any time.</p>
           <h2>Your data</h2>
           <ul>
             <li>We store an age band, never a date of birth, and we never track location. Photos are stripped of location data when uploaded.</li>

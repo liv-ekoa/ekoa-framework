@@ -38,7 +38,7 @@ export function CommunityTab({ b }: { b: ProjectBundle }) {
                 <p className="text-sm text-ink-soft">{circle.description} {count} {count === 1 ? 'member' : 'members'}.</p>
               </div>
             </div>
-            {mine ? <Link to="/app/network" className="rounded-field border border-ink px-4 py-2 text-sm font-bold hover:bg-paper-deep">Open the circle</Link>
+            {mine ? <Link to="/app/network" className="rounded-full border border-leaf bg-white px-4 py-2 text-sm font-bold text-leaf-600 hover:bg-leaf-50">Open the circle</Link>
               : <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => { await api.joinCircle(circle.id, auth.person!.id); await reload(); })}>Join the circle</Button>}
           </div>
           <ErrorNote>{act.error}</ErrorNote>

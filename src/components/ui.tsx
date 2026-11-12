@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Link, type LinkProps } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
+import { EkoaMascot } from './EkoaMascot';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 export { cx };
@@ -124,8 +125,9 @@ export function Empty({ title, children, action }: { title: string; children?: R
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 py-10 text-ink-mute" role="status">
-      <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> {label}
+    <div className="flex flex-col items-center gap-2 py-10 text-moss" role="status">
+      <EkoaMascot pose="loading" size={96} />
+      <span className="text-sm text-ink-mute">{label}</span>
     </div>
   );
 }
@@ -167,17 +169,21 @@ export function Avatar({ name, tone = 'moss' }: { name: string; tone?: 'moss' | 
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Callers often pass an inline onClose, which changes on every render. Keep it in a ref so the
+  // effect below runs only when the modal opens, not on each keystroke (which stole focus to the X).
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLElement>('input,textarea,select,button')?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current();
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
       prev?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>

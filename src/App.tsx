@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicLayout } from './components/PublicLayout';
 import { AppLayout } from './components/AppLayout';
-import { Loading } from './components/ui';
+import { FullScreenLoading } from './components/EkoaMascot';
 
 // Public site
 import Home from './pages/public/Home';
@@ -19,8 +19,11 @@ const Contact = lazy(() => import('./pages/public/Contact'));
 const SignIn = lazy(() => import('./pages/public/SignIn'));
 const GuardianConsent = lazy(() => import('./pages/public/GuardianConsent'));
 const WaitingConsent = lazy(() => import('./pages/public/WaitingConsent'));
+const SignUp = lazy(() => import('./pages/public/SignUp'));
+const Welcome = lazy(() => import('./pages/public/Welcome'));
+const StudentDemo = lazy(() => import('./pages/public/StudentDemo'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
-const Ranking = lazy(() => import('./pages/public/Ranking'));
+const Leaderboard = lazy(() => import('./pages/public/Leaderboard'));
 
 // Member app
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
@@ -31,6 +34,7 @@ const QuickLog = lazy(() => import('./pages/app/QuickLog'));
 const Metrics = lazy(() => import('./pages/app/Metrics'));
 const Kiosk = lazy(() => import('./pages/app/Kiosk'));
 const Library = lazy(() => import('./pages/app/Library'));
+const TeacherDesk = lazy(() => import('./pages/app/TeacherDesk'));
 const RecordView = lazy(() => import('./pages/app/RecordView'));
 const RecordEditor = lazy(() => import('./pages/app/RecordEditor'));
 const Network = lazy(() => import('./pages/app/Network'));
@@ -50,7 +54,7 @@ const Settings = lazy(() => import('./pages/app/Settings'));
 
 export default function App() {
   return (
-    <Suspense fallback={<div className="p-10"><Loading /></div>}>
+    <Suspense fallback={<FullScreenLoading />}>
       <Routes>
         <Route element={<PublicLayout />}>
           <Route index element={<Home />} />
@@ -59,14 +63,18 @@ export default function App() {
           <Route path="network" element={<NetworkMap />} />
           <Route path="library" element={<PublicLibrary />} />
           <Route path="library/:id" element={<PublicRecord />} />
-          <Route path="ranking" element={<Ranking />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="ranking" element={<Navigate to="/leaderboard" replace />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
           <Route path="join" element={<Join />} />
           <Route path="about" element={<About />} />
           <Route path="safeguarding" element={<Safeguarding />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="demo" element={<StudentDemo />} />
           <Route path="signin" element={<SignIn />} />
+          <Route path="signup" element={<SignUp />} />
+          <Route path="welcome" element={<Welcome />} />
           <Route path="consent/:token" element={<GuardianConsent />} />
           <Route path="waiting-for-consent" element={<WaitingConsent />} />
           <Route path="*" element={<NotFound />} />
@@ -79,6 +87,7 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectWorkspace />} />
           <Route path="log" element={<QuickLog />} />
           <Route path="metrics" element={<Metrics />} />
+          <Route path="teacher" element={<TeacherDesk />} />
           <Route path="library" element={<Library />} />
           <Route path="library/:id" element={<RecordView />} />
           <Route path="records/:id/edit" element={<RecordEditor />} />
