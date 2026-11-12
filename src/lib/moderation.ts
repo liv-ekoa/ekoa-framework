@@ -59,17 +59,20 @@ const COMPILED = PATTERNS.map(([reason, list]) => [reason, new RegExp(`\\b(${lis
 
 /** Contact details are checked on the original text, before look-alike letters are mapped. */
 const CONTACT: [RegExp, string][] = [
-  [/(\+?\d[\d\s-]{7,}\d)/, 'phone number'],
   [/\d{2,}x{2,}\d{2,}/i, 'phone number'],
   [/[\w.+-]+@[\w-]+\.[\w.]+/, 'email address'],
   [/\b(whatsapp|insta(gram)?|snap(chat)?|telegram|discord|dm me|message me privately)\b/i, 'off-platform contact'],
   [/(^|\s)@[a-z0-9_.]{3,}/i, 'social handle'],
 ];
 
+/** A run of digits is a phone number only with 10 or more digits, so dates and measurements pass. */
+const hasPhoneNumber = (text: string) => (text.match(/\+?\d[\d\s-]{7,}\d/g) ?? []).some((m) => m.replace(/\D/g, '').length >= 10);
+
 /** What, if anything, the filter would stop. The most serious category wins. */
 export function screen(text: string): { reason: FlagReason; detail: string } | null {
   const t = normalise(text);
   for (const [reason, re] of COMPILED) if (re.test(t)) return { reason, detail: FLAG_REASONS[reason].label.toLowerCase() };
+  if (hasPhoneNumber(text)) return { reason: 'contact', detail: 'phone number' };
   for (const [re, label] of CONTACT) if (re.test(text)) return { reason: 'contact', detail: label };
   return null;
 }
@@ -84,7 +87,8 @@ language plpgsql immutable set search_path = public as $$
 declare t text := regexp_replace(translate(lower(coalesce(p_text, '')), '013457@$', 'oieastas'), '(.)\\1{2,}', '\\1', 'g');
 begin
 ${branches}
-  if p_text ~ '(\\+?\\d[\\d\\s-]{7,}\\d)' or p_text ~* '\\d{2,}x{2,}\\d{2,}' or p_text ~ '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z.]+'
+  if exists (select 1 from regexp_matches(p_text, '\\+?\\d[\\d\\s-]{7,}\\d', 'g') m where length(regexp_replace(m[1], '\\D', '', 'g')) >= 10)
+     or p_text ~* '\\d{2,}x{2,}\\d{2,}' or p_text ~ '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z.]+'
      or p_text ~* '\\m(whatsapp|insta|instagram|snap|snapchat|telegram|discord|dm me|message me privately)\\M' or p_text ~* '(^|\\s)@[a-z0-9_.]{3,}' then
     return 'contact';
   end if;

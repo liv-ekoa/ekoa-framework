@@ -16,3 +16,4 @@ create table storage.objects (id uuid primary key default gen_random_uuid(), buc
 alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;
 grant usage on schema storage to anon, authenticated;
+grant select on storage.objects to authenticated;
