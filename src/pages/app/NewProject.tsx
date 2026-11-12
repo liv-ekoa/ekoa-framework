@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createProject } from '@/lib/api';
+import { fireConfetti } from '@/components/confetti';
 import { useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
 import { CATEGORIES, TEMPLATES, metricByCode, type ProjectTemplate } from '@/lib/ekoa';
@@ -24,7 +25,8 @@ export default function NewProject() {
 
   return (
     <div>
-      <PageHeader title="Start a project" lead={<>Pick a template, or <Link to="/app/library" className="font-bold text-leaf-600 underline">adapt a record from another school</Link>. Pilot templates are for waste; energy and water templates arrive with Cohort 2.</>} />
+      <PageHeader title="Start a project" lead={<>Pick a template and give it a name. That is all you need to begin; the rest can wait. Or <Link to="/app/library" className="font-bold text-leaf-600 underline">adapt a record from another school</Link>. Pilot templates are for waste; energy and water templates arrive with Cohort 2.</>} />
+      <p className="mb-6 max-w-prose rounded-field border border-leaf/30 bg-leaf-50 px-4 py-3 text-sm text-ink-soft"><span className="font-bold text-ink">Other schools can build on your work. </span>When your project ends it becomes a record that other schools can copy, including what went wrong. Jot down what you do as you go and the record mostly writes itself.</p>
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           {TEMPLATES.map((t) => (
@@ -42,16 +44,16 @@ export default function NewProject() {
             <p className="mt-1 text-sm text-ink-soft">Choose your own metrics from the library.</p>
           </button>
         </div>
-        <form className="h-fit space-y-4 rounded-panel border border-paper-line bg-white p-6 lg:sticky lg:top-6" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { if (!title.trim()) throw new Error('Give the project a name.'); const p = await createProject(auth.activeOrg!.id, { title: title.trim(), category, template_key: tpl?.key ?? null, problem }, auth.person!.id); nav(`/app/projects/${p.id}`); }); }}>
+        <form className="h-fit space-y-4 rounded-panel border border-paper-line bg-white p-6 lg:sticky lg:top-6" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { if (!title.trim()) throw new Error('Give the project a name.'); const p = await createProject(auth.activeOrg!.id, { title: title.trim(), category, template_key: tpl?.key ?? null, problem }, auth.person!.id); fireConfetti(); nav(`/app/projects/${p.id}`); }); }}>
           <Field label="Project name" id="np-title"><Input id="np-title" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-          <Field label="Category" id="np-cat"><Select id="np-cat" value={category} onChange={(e) => setCategory(e.target.value)}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
-          <Field label="What problem are you looking at?" id="np-problem" hint={tpl?.problemPrompt ?? 'You can finish this after the baseline audit.'}>
-            <Textarea id="np-problem" value={problem} onChange={(e) => setProblem(e.target.value)} rows={3} />
+          {tpl === null && <Field label="Category" id="np-cat"><Select id="np-cat" value={category} onChange={(e) => setCategory(e.target.value)}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>}
+          <Field label="What problem are you looking at? (optional)" id="np-problem" hint={tpl?.problemPrompt ?? 'A sentence is enough. You can finish this after the baseline audit.'}>
+            <Textarea id="np-problem" value={problem} onChange={(e) => setProblem(e.target.value)} rows={2} />
           </Field>
           {tpl && (
             <div className="rounded-field bg-paper p-3 text-sm text-ink-soft">
               <p className="font-bold text-ink">This template adds</p>
-              <p>{tpl.tasks.length} tasks, {tpl.metrics.length} metrics, a monitoring plan and {tpl.risks.length} known {tpl.risks.length === 1 ? 'risk' : 'risks'}.</p>
+              <p>{tpl.tasks.length} tasks, {tpl.metrics.length} metrics, a monitoring plan and {tpl.risks.length} known {tpl.risks.length === 1 ? 'risk' : 'risks'}, already filled in for you to edit. Category: {category}.</p>
             </div>
           )}
           <ErrorNote>{act.error}</ErrorNote>

@@ -32,7 +32,6 @@ export default function Join() {
     void act.run(async () => {
       if (!f.name.trim()) throw new Error('Add your full name.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) throw new Error('Add an email address we can reply to.');
-      if (f.has_lead === 'no' && !f.lead_plan.trim()) throw new Error('Tell us who could lead: one teacher and one student is enough.');
       const student_emails = parseEmails(f.students);
       if (student_emails.length > 500) throw new Error('Send up to 500 student emails at a time.');
       const { students: _s, ...rest } = f;
@@ -46,7 +45,7 @@ export default function Join() {
       <div className="mx-auto max-w-xl px-4 py-24 text-center sm:px-6">
         <CheckCircle2 className="mx-auto h-12 w-12 text-leaf" aria-hidden />
         <h1 className="mt-6 text-3xl font-bold">Application received</h1>
-        <p className="mt-3 text-ink-soft">Thank you, {f.name.split(' ')[0]}. A steward will reply to {f.email} within a week to book a 30-minute call.</p>
+        <p className="mt-3 text-ink-soft">Thank you, {f.name.split(' ')[0]}. An Ekoa admin will reply to {f.email} within a week to book a 30-minute call.</p>
       </div>
     );
 
@@ -61,10 +60,9 @@ export default function Join() {
         </ul>
         <h2 className="mt-10 text-lg font-semibold">What happens next</h2>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-ink-soft">
-          <li>A steward reads your application and replies within a week.</li>
-          <li>We book a 30-minute call to check fit.</li>
-          <li>Schools sign a participation and safeguarding agreement.</li>
-          <li>You get your workspace and join a cohort.</li>
+          <li>Send this short form. It takes about two minutes.</li>
+          <li>An Ekoa admin replies within a week and helps you get set up.</li>
+          <li>Your school gets its workspace and joins the founding cohort.</li>
         </ol>
       </div>
       <form onSubmit={submit} className="space-y-5 rounded-panel border border-paper-line bg-white p-6 sm:p-8" noValidate>
@@ -72,7 +70,6 @@ export default function Join() {
           <Field label="Full name" id="j-name"><Input id="j-name" value={f.name} onChange={set('name')} autoComplete="name" required /></Field>
           <Field label="Email" id="j-email"><Input id="j-email" type="email" value={f.email} onChange={set('email')} autoComplete="email" placeholder="you@school.edu" required /></Field>
           <Field label="Organisation" id="j-org"><Input id="j-org" value={f.organisation} onChange={set('organisation')} placeholder="School or organisation" /></Field>
-          <Field label="Country" id="j-country"><Input id="j-country" value={f.country} onChange={set('country')} autoComplete="country-name" /></Field>
         </div>
         <Field label="Your role" id="j-role">
           <Select id="j-role" value={f.role} onChange={set('role')}>
@@ -80,6 +77,10 @@ export default function Join() {
             {ROLES.map((r) => <option key={r}>{r}</option>)}
           </Select>
         </Field>
+        <details className="rounded-field border border-paper-line px-4 py-3">
+          <summary className="cursor-pointer text-sm font-bold text-ink">Add more details (optional)</summary>
+          <div className="mt-4 space-y-5">
+          <Field label="Country" id="j-country"><Input id="j-country" value={f.country} onChange={set('country')} autoComplete="country-name" /></Field>
         <fieldset className="space-y-2">
           <legend className="text-sm font-bold text-ink">Does your school already have someone leading sustainability work?</legend>
           <p className="text-xs text-ink-mute">Many schools don’t. You don’t need a sustainability head to join.</p>
@@ -103,9 +104,11 @@ export default function Join() {
         <Field label="Student emails (optional)" id="j-stu" hint={`The students who will use Ekoa, one per line or separated by commas. The Ekoa team gives each one a role when your school is set up.${parseEmails(f.students).length ? ` ${parseEmails(f.students).length} found.` : ''}`}>
           <Textarea id="j-stu" value={f.students} onChange={set('students')} rows={4} placeholder={'asha.k@school.edu\nrohan.m@school.edu'} />
         </Field>
+          </div>
+        </details>
         <p className="text-xs text-ink-mute">This form is for schools and organisations. A student can also <Link to="/join/student" className="font-bold underline">join on their own</Link> before their school is on Ekoa. We only use these details to reply to you.</p>
         <ErrorNote>{act.error}</ErrorNote>
-        <Button type="submit" variant="dark" size="lg" busy={act.busy} className="w-full">Submit application</Button>
+        <Button type="submit" variant="dark" size="lg" busy={act.busy} className="w-full">Join the founding cohort</Button>
       </form>
     </div>
   );

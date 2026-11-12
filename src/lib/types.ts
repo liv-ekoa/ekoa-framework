@@ -355,6 +355,22 @@ export interface Policy {
   updated_at: string;
 }
 
+/** An adopted policy as anyone can read it, from the public_policies view. */
+export interface PublicPolicy {
+  id: UUID;
+  title: string;
+  version: number;
+  status: 'adopted' | 'amended';
+  sections: PolicySection[];
+  adopted_at: string | null;
+  updated_at: string;
+  is_model: boolean;
+  school: string;
+  org_id: UUID | null;
+  city: string;
+  country: string;
+}
+
 export interface PolicyAmendment { id: UUID; policy_id: UUID; summary: string; adopted_on: string }
 
 export interface PolicyClause {
@@ -534,4 +550,22 @@ export interface Session {
   roles: RoleAssignment[];
   orgs: Organisation[];
   activeOrgId: UUID | null;
+}
+
+/** A policy members add to the Library. Visitors see approved ones through a view that omits who submitted them. */
+export interface LibraryPolicy {
+  id: UUID;
+  title: string;
+  school_name: string;
+  topic: string;
+  category: string;
+  summary: string;
+  url: string;
+  created_at: string;
+}
+export interface LibraryPolicySubmission extends LibraryPolicy {
+  submitted_by: UUID;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: UUID | null;
+  reviewed_at: string | null;
 }

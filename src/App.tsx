@@ -10,18 +10,22 @@ const Mission = lazy(() => import('./pages/public/Mission'));
 const HowItWorks = lazy(() => import('./pages/public/HowItWorks'));
 const NetworkMap = lazy(() => import('./pages/public/NetworkMap'));
 const PublicLibrary = lazy(() => import('./pages/public/PublicLibrary'));
+const PublicPolicy = lazy(() => import('./pages/public/PublicLibrary').then((m) => ({ default: m.PublicPolicy })));
+const AppPolicy = lazy(() => import('./pages/app/Library').then((m) => ({ default: m.AppPolicy })));
 const PublicRecord = lazy(() => import('./pages/public/PublicRecord'));
 const Reports = lazy(() => import('./pages/public/Reports'));
 const Join = lazy(() => import('./pages/public/Join'));
 const About = lazy(() => import('./pages/public/About'));
 const Safeguarding = lazy(() => import('./pages/public/Safeguarding'));
 const Contact = lazy(() => import('./pages/public/Contact'));
+const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
+const TermsOfUse = lazy(() => import('./pages/public/TermsOfUse'));
 const SignIn = lazy(() => import('./pages/public/SignIn'));
 const JoinStudent = lazy(() => import('./pages/public/JoinStudent'));
 const GuardianConsent = lazy(() => import('./pages/public/GuardianConsent'));
 const WaitingConsent = lazy(() => import('./pages/public/WaitingConsent'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
-const Ranking = lazy(() => import('./pages/public/Ranking'));
+const Leaderboard = lazy(() => import('./pages/public/Leaderboard'));
 
 // Member app
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
@@ -66,7 +70,10 @@ export default function App() {
           <Route path="network" element={<NetworkMap />} />
           <Route path="library" element={<PublicLibrary />} />
           <Route path="library/:id" element={<PublicRecord />} />
-          <Route path="ranking" element={<Ranking />} />
+          <Route path="library/policies/:id" element={<PublicPolicy />} />
+          <Route path="policies" element={<Navigate to="/library" replace />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="ranking" element={<Navigate to="/leaderboard" replace />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/pilot-01" element={<CohortReport publicView />} />
           <Route path="join" element={<Join />} />
@@ -74,6 +81,8 @@ export default function App() {
           <Route path="about" element={<About />} />
           <Route path="safeguarding" element={<Safeguarding />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="terms-of-use" element={<TermsOfUse />} />
           <Route path="signin" element={<SignIn />} />
           <Route path="consent/:token" element={<GuardianConsent />} />
           <Route path="waiting-for-consent" element={<WaitingConsent />} />
@@ -89,6 +98,7 @@ export default function App() {
           <Route path="metrics" element={<Moved to="/app/projects" extra={{ view: 'metrics' }} />} />
           <Route path="library" element={<Library />} />
           <Route path="library/:id" element={<RecordView />} />
+          <Route path="library/policies/:id" element={<AppPolicy />} />
           <Route path="records/:id/edit" element={<RecordEditor />} />
           <Route path="network" element={<Network />} />
           <Route path="network/thread/:id" element={<ThreadView />} />

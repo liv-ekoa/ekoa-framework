@@ -5,10 +5,9 @@ import { METRIC_LIBRARY, nextStage, templateByKey } from './ekoa';
 import type {
   Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
-  HandoverPacket, ImplementationRecord, Measurement, MetricDefinition, Obstacle, Organisation, Person,
+  HandoverPacket, ImplementationRecord, LibraryPolicy, LibraryPolicySubmission, Measurement, MetricDefinition, Obstacle, Organisation, Person,
   Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, Proposal, RoleAssignment, RoleKey,
-  SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion,
-} from './types';
+  SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion, PublicPolicy, } from './types';
 import { screen, screenImage, FLAG_REASONS, type FlagReason } from './moderation';
 
 const nowIso = () => new Date().toISOString();
@@ -55,7 +54,7 @@ export async function inviteMember(
     id, display_name: input.name.trim(), email: input.email.trim().toLowerCase(), age_band: input.age_band, is_minor: minor,
     locale: 'en', consent_status: minor ? 'pending' : 'not_needed',
   });
-  if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa steward to add them to your school.' : error.message);
+  if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa admin to add them to your school.' : error.message);
   await must(db.from('role_assignments').insert({
     person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, term_start: today(), term_end: input.term_end, status: 'active',
   }));
@@ -260,6 +259,14 @@ export const listObstacles = () => must<Obstacle[]>(db.from('obstacles').select(
 export const addObstacle = (row: Omit<Obstacle, 'id'>) => must(db.from('obstacles').insert(row));
 export const updateObstacle = (id: UUID, patch: Partial<Obstacle>) => must(db.from('obstacles').update(patch).eq('id', id));
 
+// ---------------- Library policies ----------------
+/** Approved policies only. Visitors can read this without signing in. */
+export const listSharedPolicyLinks = () => must<LibraryPolicy[]>(db.from('public_policy_links').select('*').order('created_at', { ascending: false }));
+/** Your own submissions, or every submission for a steward. */
+export const listPolicySubmissions = () => must<LibraryPolicySubmission[]>(db.from('library_policies').select('*').order('created_at', { ascending: false }));
+export const submitPolicy = (row: Pick<LibraryPolicySubmission, 'title' | 'school_name' | 'topic' | 'category' | 'summary' | 'url' | 'submitted_by'>) => must(db.from('library_policies').insert(row));
+export const reviewPolicy = (id: UUID, status: 'approved' | 'rejected') => must(db.from('library_policies').update({ status }).eq('id', id));
+
 // ---------------- Records, library, adaptations ----------------
 export const listRecords = () => must<ImplementationRecord[]>(db.from('records').select('*').order('updated_at', { ascending: false }));
 export const getRecord = (id: UUID) => must<ImplementationRecord>(db.from('records').select('*').eq('id', id).single());
@@ -314,6 +321,13 @@ export async function completeVerification(v: Verification, verified: boolean, n
 // ---------------- Policies ----------------
 export const listPolicies = () => must<Policy[]>(db.from('policies').select('*').order('updated_at', { ascending: false }));
 export const getPolicy = (id: UUID) => must<Policy>(db.from('policies').select('*').eq('id', id).single());
+/** The public Policy library: every adopted policy, plus the Ekoa model policies. */
+export const listPublicPolicies = () => must<PublicPolicy[]>(db.from('public_policies').select('*').order('updated_at', { ascending: false }));
+export const getPublicPolicy = (id: UUID) => must<PublicPolicy>(db.from('public_policies').select('*').eq('id', id).single());
+/** Start a draft at your own school from any policy in the library. */
+export const copyPolicy = (from: PublicPolicy, orgId: UUID) =>
+  savePolicy({ org_id: orgId, title: from.title, sections: from.sections.map((s) => ({ ...s })) });
+export const deletePolicy = (id: UUID) => must(db.from('policies').delete().eq('id', id));
 export async function savePolicy(row: Partial<Policy> & { org_id: UUID }) {
   if (row.id) {
     await must(db.from('policies').update({ ...row, updated_at: nowIso() }).eq('id', row.id));
@@ -429,7 +443,7 @@ export const moderatePost = (id: UUID, patch: Partial<Post>) => must(db.from('po
 
 // ---------------- Content safety: reports and the review queue ----------------
 /** Report a post, photo or link. It is hidden for everyone else at once; the author's teacher
- *  and the Ekoa stewards review it. */
+ *  and the Ekoa admins review it. */
 export async function reportContent(kind: 'post' | 'evidence' | 'policy_link', targetId: UUID, reason: FlagReason, note = '') {
   await must(db.from('content_flags').insert({ target_kind: kind, target_id: targetId, reason, note: note.trim().slice(0, 1000) }));
 }
@@ -500,7 +514,7 @@ export const saveEvent = (row: Omit<EventItem, 'id'>) => must(db.from('events').
 export async function submitApplication(row: Pick<Application, 'name' | 'email' | 'organisation' | 'country' | 'role' | 'message' | 'has_lead' | 'lead_plan'> & Pick<Application, 'kind' | 'org_id' | 'student_emails'>) {
   // Insert only: the public can create an application but never read the table.
   await must(db.from('applications').insert({ ...row, status: 'new', notes: '' }));
-  // Emails the stewards once the notify-application function is deployed.
+  // Emails the Ekoa admins once the notify-application function is deployed.
   await supabase.functions.invoke('notify-application', { body: row }).catch(() => undefined);
 }
 /** Pull email addresses out of whatever a school pasted: commas, spaces, new lines, names. */
@@ -510,14 +524,14 @@ export function parseEmails(text: string): string[] {
 export const listApplications = () => must<Application[]>(db.from('applications').select('*').order('created_at', { ascending: false }));
 export const updateApplication = (id: UUID, patch: Partial<Application>) => must(db.from('applications').update(patch).eq('id', id));
 
-// ---------------- School ranking ----------------
-export interface RankRow {
+// ---------------- School leaderboard ----------------
+export interface LeaderboardRow {
   org_id: UUID; name: string; country: string; city: string;
   verified_records: number; audited_records: number; adopting_schools: number; adoptions_that_worked: number;
   score: number; position: number;
 }
 /** Read from the public_school_ranking view, which holds the formula. */
-export const listSchoolRanking = () => must<RankRow[]>(db.from('public_school_ranking').select('*').order('position'));
+export const listSchoolLeaderboard = () => must<LeaderboardRow[]>(db.from('public_school_ranking').select('*').order('position'));
 
 // ---------------- Safeguarding ----------------
 export async function submitConcern(row: Pick<SafeguardingReport, 'reporter_person_id' | 'reporter_contact' | 'subject_ref' | 'category' | 'details'>) {
