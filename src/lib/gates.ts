@@ -74,8 +74,9 @@ export function evaluateGate(stage: StageKey, b: ProjectBundle, manual: Record<s
         const incoming = lead.some((r) => r.status === 'incoming');
         const handedOver = b.handovers.some((h) => h.role === 'project_lead' && !!h.to_person_id);
         const coLeads = lead.filter((r) => r.status === 'active' || r.status === 'outgoing').length >= 2;
-        ok = incoming || handedOver || coLeads;
-        hint = 'Add an incoming Project Lead under My School, start a handover packet, or name a co-lead.';
+        // A student who names a successor when starting (or later) has already planned the handover.
+        ok = incoming || handedOver || coLeads || !!b.project.successor_person_id;
+        hint = 'Name who carries the project on (on the Home page), add an incoming Project Lead under My School, start a handover packet, or name a co-lead.';
         break;
       }
       case 'shared':

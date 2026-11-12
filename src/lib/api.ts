@@ -6,8 +6,9 @@ import type {
   Adaptation, Application, ApprovalEvent, AuditEntry, BudgetLine, BudgetPathway, Campaign, CampaignParticipant,
   Circle, CircleMember, Cohort, CohortMember, ConsentRecord, EventItem, Evidence, GovernanceStep,
   HandoverPacket, ImplementationRecord, LibraryPolicy, LibraryPolicySubmission, Measurement, MetricDefinition, Obstacle, Organisation, Person,
-  Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectMetric, Proposal, RoleAssignment, RoleKey,
-  SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion, PublicPolicy, } from './types';
+  Policy, PolicyAmendment, PolicyClause, Post, Project, ProjectFile, ProjectMetric, ProjectScope, Proposal, RoleAssignment, RoleKey,
+  SafeguardingReport, StageGate, StageKey, Task, Thread, Tier, UUID, Verification, ContentFlag, PolicyLink, CollaboratorSuggestion, PublicPolicy,
+} from './types';
 import { screen, screenImage, FLAG_REASONS, type FlagReason } from './moderation';
 
 const nowIso = () => new Date().toISOString();
@@ -42,9 +43,14 @@ export async function membersOf(orgId: UUID) {
     .filter((m) => m.person);
 }
 
+/** A start date in the future makes the role 'incoming': the person can read and comment (shadow access) until the handover switches them to active. */
+function startFields(startsOn?: string | null): { term_start: string; status: 'active' | 'incoming' } {
+  return startsOn && startsOn > today() ? { term_start: startsOn, status: 'incoming' } : { term_start: today(), status: 'active' };
+}
+
 export async function inviteMember(
   orgId: UUID,
-  input: { name: string; email: string; age_band: Person['age_band']; role: RoleKey; term_end: string | null; local_title?: string; guardian_name?: string; guardian_email?: string },
+  input: { name: string; email: string; age_band: Person['age_band']; role: RoleKey; term_end: string | null; starts_on?: string | null; local_title?: string; guardian_name?: string; guardian_email?: string },
   actor: UUID,
 ) {
   const minor = input.age_band !== '18+';
@@ -56,7 +62,7 @@ export async function inviteMember(
   });
   if (error) throw new Error(error.message.includes('duplicate key') ? 'Someone with this email is already on Ekoa. Ask an Ekoa admin to add them to your school.' : error.message);
   await must(db.from('role_assignments').insert({
-    person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, term_start: today(), term_end: input.term_end, status: 'active',
+    person_id: id, org_id: orgId, role: input.role, seat: null, local_title: input.local_title?.trim() || null, ...startFields(input.starts_on), term_end: input.term_end,
   }));
   let consentToken: string | null = null;
   if (minor) {
@@ -79,10 +85,10 @@ export async function inviteMember(
 }
 
 /** Give an existing member another role, e.g. the Project Lead who is also the Ekoa Representative at a small school. */
-export async function addRole(orgId: UUID, personId: UUID, role: RoleKey, localTitle: string, termEnd: string | null, actor: UUID) {
+export async function addRole(orgId: UUID, personId: UUID, role: RoleKey, localTitle: string, termEnd: string | null, actor: UUID, startsOn?: string | null) {
   const existing = (await listRolesForOrg(orgId)).find((r) => r.person_id === personId && r.role === role && r.status !== 'alumni');
   if (existing) throw new Error('They already hold this role.');
-  await must(db.from('role_assignments').insert({ person_id: personId, org_id: orgId, role, seat: null, local_title: localTitle.trim() || null, term_start: today(), term_end: termEnd, status: 'active' }));
+  await must(db.from('role_assignments').insert({ person_id: personId, org_id: orgId, role, seat: null, local_title: localTitle.trim() || null, ...startFields(startsOn), term_end: termEnd }));
   await audit(actor, `added role ${role}`, 'role_assignments', personId);
 }
 
@@ -119,21 +125,29 @@ export const updateProject = (id: UUID, patch: Partial<Project>) => must(db.from
 
 export async function createProject(
   orgId: UUID,
-  input: { title: string; category: string; template_key: string | null; adapted_from_record_id?: UUID | null; problem?: string },
+  input: { title: string; category: string; template_key: string | null; adapted_from_record_id?: UUID | null; problem?: string; solution?: string; scope?: ProjectScope; lead_person_id?: UUID | null; mentor_person_id?: UUID | null; successor_person_id?: UUID | null },
   actor: UUID,
 ) {
   const t = templateByKey(input.template_key);
   const project = await must<Project>(
     db.from('projects').insert({
       org_id: orgId, title: input.title, category: input.category, stage: 'identify', status: 'active',
-      owner_role: 'project_lead', template_key: input.template_key, starts_on: today(), ends_on: null,
-      adapted_from_record_id: input.adapted_from_record_id ?? null, problem: input.problem ?? '', solution: '',
+      owner_role: 'project_lead', scope: input.scope ?? 'school', lead_person_id: input.lead_person_id ?? null, mentor_person_id: input.mentor_person_id ?? null, successor_person_id: input.successor_person_id ?? null, template_key: input.template_key, starts_on: today(), ends_on: null,
+      adapted_from_record_id: input.adapted_from_record_id ?? null, problem: input.problem ?? '', solution: input.solution ?? '',
       monitoring_plan: t?.monitoring ?? [], risks: t?.risks ?? [], updated_at: nowIso(),
     }).select().single(),
   );
   if (t) {
-    await must(db.from('tasks').insert(t.tasks.map((k) => ({ project_id: project.id, title: k.title, owner_role: k.owner, status: 'todo', due_on: null }))));
-    await must(db.from('project_metrics').insert(t.metrics.map((m) => ({ project_id: project.id, metric_code: m, baseline: null, target: null }))));
+    const seed = async () => {
+      await must(db.from('tasks').insert(t.tasks.map((k) => ({ project_id: project.id, title: k.title, owner_role: k.owner, status: 'todo', due_on: null }))));
+      await must(db.from('project_metrics').insert(t.metrics.map((m) => ({ project_id: project.id, metric_code: m, baseline: null, target: null }))));
+    };
+    // The project row is already saved. Retry the starter to-dos once, then say plainly what happened.
+    try { await seed(); } catch {
+      const have = await must<{ id: string }[]>(db.from('tasks').select('id').eq('project_id', project.id)).catch(() => []);
+      if (have.length) throw new Error('Your project was created, but some starter to-dos did not save. Open it from Projects to check.');
+      try { await seed(); } catch { throw new Error('Your project was created, but the starter to-dos did not save. Open it from Projects and add them there.'); }
+    }
   }
   await audit(actor, 'created project', 'projects', project.id);
   return project;
@@ -141,6 +155,7 @@ export async function createProject(
 
 export const listGates = (projectId: UUID) => must<StageGate[]>(db.from('stage_gates').select('*').eq('project_id', projectId));
 export async function signGate(project: Project, stage: StageKey, personId: UUID, checklist: Record<string, boolean>) {
+  if (project.scope === 'individual' && !project.mentor_person_id) throw new Error('Choose the teacher who verifies this project first. You can do that on the project Home page.');
   // The database checks who may sign, stamps the signer, and only then lets the stage move on.
   await must(db.from('stage_gates').insert({ project_id: project.id, stage, checklist, signed_by: personId, signed_at: nowIso() }));
   const next = nextStage(stage);
@@ -386,6 +401,47 @@ export async function uploadEvidence(orgId: UUID, projectId: UUID | null, file: 
     }).select().single(),
   );
 }
+// ---------------- Project files: documents, slides, spreadsheets and links ----------------
+export const FILE_TYPES: Record<string, string> = {
+  pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  odt: 'application/vnd.oasis.opendocument.text', odp: 'application/vnd.oasis.opendocument.presentation', ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  csv: 'text/csv', txt: 'text/plain',
+};
+export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export const listProjectFiles = (projectId: UUID) => must<ProjectFile[]>(db.from('project_files').select('*').eq('project_id', projectId).order('created_at', { ascending: false }));
+export async function uploadProjectFile(orgId: UUID, projectId: UUID, file: File, title: string) {
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  if (!FILE_TYPES[ext]) throw new Error('That file type is not accepted. Use PDF, Word, PowerPoint, Excel, CSV or text. For Keynote or Pages, export to PDF first. Photos go in Evidence.');
+  if (file.size > MAX_FILE_BYTES) throw new Error('That file is over 25 MB. Make it smaller, or add a link to it instead.');
+  const storage_path = `${orgId}/${projectId}/${uuid()}.${ext}`;
+  const { error } = await supabase.storage.from('project-files').upload(storage_path, file, { contentType: FILE_TYPES[ext] });
+  if (error) throw new Error(error.message);
+  try {
+    return await must<ProjectFile>(db.from('project_files').insert({ org_id: orgId, project_id: projectId, title: title.trim() || file.name, file_name: file.name, file_type: FILE_TYPES[ext], size_bytes: file.size, storage_path }).select().single());
+  } catch (e) {
+    await supabase.storage.from('project-files').remove([storage_path]);
+    throw e;
+  }
+}
+export async function addProjectLink(orgId: UUID, projectId: UUID, title: string, url: string) {
+  const clean = url.trim();
+  if (!/^https:\/\/[^\s]+$/i.test(clean)) throw new Error('Paste a full link that starts with https://');
+  if (!title.trim()) throw new Error('Give the link a short name.');
+  return must<ProjectFile>(db.from('project_files').insert({ org_id: orgId, project_id: projectId, title: title.trim(), link_url: clean }).select().single());
+}
+export async function projectFileUrl(f: ProjectFile): Promise<string | null> {
+  if (f.link_url) return f.link_url;
+  if (!f.storage_path) return null;
+  const { data } = await supabase.storage.from('project-files').createSignedUrl(f.storage_path, 3600, { download: f.file_name ?? true });
+  return data?.signedUrl ?? null;
+}
+export async function deleteProjectFile(f: ProjectFile) {
+  await must(db.from('project_files').delete().eq('id', f.id));
+  if (f.storage_path) await supabase.storage.from('project-files').remove([f.storage_path]);
+}
+
 /** Signed links last an hour, so evidence never sits at a public address. */
 export async function evidenceUrl(e: Evidence): Promise<string | null> {
   if (!e.storage_path) return e.data_url;
@@ -427,7 +483,7 @@ export async function addPost(thread: Thread, author: Person, body: string, meta
   const reason = (back && !back.hidden ? null : (hit?.reason ?? 'other')) as FlagReason | null;
   return { held: reason ? FLAG_REASONS[reason].author : null, reason };
 }
-export async function createThread(row: Pick<Thread, 'kind' | 'title' | 'circle_id' | 'org_id' | 'record_id'> & { org_b?: UUID | null }, author: Person, body: string, meta: { role?: string; org?: string } = {}) {
+export async function createThread(row: Pick<Thread, 'kind' | 'title' | 'circle_id' | 'org_id' | 'record_id'> & { org_b?: UUID | null; project_id?: UUID | null }, author: Person, body: string, meta: { role?: string; org?: string } = {}) {
   const titleHit = screen(row.title);
   if (titleHit && titleHit.reason !== 'contact') throw new Error(`Please choose a different title. This one looks like it contains ${titleHit.detail}.`);
   const t = await must<Thread>(db.from('threads').insert({ org_b: null, ...row, created_by: author.id, created_at: nowIso(), status: 'open' }).select().single()).catch((e: Error) => {
