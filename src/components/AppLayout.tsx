@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, HandHelping, Home, Landmark, LogOut, Menu, Network,
+  BookOpenText, ChevronDown, ClipboardCheck, ClipboardList, FileBarChart, Gauge, GraduationCap, HandHelping, Home, Landmark, LogOut, Menu, Network,
   PiggyBank, Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
 } from 'lucide-react';
 import { Logo } from './Logo';
@@ -26,6 +26,7 @@ const auditor = (a: Auth) => !!a.activeOrg?.audit_school && a.has(['auditor', 'f
 const TABS: NavItem[] = [
   { to: '/app', label: 'Home', icon: Home, end: true, show: () => true },
   { to: '/app/projects', label: 'Projects', icon: ClipboardList, show: inWorkspace },
+  { to: '/app/teacher', label: 'Teacher desk', icon: GraduationCap, show: teacher },
   { to: '/app/school', label: 'My school', icon: School, show: teacher },
   { to: '/app/network', label: 'Network', icon: Network, show: () => true },
   { to: '/app/library', label: 'Library', icon: BookOpenText, show: () => true },

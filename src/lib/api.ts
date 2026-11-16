@@ -310,6 +310,15 @@ export async function saveRecord(row: Partial<ImplementationRecord> & { org_id: 
   }
   return must<ImplementationRecord>(db.from('records').insert({ version: 1, status: 'draft', visibility: 'school', ...row, updated_at: nowIso() }).select().single());
 }
+/** Start a record from work that was not run as a project on Ekoa. It stays a private draft until the teacher publishes it. */
+export async function createPastWorkRecord(org: Organisation, input: { title: string; category: string; summary: string }) {
+  return saveRecord({
+    org_id: org.id, title: input.title.trim(), category: input.category, summary: input.summary.trim(),
+    context: { country: org.country, city: org.city, descriptor: '', budget_band: 'low' } as ImplementationRecord['context'],
+    problem: '', intervention: '', timeline: '', budget_summary: '', outcome_class: 'too_early', tier: 0,
+    lessons: '', materials: [], contributors: [], obstacles: [], outcomes: [], anonymised: false,
+  });
+}
 export async function publishRecord(rec: ImplementationRecord, visibility: 'network' | 'public', actor: UUID) {
   await must(db.from('records').update({ status: 'published', visibility, published_at: nowIso(), version: rec.status === 'published' ? rec.version + 1 : rec.version, updated_at: nowIso() }).eq('id', rec.id));
   await audit(actor, `published record (${visibility})`, 'records', rec.id);
