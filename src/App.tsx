@@ -35,6 +35,7 @@ const ProjectWorkspace = lazy(() => import('./pages/app/project/ProjectWorkspace
 const QuickLog = lazy(() => import('./pages/app/QuickLog'));
 const Kiosk = lazy(() => import('./pages/app/Kiosk'));
 const Library = lazy(() => import('./pages/app/Library'));
+const TeacherDesk = lazy(() => import('./pages/app/TeacherDesk'));
 const RecordView = lazy(() => import('./pages/app/RecordView'));
 const RecordEditor = lazy(() => import('./pages/app/RecordEditor'));
 const Network = lazy(() => import('./pages/app/Network'));
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectWorkspace />} />
           <Route path="log" element={<QuickLog />} />
           <Route path="metrics" element={<Moved to="/app/projects" extra={{ view: 'metrics' }} />} />
+          <Route path="teacher" element={<TeacherDesk />} />
           <Route path="library" element={<Library />} />
           <Route path="library/:id" element={<RecordView />} />
           <Route path="library/policies/:id" element={<AppPolicy />} />
