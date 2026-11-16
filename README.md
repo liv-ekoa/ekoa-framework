@@ -54,6 +54,8 @@ Open http://localhost:5173. There is no demo data: you sign in with a magic link
 | Leaderboard | `src/pages/public/Leaderboard.tsx`, view `public_school_ranking` in the security migration |
 | Budgets | `src/lib/budget.ts`, budget panel in `project/PlanTab.tsx`, `BudgetBox` in `RecordDetail.tsx` |
 
+How Ekoa survives graduation (Ekoa Representative and Future Representative at every school, handover, joining, keeping the platform alive): [`docs/LONGEVITY.md`](docs/LONGEVITY.md).
+
 The method itself — stages, gate checklists, roles, obstacle taxonomy, metric library, templates — is data in `src/lib/ekoa.ts`. Change the method there.
 
 Every read and write goes through `src/lib/api.ts`, straight to the database.
