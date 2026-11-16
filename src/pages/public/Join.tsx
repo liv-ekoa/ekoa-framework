@@ -13,7 +13,7 @@ const LEAD_OPTIONS: { key: Application['has_lead']; label: string; hint: string 
 ];
 
 const STUDENT_ROLE = 'Student';
-const ROLES = ['School / School network', STUDENT_ROLE, 'Educator / Advisor', 'Climate NGO / Partner', 'ESG institution'];
+const ROLES = ['School / School network', STUDENT_ROLE, 'Educator / Advisor', 'Climate NGO / Partner', 'ESG institution', 'Other'];
 const LOOKING = [
   'Climate and school networks ready for implementation',
   'Sustainability coordinators and active eco clubs',
