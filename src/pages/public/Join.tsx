@@ -3,7 +3,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { parseEmails, submitApplication } from '@/lib/api';
 import { Link } from 'react-router-dom';
 import { useAction } from '@/lib/hooks';
-import { Button, ErrorNote, Field, Input, Select, Textarea, cx } from '@/components/ui';
+import { Button, ErrorNote, Field, Input, Notice, Select, Textarea, cx } from '@/components/ui';
 import type { Application } from '@/lib/types';
 
 const LEAD_OPTIONS: { key: Application['has_lead']; label: string; hint: string }[] = [
@@ -12,7 +12,8 @@ const LEAD_OPTIONS: { key: Application['has_lead']; label: string; hint: string 
   { key: 'no', label: 'Nobody yet', hint: 'That is fine. One teacher and one student are enough to start.' },
 ];
 
-const ROLES = ['School / School Network', 'Sustainability Coordinator / Eco Club', 'Student Leader', 'Educator / Advisor', 'Climate-focused NGO / Partner', 'ESG Institution', 'Other'];
+const STUDENT_ROLE = 'Student';
+const ROLES = ['School / School network', STUDENT_ROLE, 'Educator / Advisor', 'Climate NGO / Partner', 'ESG institution', 'Other'];
 const LOOKING = [
   'Climate and school networks ready for implementation',
   'Sustainability coordinators and active eco clubs',
@@ -77,6 +78,9 @@ export default function Join() {
             {ROLES.map((r) => <option key={r}>{r}</option>)}
           </Select>
         </Field>
+        {f.role === STUDENT_ROLE && (
+          <Notice tone="sky">Students can <Link to="/signin?as=student" className="font-bold underline">join on their own</Link> and start planning projects right away. If you are under 18, a parent or guardian will be asked to give consent. You can also ask a teacher to apply for your whole school here.</Notice>
+        )}
         <details className="rounded-field border border-paper-line px-4 py-3">
           <summary className="cursor-pointer text-sm font-bold text-ink">Add more details (optional)</summary>
           <div className="mt-4 space-y-5">

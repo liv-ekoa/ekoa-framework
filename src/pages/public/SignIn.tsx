@@ -38,8 +38,8 @@ export default function SignIn() {
       <p className="mt-2 text-ink-soft">Choose how you use Ekoa. We email you a one-time sign-in link, or you can use Google.</p>
       <OrphanNotice />
       <div role="radiogroup" aria-label="How do you use Ekoa?" className="mt-6 grid gap-3 sm:grid-cols-2">
-        <ModeCard active={mode === 'school'} onClick={() => choose('school')} icon={<School className="h-5 w-5" aria-hidden />} title="Sign in as a school" body="Students, teachers and staff whose school is on Ekoa." />
-        <ModeCard active={mode === 'student'} onClick={() => choose('student')} icon={<UserRound className="h-5 w-5" aria-hidden />} title="Independent student" body="Join on your own, before your school is on Ekoa." />
+        <ModeCard active={mode === 'school'} onClick={() => choose('school')} icon={<School className="h-5 w-5" aria-hidden />} title="My school is on Ekoa" body="Students, teachers and staff. Use the email your school gave Ekoa." />
+        <ModeCard active={mode === 'student'} onClick={() => choose('student')} icon={<UserRound className="h-5 w-5" aria-hidden />} title="I’m a student, my school isn’t on Ekoa yet" body="Join on your own and start planning projects now." />
       </div>
 
       <div className="mt-6 rounded-panel border border-paper-line bg-white p-5">
