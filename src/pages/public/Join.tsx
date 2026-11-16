@@ -13,7 +13,7 @@ const LEAD_OPTIONS: { key: Application['has_lead']; label: string; hint: string 
 ];
 
 const STUDENT_ROLE = 'Student';
-const ROLES = ['Teacher or sustainability coordinator', 'School leader or school network', STUDENT_ROLE, 'Eco club or student council member', 'Educator or advisor', 'NGO or partner organisation', 'ESG or sustainability institution', 'Other'];
+const ROLES = ['Teacher or sustainability coordinator', 'School leader or school network', STUDENT_ROLE, 'Educator or advisor', 'NGO or partner organisation', 'ESG or sustainability institution', 'Other'];
 const LOOKING = [
   'Climate and school networks ready for implementation',
   'Sustainability coordinators and active eco clubs',
@@ -78,7 +78,7 @@ export default function Join() {
             {ROLES.map((r) => <option key={r}>{r}</option>)}
           </Select>
         </Field>
-        {(f.role === STUDENT_ROLE || f.role === 'Eco club or student council member') && (
+        {f.role === STUDENT_ROLE && (
           <Notice tone="sky">Students can <Link to="/signin?as=student" className="font-bold underline">join on their own</Link> and start planning projects right away. If you are under 18, a parent or guardian will be asked to give consent. You can also ask a teacher to apply for your whole school here.</Notice>
         )}
         <details className="rounded-field border border-paper-line px-4 py-3">
