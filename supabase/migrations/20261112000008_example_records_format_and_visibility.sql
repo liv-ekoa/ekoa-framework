@@ -11,9 +11,11 @@
 alter table public.records add column if not exists key_result text not null default '';
 alter table public.records add column if not exists example_source text;
 
-drop table if exists example_results;
-create temporary table example_results (title text primary key, key_result text not null);
-insert into example_results (title, key_result) values
+-- An ordinary table, not a temporary one: the Supabase SQL editor can run each statement on a different
+-- connection, where a temporary table would not exist. It is dropped again at the end.
+drop table if exists public.example_results;
+create table public.example_results (title text primary key, key_result text not null);
+insert into public.example_results (title, key_result) values
   ('Fungi Filters: mushroom mycelium to catch microplastics in a Bali river', '25 to 5 to 0 microplastic pieces per 20 ml (start, 1 hour, 24 hours). One trial.'),
   ('Waste to Worth: stuffed toys made from discarded fabric', '15 toys sewn from scrap and donated to an orphanage'),
   ('Giving Nets a New Life: recycling broken fishing nets into carabiners', '12+ kg of ghost nets collected and melted into carabiners'),
@@ -57,7 +59,7 @@ set obstacles = (
 )
 from public.organisations o
 where o.id = r.org_id and o.name = 'Green School, Bali'
-  and r.title in (select title from example_results);
+  and r.title in (select title from public.example_results);
 
 -- 3. Key result, climate, source and sharing with the network.
 update public.records r
@@ -68,7 +70,7 @@ set key_result = e.key_result,
     visibility = 'network',
     status = 'published',
     published_at = coalesce(r.published_at, now())
-from example_results e, public.organisations o
+from public.example_results e, public.organisations o
 where r.title = e.title and o.id = r.org_id and o.name = 'Green School, Bali';
 
-drop table example_results;
+drop table public.example_results;
