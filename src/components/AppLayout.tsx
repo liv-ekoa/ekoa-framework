@@ -5,6 +5,7 @@ import {
   PiggyBank, Plus, Repeat2, School, Settings, ShieldCheck, Trophy, Users, X,
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { AccountBanners } from './AccountBanners';
 import { ReportConcern } from './ReportConcern';
 import { useAuth } from '@/lib/auth';
 import { roleTitle } from '@/lib/ekoa';
@@ -67,8 +68,7 @@ export function AppLayout() {
   useEffect(() => { setDrawer(false); setMore(false); setMe(false); }, [loc.pathname]);
 
   if (auth.loading) return <FullScreenLoading />;
-  if (!auth.person) return <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
-  if (auth.needsConsent) return <Navigate to="/waiting-for-consent" replace />;
+  if (!auth.person) return auth.authEmail ? <Navigate to="/welcome" replace /> : <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
 
   const tabs = TABS.filter((n) => n.show(auth));
   const moreItems = MORE.filter((n) => n.show(auth));
@@ -174,6 +174,7 @@ export function AppLayout() {
       )}
 
       <main id="app-main" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 xl:pb-14">
+        <AccountBanners />
         <Outlet />
       </main>
 

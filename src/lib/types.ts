@@ -55,6 +55,7 @@ export interface Organisation {
   anonymised_label: string | null;
   /** Ekoa audit schools carry out T3 peer audits of other schools' records. */
   audit_school: boolean;
+  join_code?: string | null;
   /** For an independent student's workspace: the school they attend, which is not on Ekoa yet. */
   school_name?: string;
   created_at: string;
@@ -69,6 +70,7 @@ export interface Person {
   is_minor: boolean;
   locale: string;
   consent_status: ConsentStatus;
+  draft_until?: string | null;
   created_at: string;
 }
 

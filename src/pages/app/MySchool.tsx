@@ -11,6 +11,7 @@ import { fmtDate } from '@/lib/format';
 import type { ContextProfile, GovernanceStep, Organisation, Person, RoleKey } from '@/lib/types';
 import { Badge, Button, ErrorNote, Field, Input, Loading, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea } from '@/components/ui';
 import { SafetyQueue } from '@/components/SafetyQueue';
+import { JoinRequestsPanel } from '@/components/JoinRequestsPanel';
 
 type Tab = 'profile' | 'people' | 'governance' | 'archive' | 'safety';
 
@@ -31,6 +32,7 @@ export default function MySchool() {
   return (
     <div>
       <PageHeader title={data.s.org.name} lead={`${data.s.org.city}, ${data.s.org.country}. The faculty liaison owns this workspace and keeps its memory across student cohorts.`} />
+      <div className="mb-6"><JoinRequestsPanel org={data.s.org} /></div>
       <Tabs label="School sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[{ key: 'profile', label: 'Profile and context' }, { key: 'people', label: 'People and terms', count: data.s.members.length }, { key: 'governance', label: 'Approval chain', count: data.s.steps.length }, { key: 'archive', label: 'Archive' }, ...(isLiaison ? [{ key: 'safety' as Tab, label: 'Safety' }] : [])]} />
       {tab === 'profile' && <Profile org={data.s.org} canEdit={isLiaison} onChange={() => { void reload(); void auth.refresh(); }} />}
       {tab === 'people' && <>{isLiaison && <StudentEmails org={data.s.org} />}<People d={data} canEdit={isLiaison} onChange={reload} /></>}
@@ -99,6 +101,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
         </Notice>
       )}
       {canEdit && <Button variant="dark" onClick={() => { setOpen(true); setLink(null); }}><Plus className="h-4 w-4" /> Invite a member</Button>}
+      <ErrorNote>{act.error}</ErrorNote>
       <div className="overflow-x-auto rounded-panel border border-paper-line bg-white">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-paper-line text-ink-mute"><tr><th className="px-4 py-3 font-bold">Name</th><th className="px-4 py-3 font-bold">Role</th><th className="px-4 py-3 font-bold">Term</th><th className="px-4 py-3 font-bold">Consent</th>{canEdit && <th className="px-4 py-3" />}</tr></thead>
@@ -114,6 +117,7 @@ function People({ d, canEdit, onChange }: { d: Data; canEdit: boolean; onChange:
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1.5">
+                        {person.consent_status === 'pending' && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.extendDraftAccess(person.id, 30); onChange(); })}>Extend draft time</Button>}
                         {cl && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(cl); setLink(cl); }}><Copy className="h-4 w-4" /> Consent link</Button>}
                         {role.status !== 'alumni' && members.find((m) => m.person.id === person.id)?.role.id === role.id && (
                           <Button size="sm" variant="quiet" onClick={() => setExtra({ person, role: 'ekoa_rep', local_title: '' })}><Plus className="h-4 w-4" /> Role</Button>

@@ -22,8 +22,9 @@ import { HomeTab } from './HomeTab';
 import { ChatTab } from './ChatTab';
 import { CommunityTab } from './CommunityTab';
 import { FilesTab } from './FilesTab';
+import { FeedbackTab } from './FeedbackTab';
 
-type TabKey = 'files' | 'home' | 'chat' | 'community' | 'plan' | 'tasks' | 'approvals' | 'measures' | 'obstacles' | 'record' | 'evidence';
+type TabKey = 'feedback' | 'files' | 'home' | 'chat' | 'community' | 'plan' | 'tasks' | 'approvals' | 'measures' | 'obstacles' | 'record' | 'evidence';
 
 export default function ProjectWorkspace() {
   const { id } = useParams();
@@ -48,6 +49,7 @@ export default function ProjectWorkspace() {
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: 'home', label: 'Home' },
+    { key: 'feedback', label: 'Feedback' },
     { key: 'tasks', label: 'To-do', count: b.tasks.filter((t) => t.status !== 'done').length },
     { key: 'files', label: 'Files' },
     { key: 'chat', label: 'Chat' },
@@ -101,6 +103,7 @@ export default function ProjectWorkspace() {
             </details>
           </div>
         )}
+        {tab === 'feedback' && <FeedbackTab b={b} />}
         {tab === 'files' && <FilesTab b={b} canEdit={member} people={people} />}
         {tab === 'chat' && <ChatTab b={b} />}
         {tab === 'community' && <CommunityTab b={b} />}

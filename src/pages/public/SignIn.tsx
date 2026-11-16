@@ -18,7 +18,7 @@ export default function SignIn() {
   const act = useAction();
   const googleAct = useAction();
   // Independent students land on the sign-up form after the link; it sends them on if they already have an account.
-  const next = mode === 'student' ? '/join/student' : '/app';
+  const next = mode === 'student' ? '/welcome?as=student' : '/app';
 
   const continueWithGoogle = () =>
     googleAct.run(async () => {
@@ -46,7 +46,7 @@ export default function SignIn() {
         {mode === 'school' ? (
           <p className="text-sm text-ink-soft">Use the email your school gave Ekoa. Your school’s faculty liaison or the Ekoa team adds you. Is your school not on Ekoa yet? <Link to="/join" className="font-bold text-leaf-600 underline">Register your school</Link>.</p>
         ) : (
-          <p className="text-sm text-ink-soft">You get your own private workspace to plan projects and log measurements, without waiting for your school. When your school joins, the Ekoa team can move your projects to it. Under 18? A parent or guardian gives consent first. Already joined? Sign in here with the same email.</p>
+          <p className="text-sm text-ink-soft">You get your own private workspace to plan projects and log measurements, without waiting for your school. When your school joins, the Ekoa team can move your projects to it. Under 18? You can start straight away, and a guardian gives consent later. Already joined? Sign in here with the same email. New? <Link to="/signup" className="font-bold text-leaf-600 underline">Sign up</Link>.</p>
         )}
         <Button type="button" variant="ghost" busy={googleAct.busy} onClick={continueWithGoogle} className="mt-4 w-full">
           <GoogleIcon /> Continue with Google
@@ -86,7 +86,7 @@ function OrphanNotice() {
     <div className="mt-4 space-y-3">
       <Notice tone="clay">You are signed in as {auth.authEmail}, but no school has added this email yet. You can join as an independent student now, or ask your faculty liaison to add you.</Notice>
       <div className="flex flex-wrap gap-2">
-        <LinkButton to="/join/student" size="sm" variant="dark">Join as an independent student</LinkButton>
+        <LinkButton to="/welcome?as=student" size="sm" variant="dark">Finish signing up</LinkButton>
         <Button variant="ghost" size="sm" onClick={() => void auth.signOut()}>Sign out</Button>
       </div>
     </div>

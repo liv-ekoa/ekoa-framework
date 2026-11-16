@@ -64,6 +64,7 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
         <div className="flex flex-col items-end gap-1">
           <span className={cx('rounded-tag px-2 py-0.5 text-xs font-bold text-white', band[r.outcome_class])}>{o.label}</span>
           <span className="rounded-tag border border-clay-600/50 bg-clay-100 px-2 py-0.5 text-xs font-bold text-clay-700">Tier {r.tier}</span>
+          {r.tier < 2 && <span className="rounded-tag border border-paper-line bg-paper-deep px-2 py-0.5 text-xs font-bold text-ink-soft">Unverified</span>}
         </div>
       </div>
     </article>
