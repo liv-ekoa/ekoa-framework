@@ -124,7 +124,7 @@ export function PolicyDetail({ id, backTo }: { id: string; backTo: string }) {
         <Button variant="quiet" onClick={() => window.print()}><Printer className="h-4 w-4" aria-hidden /> Print or save as PDF</Button>
       </div>
       <ErrorNote>{act.error}</ErrorNote>
-      {!auth.person && <div className="no-print mt-5"><Notice tone="sky">Want this for your school? <Link to="/join" className="font-bold underline">Join Ekoa</Link> and you can copy any policy here as your own draft, then adopt it with your school’s approval.</Notice></div>}
+      {!auth.person && <div className="no-print mt-5"><Notice tone="sky">Want this for your school? <Link to="/signup?as=school" className="font-bold underline">Sign up</Link> and you can copy any policy here as your own draft, then adopt it with your school’s approval.</Notice></div>}
       <ol className="mt-8 space-y-6">
         {p.sections.map((s, i) => (
           <li key={s.key + i} className="border-t border-paper-line pt-5">

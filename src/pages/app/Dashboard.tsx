@@ -88,7 +88,7 @@ function SchoolDashboard() {
       />
 
       {auth.isIndependent && (
-        <Notice tone="sky">This is your own workspace as an independent student. Plan projects and log measurements here. Stage gates need a teacher to sign, so when your school joins Ekoa, the Ekoa team moves you and your projects there. Tell your teacher they can <Link to="/join" className="font-bold underline">register the school</Link>.</Notice>
+        <Notice tone="sky">This is your own workspace as an independent student. Plan projects and log measurements here. Stage gates need a teacher to sign, so when your school joins Ekoa, the Ekoa team moves you and your projects there. Tell your teacher they can <Link to="/signup?as=school" className="font-bold underline">register the school</Link>.</Notice>
       )}
 
       {incoming && (

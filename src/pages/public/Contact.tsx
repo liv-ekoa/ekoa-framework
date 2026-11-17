@@ -14,8 +14,8 @@ export default function Contact() {
         </section>
         <section className="rounded-panel border border-paper-line bg-white p-6">
           <h2 className="text-lg font-semibold">Joining</h2>
-          <p className="mt-2 text-ink-soft">Schools, educators, student leaders and organisations.</p>
-          <LinkButton to="/join" variant="dark" className="mt-4">Apply to join</LinkButton>
+          <p className="mt-2 text-ink-soft">Students, teachers and schools can sign up in a minute. No application, no waiting.</p>
+          <LinkButton to="/signup" variant="dark" className="mt-4">Sign up</LinkButton>
         </section>
         <section className="rounded-panel border border-paper-line bg-white p-6">
           <h2 className="text-lg font-semibold">Safeguarding</h2>

@@ -24,7 +24,7 @@ export default function Mission() {
           </ul>
           <div className="mt-8 flex flex-wrap gap-3">
             <LinkButton to="/how-it-works" variant="dark">See how it works</LinkButton>
-            <LinkButton to="/join" variant="ghost">Join the founding cohort</LinkButton>
+            <LinkButton to="/signup" variant="ghost">Sign up</LinkButton>
           </div>
         </div>
       </div>

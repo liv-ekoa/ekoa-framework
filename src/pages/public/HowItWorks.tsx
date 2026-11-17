@@ -137,7 +137,7 @@ export default function HowItWorks() {
       </section>
 
       <div className="mt-20 flex flex-wrap gap-3">
-        <LinkButton to="/join" variant="clay" size="lg">Join the founding cohort</LinkButton>
+        <LinkButton to="/signup" variant="clay" size="lg">Sign up</LinkButton>
         <LinkButton to="/library" variant="ghost" size="lg">See real records</LinkButton>
       </div>
     </div>

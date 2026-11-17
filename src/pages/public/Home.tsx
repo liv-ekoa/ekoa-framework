@@ -409,7 +409,7 @@ export default function Home() {
           <ul className="mono">
             {NAV.map((n) => <li key={n.to}><Link to={n.to}>{n.label}</Link></li>)}
             <li>{auth}</li>
-            <li><Link className="pill" to="/join">Join the founding cohort</Link></li>
+            <li><Link className="pill" to="/signup">Sign up</Link></li>
           </ul>
           <button className="menu-btn mono" aria-expanded={menu} aria-controls="eh-menu" onClick={() => setMenu(true)}>Menu</button>
         </div>
@@ -425,7 +425,7 @@ export default function Home() {
         </nav>
         <div className="menu-foot mono">
           <Link to={person ? '/app' : '/signin'}>{person ? 'Open the app' : 'Sign in'}</Link>
-          <Link className="pill" to="/join" style={{ width: 'fit-content' }}>Join the founding cohort</Link>
+          <Link className="pill" to="/signup" style={{ width: 'fit-content' }}>Sign up</Link>
           <a href={`mailto:${config.contactEmail}`} style={{ opacity: 0.6 }}>{config.contactEmail}</a>
         </div>
       </div>
@@ -741,7 +741,7 @@ export default function Home() {
               {AUDIENCE.map(([a, b]) => <li key={a} className="rise">{a} <span className="mono">{b}</span></li>)}
             </ul>
             <div className="apply">
-              <Link className="circle magnetic" to="/join">Apply to join <span className="arr">→</span></Link>
+              <Link className="circle magnetic" to="/signup">Sign up <span className="arr">→</span></Link>
               <div className="alt"><span className="mono">Or write to us</span><a href={`mailto:${config.contactEmail}`}><b>{config.contactEmail}</b></a></div>
             </div>
           </div>
