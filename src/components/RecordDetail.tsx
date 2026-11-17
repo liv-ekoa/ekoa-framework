@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { GitFork } from 'lucide-react';
 import { OUTCOMES, TIERS, budgetCategoryLabel, metricByCode, obstacleLabel } from '@/lib/ekoa';
@@ -226,15 +226,23 @@ function BudgetBox({ r }: { r: ImplementationRecord }) {
   );
 }
 
-/** The talk the record was written from. YouTube links play inline (privacy-friendly embed); anything else is a link. */
+/** The talk the record was written from. YouTube links load only after a click, so nothing is sent to YouTube until the visitor chooses. */
 function SourceVideo({ url }: { url: string }) {
+  const [play, setPlay] = useState(false);
   const id = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/)?.[1];
   if (!id) return <p className="mt-3 text-sm"><a href={url} target="_blank" rel="noopener noreferrer" className="font-bold text-leaf-600 underline">Watch the original talk</a></p>;
   return (
     <div className="mt-5 max-w-prose">
       <p className="mb-2 text-sm font-bold text-ink">Watch the original talk</p>
       <div className="aspect-video overflow-hidden rounded-panel border border-paper-line bg-paper-deep">
-        <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}`} title="Original talk" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        {play ? (
+          <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`} title="Original talk" allow="autoplay" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
+            <button type="button" onClick={() => setPlay(true)} className="rounded-full bg-ink px-5 py-2 text-sm font-bold text-white">Load video</button>
+            <p className="text-xs text-ink-soft">Loading the video connects your browser to YouTube (Google). <a href={url} target="_blank" rel="noopener noreferrer" className="underline">Or open it on YouTube</a>.</p>
+          </div>
+        )}
       </div>
     </div>
   );
