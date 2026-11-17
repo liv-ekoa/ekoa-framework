@@ -37,7 +37,7 @@ export default function About() {
           <li>No sponsor can edit or suppress outcome data.</li>
           <li>Peer audits (tier T3) are carried out by two founding audit schools, Shiv Nadar School, Faridabad and Green School, Bali, and never by the school being audited.</li>
         </ul>
-        <LinkButton to="/join" variant="clay" className="mt-8">Join the founding cohort</LinkButton>
+        <LinkButton to="/signup" variant="clay" className="mt-8">Sign up</LinkButton>
       </section>
     </div>
   );

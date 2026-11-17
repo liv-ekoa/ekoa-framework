@@ -27,7 +27,7 @@ export default function PublicRecord() {
             adaptations={data.adaptations}
             projects={data.projects}
             records={data.records}
-            actions={<><LinkButton to="/join" variant="dark">Want to adapt this at your school? Join</LinkButton><LinkButton to="/signin" variant="ghost">Members: sign in to adapt</LinkButton></>}
+            actions={<><LinkButton to="/signup" variant="dark">Want to adapt this at your school? Sign up</LinkButton><LinkButton to="/signin" variant="ghost">Members: sign in to adapt</LinkButton></>}
           />
         )}
       </div>

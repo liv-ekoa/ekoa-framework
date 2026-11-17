@@ -1,24 +1,19 @@
-import { useState, type ReactNode } from 'react';
-import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
-import { School, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useAction } from '@/lib/hooks';
 import { supabase } from '@/lib/db';
-import { Button, ErrorNote, Field, Input, LinkButton, Notice, cx } from '@/components/ui';
-
-type Mode = 'school' | 'student';
+import { Button, ErrorNote, Field, Input, LinkButton, Notice } from '@/components/ui';
 
 export default function SignIn() {
   const auth = useAuth();
   const loc = useLocation() as { state?: { from?: string } };
-  const [params] = useSearchParams();
-  const [mode, setMode] = useState<Mode>(params.get('as') === 'student' ? 'student' : 'school');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const act = useAction();
   const googleAct = useAction();
-  // Independent students land on the sign-up form after the link; it sends them on if they already have an account.
-  const next = mode === 'student' ? '/welcome?as=student' : '/app';
+  // New people are sent on to finish setting up; existing ones go straight in.
+  const next = '/app';
 
   const continueWithGoogle = () =>
     googleAct.run(async () => {
@@ -31,23 +26,13 @@ export default function SignIn() {
 
   if (!auth.loading && auth.person) return <Navigate to={loc.state?.from ?? '/app'} replace />;
 
-  const choose = (m: Mode) => { setMode(m); setSent(false); act.setError(null); };
   return (
     <div className="mx-auto max-w-xl px-4 py-16">
       <h1 className="text-4xl">Sign in</h1>
-      <p className="mt-2 text-ink-soft">Choose how you use Ekoa. We email you a one-time sign-in link, or you can use Google.</p>
+      <p className="mt-2 text-ink-soft">Use Google, or we email you a one-time link. New here? <Link to="/signup" className="font-bold text-leaf-600 underline">Sign up</Link>.</p>
       <OrphanNotice />
-      <div role="radiogroup" aria-label="How do you use Ekoa?" className="mt-6 grid gap-3 sm:grid-cols-2">
-        <ModeCard active={mode === 'school'} onClick={() => choose('school')} icon={<School className="h-5 w-5" aria-hidden />} title="My school is on Ekoa" body="Students, teachers and staff. Use the email your school gave Ekoa." />
-        <ModeCard active={mode === 'student'} onClick={() => choose('student')} icon={<UserRound className="h-5 w-5" aria-hidden />} title="I’m a student, my school isn’t on Ekoa yet" body="Join on your own and start planning projects now." />
-      </div>
 
       <div className="mt-6 rounded-panel border border-paper-line bg-white p-5">
-        {mode === 'school' ? (
-          <p className="text-sm text-ink-soft">Use the email your school gave Ekoa. Your school’s faculty liaison or the Ekoa team adds you. Is your school not on Ekoa yet? <Link to="/join" className="font-bold text-leaf-600 underline">Register your school</Link>.</p>
-        ) : (
-          <p className="text-sm text-ink-soft">You get your own private workspace to plan projects and log measurements, without waiting for your school. When your school joins, the Ekoa team can move your projects to it. Under 18? You can start straight away, and a guardian gives consent later. Already joined? Sign in here with the same email. New? <Link to="/signup" className="font-bold text-leaf-600 underline">Sign up</Link>.</p>
-        )}
         <Button type="button" variant="ghost" busy={googleAct.busy} onClick={continueWithGoogle} className="mt-4 w-full">
           <GoogleIcon /> Continue with Google
         </Button>
@@ -59,9 +44,9 @@ export default function SignIn() {
           <Notice tone="leaf">Check {email} for your sign-in link. It works once and expires in an hour.</Notice>
         ) : (
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { await auth.sendMagicLink(email.trim().toLowerCase(), next); setSent(true); }); }}>
-            <Field label={mode === 'school' ? 'School email' : 'Your email'} id="si-email"><Input id="si-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
+            <Field label="Your email" id="si-email"><Input id="si-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
             <ErrorNote>{act.error}</ErrorNote>
-            <Button type="submit" variant="dark" busy={act.busy} className="w-full">{mode === 'school' ? 'Email me a sign-in link' : 'Email me a link to join'}</Button>
+            <Button type="submit" variant="dark" busy={act.busy} className="w-full">Email me a sign-in link</Button>
           </form>
         )}
       </div>
@@ -69,24 +54,16 @@ export default function SignIn() {
   );
 }
 
-function ModeCard({ active, onClick, icon, title, body }: { active: boolean; onClick: () => void; icon: ReactNode; title: string; body: string }) {
-  return (
-    <button type="button" role="radio" aria-checked={active} onClick={onClick} className={cx('flex items-start gap-3 rounded-panel border p-4 text-left transition-colors', active ? 'border-moss bg-moss/5 ring-1 ring-moss' : 'border-paper-line bg-white hover:border-ink/30')}>
-      <span className={cx('rounded-field p-2', active ? 'bg-moss text-paper' : 'bg-paper-deep text-ink-soft')}>{icon}</span>
-      <span><span className="block font-bold">{title}</span><span className="text-sm text-ink-soft">{body}</span></span>
-    </button>
-  );
-}
-
-/** Shown when someone signs in with an email no school has added yet. */
+/** Shown when someone has signed in but not finished setting up. */
 function OrphanNotice() {
   const auth = useAuth();
   if (!auth.authEmail || auth.person || auth.loading) return null;
   return (
     <div className="mt-4 space-y-3">
-      <Notice tone="clay">You are signed in as {auth.authEmail}, but no school has added this email yet. You can join as an independent student now, or ask your faculty liaison to add you.</Notice>
+      <Notice tone="clay">You are signed in as {auth.authEmail}, but your account isn’t set up yet. It takes a minute.</Notice>
       <div className="flex flex-wrap gap-2">
-        <LinkButton to="/welcome?as=student" size="sm" variant="dark">Finish signing up</LinkButton>
+        <LinkButton to="/welcome?as=student" size="sm" variant="dark">I’m a student</LinkButton>
+        <LinkButton to="/welcome?as=school" size="sm" variant="ghost">I’m a teacher or school</LinkButton>
         <Button variant="ghost" size="sm" onClick={() => void auth.signOut()}>Sign out</Button>
       </div>
     </div>
