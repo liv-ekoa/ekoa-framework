@@ -26,11 +26,11 @@ export default function GuardianConsent() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-bold">Consent for {first} to use Ekoa</h1>
-      <p className="mt-3 text-ink-soft">{first}’s school has invited them to take part in a student sustainability network. Their account stays limited until you decide: they can draft privately, but nothing is published, no photos of people are shared and they cannot message other schools. Choose exactly what you allow.</p>
+      <p className="mt-3 text-ink-soft">{first} has signed up to Ekoa, a student sustainability network, and needs a guardian’s consent. Their account stays limited until you decide: they can draft privately, but nothing is published, no photos of people are shared and they cannot message other schools. Choose exactly what you allow.</p>
       <div className="mt-6 space-y-3 rounded-panel border border-paper-line bg-white p-6 text-sm text-ink-soft">
         <p className="font-bold text-ink">What we store about {first}</p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>Name, school email and an age band (never a date of birth).</li>
+          <li>Name, email and an age band (never a date of birth).</li>
           <li>The project work, measurements and posts they add.</li>
         </ul>
         <p className="font-bold text-ink">How we protect them</p>
