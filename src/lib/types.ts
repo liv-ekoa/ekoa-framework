@@ -333,6 +333,8 @@ export interface ImplementationRecord {
   key_result?: string;
   /** Set when the record was written up from a public talk or report rather than a member project. */
   example_source?: string | null;
+  /** A public video (for example the YouTube talk) that the record was written up from. */
+  source_url?: string | null;
   materials: { name: string; kind: string }[];
   contributors: string[];
   visibility: Visibility;

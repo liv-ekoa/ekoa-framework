@@ -20,6 +20,7 @@ const Safeguarding = lazy(() => import('./pages/public/Safeguarding'));
 const Contact = lazy(() => import('./pages/public/Contact'));
 const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
 const TermsOfUse = lazy(() => import('./pages/public/TermsOfUse'));
+const Copyright = lazy(() => import('./pages/public/Copyright'));
 const SignIn = lazy(() => import('./pages/public/SignIn'));
 const SignUp = lazy(() => import('./pages/public/SignUp'));
 const Welcome = lazy(() => import('./pages/public/Welcome'));
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="contact" element={<Contact />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="terms-of-use" element={<TermsOfUse />} />
+          <Route path="copyright" element={<Copyright />} />
           <Route path="signin" element={<SignIn />} />
           <Route path="signup" element={<SignUp />} />
           <Route path="welcome" element={<Welcome />} />

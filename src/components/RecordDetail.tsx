@@ -43,7 +43,8 @@ export function RecordDetail({
         <p className="mt-2 text-ink-mute">{where}</p>
         <p className="mt-5 max-w-prose text-lg leading-relaxed text-ink-soft">{r.summary}</p>
         {r.key_result && <p className="mt-4 max-w-prose rounded-field bg-paper px-4 py-3 text-sm"><span className="font-bold text-ink">Key result: </span><span className="text-ink-soft">{r.key_result}</span></p>}
-        {r.example_source && <p className="mt-3 text-sm text-ink-mute">Example record, written up from {r.example_source}. Use it to see what a good record contains.</p>}
+        {r.example_source && <p className="mt-3 text-sm text-ink-mute">Example record, written up from {r.example_source}. Use it to see what a good record contains. Self-reported and not audited. Spot a mistake, or want credit changed or the record removed? See <Link to="/copyright" className="font-bold text-leaf-600 underline">copyright and takedowns</Link>.</p>}
+        {r.source_url && <SourceVideo url={r.source_url} />}
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <span className={cx('rounded-tag px-2.5 py-1 text-sm font-bold text-white', band[r.outcome_class])}>{o.label}</span>
           <span className="rounded-tag border border-clay-600/50 bg-clay-100 px-2.5 py-1 text-sm font-bold text-clay-700">{TIERS[r.tier].label}</span>
@@ -222,5 +223,19 @@ function BudgetBox({ r }: { r: ImplementationRecord }) {
         </>
       ) : <p className="text-ink-soft">{r.budget_summary || 'Not recorded.'}</p>}
     </section>
+  );
+}
+
+/** The talk the record was written from. YouTube links play inline (privacy-friendly embed); anything else is a link. */
+function SourceVideo({ url }: { url: string }) {
+  const id = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/)?.[1];
+  if (!id) return <p className="mt-3 text-sm"><a href={url} target="_blank" rel="noopener noreferrer" className="font-bold text-leaf-600 underline">Watch the original talk</a></p>;
+  return (
+    <div className="mt-5 max-w-prose">
+      <p className="mb-2 text-sm font-bold text-ink">Watch the original talk</p>
+      <div className="aspect-video overflow-hidden rounded-panel border border-paper-line bg-paper-deep">
+        <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}`} title="Original talk" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+      </div>
+    </div>
   );
 }
