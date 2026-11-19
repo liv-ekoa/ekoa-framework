@@ -1,3 +1,4 @@
+import { AccountRemoved } from './AccountRemoved';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
@@ -69,6 +70,8 @@ export function AppLayout() {
 
   if (auth.loading) return <FullScreenLoading />;
   if (!auth.person) return auth.authEmail ? <Navigate to="/welcome" replace /> : <Navigate to="/signin" replace state={{ from: loc.pathname }} />;
+
+  if (auth.person.removed_at) return <AccountRemoved />;
 
   const tabs = TABS.filter((n) => n.show(auth));
   const moreItems = MORE.filter((n) => n.show(auth));

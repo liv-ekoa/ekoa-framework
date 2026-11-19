@@ -902,3 +902,27 @@ reset role;
 -- Adapting an unverified record awards nothing
 insert into adaptations (source_record_id, project_id) select id, '33333333-0000-0000-0000-000000000001' from records where title = 'Unverified 1';
 select t('unverified: adapting an unverified record awards no points', (select adopting_schools = 0 from public_school_ranking where org_id = '11111111-0000-0000-0000-0000000000f3'));
+
+-- ---------------------------------------------------------------- Removing a student
+-- Fixtures: indy.minor@x.org (b1) is a pending under-18 in their own workspace; indy.adult@x.org (b2) is at a school.
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000b1',false);
+select t('remove: before removal a pending student can work', public.working_person_id() is not null);
+do $$ begin perform remove_student((select id from people where email = 'indy.minor@x.org')); perform t('remove: a student cannot remove anyone', false);
+exception when others then perform t('remove: a student cannot remove anyone', true); end $$;
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a5',false);
+do $$ begin update people set removed_at = now() where email = 'indy.minor@x.org'; perform t('remove: removed_at cannot be set by a direct update', false);
+exception when others then perform t('remove: removed_at cannot be set by a direct update', true); end $$;
+do $$ begin perform remove_student((select id from people where email = 'indy.adult@x.org')); perform t('remove: a student at a school is not removed here', false);
+exception when others then perform t('remove: a student at a school is not removed here', true); end $$;
+select remove_student((select id from people where email = 'indy.minor@x.org'));
+reset role;
+select t('remove: the person is marked removed and kept', (select removed_at is not null from people where email = 'indy.minor@x.org'));
+select t('remove: an open join request is declined', (select count(*) from join_requests j join people p on p.id = j.person_id where p.email = 'indy.minor@x.org' and j.status = 'requested') = 0);
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000b1',false);
+select t('remove: a removed student has no working access', public.working_person_id() is null and public.active_person_id() is null);
+select t('remove: a removed student can still see their own row, to be told why', (select count(*) from people where email = 'indy.minor@x.org') = 1);
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a5',false);
+select restore_student((select id from people where email = 'indy.minor@x.org'));
+select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000b1',false);
+select t('remove: a restored student can work again', public.working_person_id() is not null);
+reset role;

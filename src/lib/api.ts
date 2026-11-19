@@ -652,3 +652,7 @@ export const addProjectComment = (orgId: UUID, projectId: UUID, body: string) =>
 export const deleteProjectComment = (id: UUID) => must(db.from('project_comments').delete().eq('id', id));
 /** A teacher at the student's school, or a steward, keeps a paused account working a little longer. */
 export const extendDraftAccess = (personId: UUID, days = 30) => rpc<null>('extend_draft_access', { p_person: personId, p_days: days });
+
+/** An admin removes a student who is not at a school (a suspension; the work is kept) or restores them. */
+export const removeStudent = (personId: UUID) => rpc<null>('remove_student', { p_person: personId });
+export const restoreStudent = (personId: UUID) => rpc<null>('restore_student', { p_person: personId });
