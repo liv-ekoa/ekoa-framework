@@ -8,10 +8,10 @@ import * as api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useAction, useData } from '@/lib/hooks';
 import { loadSchool, schoolAlerts } from '@/lib/bundle';
-import { METRIC_LIBRARY, ROLES, metricByCode } from '@/lib/ekoa';
+import { METRIC_LIBRARY, metricByCode } from '@/lib/ekoa';
 import { completeness } from '@/lib/metrics';
 import { fmtDate, fmtDateTime, relative } from '@/lib/format';
-import type { Application, ConsentRecord, LibraryPolicySubmission, MetricDefinition, Organisation, Person, RoleAssignment, RoleKey, SafeguardingReport } from '@/lib/types';
+import type { Application, ConsentRecord, LibraryPolicySubmission, MetricDefinition, Organisation, Person, RoleAssignment, SafeguardingReport } from '@/lib/types';
 import { Badge, Button, Empty, ErrorNote, Field, Input, Loading, Meter, Modal, Notice, PageHeader, Panel, Select, Tabs, Textarea, cx } from '@/components/ui';
 
 type Tab = 'applications' | 'students' | 'schools' | 'policies' | 'audits' | 'moderation' | 'safeguarding' | 'campaigns' | 'metrics' | 'audit';
@@ -31,14 +31,13 @@ export default function Steward() {
   if (!data) return <Loading />;
   const openFlags = data.flags.filter((f) => f.status === 'open').length;
   const independents = independentStudents(data);
-  const listed = data.apps.flatMap((a) => a.student_emails ?? []).filter((e) => !data.people.some((p) => p.email === e && data.roles.some((r) => r.person_id === p.id && data.orgs.find((o) => o.id === r.org_id)?.org_type === 'school')));
   const openReports = data.reports.filter((r) => r.status !== 'resolved');
   return (
     <div>
-      <PageHeader title="Admin console" lead="For Ekoa admins: applications, students and their roles, schools, the Policy library, peer audits, moderation and safeguarding for the whole network." />
+      <PageHeader title="Admin console" lead="For Ekoa admins: applications, students, schools, the Policy library, peer audits, moderation and safeguarding for the whole network." />
       <Tabs label="Console sections" value={tab} onChange={(k) => setParams({ tab: k })} tabs={[
         { key: 'applications', label: 'Applications', count: data.apps.filter((a) => a.status === 'new').length },
-        { key: 'students', label: 'Students', count: independents.length + listed.length },
+        { key: 'students', label: 'Students', count: independents.length },
         { key: 'schools', label: 'Schools' },
         { key: 'policies', label: 'Policies', count: data.links.filter((p) => p.status === 'pending').length },
         { key: 'audits', label: 'Peer audits' },
@@ -112,7 +111,7 @@ function Applications({ apps, reload }: { apps: Application[]; reload: () => voi
             )}
             <Field label="Steward notes" id="ap-n"><Textarea id="ap-n" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
             <Field label="Status" id="ap-s"><Select id="ap-s" value={sel.status} onChange={(e) => setSel({ ...sel, status: e.target.value as Application['status'] })}>{STAGES_APP.map((s) => <option key={s} value={s}>{APP_LABEL[s]}</option>)}</Select></Field>
-            {!!sel.student_emails?.length && <p className="text-sm text-ink-soft"><span className="font-bold">{sel.student_emails.length} student emails listed.</span> Give them roles from the Students tab once the school is onboarded.</p>}
+            {!!sel.student_emails?.length && <p className="text-sm text-ink-soft"><span className="font-bold">{sel.student_emails.length} student emails listed.</span> Students sign up themselves and ask this school to confirm them.</p>}
             {sel.status === 'onboarded' && <Notice tone="sky">Saving creates a school workspace in onboarding status. Then invite its faculty liaison from the Schools tab, and give its listed students roles from the Students tab.</Notice>}
             <ErrorNote>{act.error}</ErrorNote>
             <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => {
@@ -280,8 +279,6 @@ function MetricsAdmin({ metrics, reload }: { metrics: MetricDefinition[]; reload
   );
 }
 
-const STUDENT_ROLES_ASSIGNABLE: RoleKey[] = ['project_lead', 'implementation_team', 'ekoa_rep', 'board_member', 'auditor'];
-
 /** Students who joined on their own: anyone leading an independent workspace. */
 function independentStudents(d: { people: Person[]; roles: RoleAssignment[]; orgs: Organisation[] }) {
   return d.roles
@@ -290,13 +287,17 @@ function independentStudents(d: { people: Person[]; roles: RoleAssignment[]; org
     .filter((x): x is { role: RoleAssignment; person: Person; org: Organisation } => !!x.person);
 }
 
-type AssignDraft = { email: string; name: string; age_band: Person['age_band'] | ''; org_id: string; role: RoleKey; local_title: string; guardian_name: string; guardian_email: string; move_projects: boolean; known: boolean; independent: boolean };
+type MoveDraft = { person: Person; org_id: string; move_projects: boolean };
 
-/** Ekoa admins give roles to students: those who joined on their own, and those their school listed. */
+/**
+ * Students sign up on their own and a teacher at their school confirms them, so this list is only for
+ * the rare override: move a student into a school yourself, copy a guardian consent link, or give a
+ * paused account more time. Roles are not chosen here; a teacher changes them in My school.
+ */
 function Students({ d, reload }: { d: D; reload: () => void }) {
   const auth = useAuth();
   const act = useAction();
-  const [draft, setDraft] = useState<AssignDraft | null>(null);
+  const [draft, setDraft] = useState<MoveDraft | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const schools = d.orgs.filter((o) => o.org_type === 'school');
   const independents = independentStudents(d);
@@ -304,98 +305,54 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
     const c = d.consents.find((x) => x.person_id === personId && !x.granted_at);
     return c ? `${window.location.origin}/consent/${c.token}` : null;
   };
-  const schoolRole = (email: string) => {
-    const p = d.people.find((x) => x.email === email);
-    const r = p && d.roles.find((x) => x.person_id === p.id && x.status !== 'alumni' && d.orgs.find((o) => o.id === x.org_id)?.org_type === 'school');
-    return { person: p, role: r, school: r ? d.orgs.find((o) => o.id === r.org_id) : undefined };
-  };
-  const open = (email: string, orgId: string | null | undefined, independent = false) => {
-    const p = d.people.find((x) => x.email === email);
-    setDraft({ email, name: p?.display_name ?? '', age_band: p?.age_band ?? '', org_id: orgId ?? '', role: 'implementation_team', local_title: '', guardian_name: '', guardian_email: '', move_projects: independent, known: !!p, independent });
-  };
-  const lists = d.apps.filter((a) => a.student_emails?.length);
 
   return (
     <div className="space-y-6">
-      <Notice tone="sky">Students reach Ekoa two ways: they sign up on their own as independent students, or their school lists their emails when it registers. Give each one a role at their school here. Students under 18 stay switched off until a parent or guardian consents through their link.</Notice>
-      <Panel title={`Independent students (${independents.length})`}>
+      <Notice tone="sky">Students sign up on their own and ask a teacher at their school to confirm them, so you rarely need to do anything here. Use this list to move a student into a school yourself, copy a guardian consent link, or give a paused account more time.</Notice>
+      <Panel title={`Students not at a school yet (${independents.length})`}>
         {independents.length ? (
           <ul className="divide-y divide-paper-line">
             {independents.map(({ person: p, org }) => {
               const link = consentLink(p.id);
+              const waiting = p.is_minor && p.consent_status !== 'granted';
               return (
                 <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="font-bold">{p.display_name} <span className="font-normal text-ink-mute">{p.email}{p.is_minor ? `, age ${p.age_band}` : ''}</span></p>
-                    <p className="text-sm text-ink-soft">{org.school_name ? `Attends ${org.school_name}` : 'School not given'}{[org.city, org.country].filter(Boolean).length ? `, ${[org.city, org.country].filter(Boolean).join(', ')}` : ''}. Joined {fmtDate(p.created_at)}.</p>
+                    <p className="text-sm text-ink-soft">{org.school_name ? `Says they attend ${org.school_name}` : 'School not given'}{[org.city, org.country].filter(Boolean).length ? `, ${[org.city, org.country].filter(Boolean).join(', ')}` : ''}. Joined {fmtDate(p.created_at)}.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {p.is_minor && p.consent_status !== 'granted' ? <Badge tone="clay">Waiting for guardian</Badge> : <Badge tone="leaf">Active</Badge>}
+                    {waiting ? <Badge tone="clay">Waiting for guardian</Badge> : <Badge tone="leaf">Active</Badge>}
                     {link && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(link).catch(() => undefined); setCopied(link); }}><Copy className="h-4 w-4" /> Consent link</Button>}
-                    <Button size="sm" variant="dark" onClick={() => open(p.email, '', true)}>Assign to a school</Button>
+                    {waiting && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.extendDraftAccess(p.id, 30); reload(); })}>Extend draft time</Button>}
+                    <Button size="sm" variant="dark" onClick={() => setDraft({ person: p, org_id: '', move_projects: true })}>Move to a school</Button>
                   </div>
                 </li>
               );
             })}
           </ul>
-        ) : <p className="text-sm text-ink-mute">Nobody has joined on their own yet.</p>}
-        {copied && <p className="mt-3 break-all text-sm text-ink-soft">Consent link copied: <span className="font-bold">{copied}</span>. Send it to the guardian’s email, never to the student.</p>}
+        ) : <p className="text-sm text-ink-mute">Every student who has signed up is at a school.</p>}
+        {copied && <p className="mt-3 break-all text-sm text-ink-soft">Consent link copied: <span className="font-bold">{copied}</span>. Send it to a guardian, never to the student.</p>}
+        <ErrorNote>{act.error}</ErrorNote>
       </Panel>
-      <Panel title="Students listed by schools">
-        {lists.length ? (
-          <div className="space-y-5">
-            {lists.map((a) => {
-              const org = d.orgs.find((o) => o.id === a.org_id);
-              return (
-                <section key={a.id}>
-                  <h3 className="font-bold">{org?.name ?? a.organisation} <span className="font-normal text-ink-mute">from {a.name}, {fmtDate(a.created_at)}{!org ? '. Onboard the school first, or pick a school when you assign.' : ''}</span></h3>
-                  <ul className="mt-2 divide-y divide-paper-line rounded-field border border-paper-line">
-                    {a.student_emails!.map((email) => {
-                      const st = schoolRole(email);
-                      return (
-                        <li key={email} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                          <span className="min-w-0 break-all">{email}{st.person ? <span className="text-ink-mute"> ({st.person.display_name})</span> : null}</span>
-                          {st.role ? <Badge tone="leaf">{ROLES[st.role.role].label}, {st.school?.name}</Badge> : <Button size="sm" onClick={() => open(email, a.org_id)}>Assign a role</Button>}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              );
-            })}
-          </div>
-        ) : <p className="text-sm text-ink-mute">No school has listed student emails yet. Schools list them when they register, or later from My school.</p>}
-      </Panel>
-      <Modal open={!!draft} onClose={() => setDraft(null)} title={`Give ${draft?.name || draft?.email || ''} a role`}>
+      <Modal open={!!draft} onClose={() => setDraft(null)} title={`Move ${draft?.person.display_name || 'this student'} to a school`}>
         {draft && (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">{draft.email}</p>
-            {!draft.known && (
-              <>
-                <Field label="Student’s full name" id="as-n"><Input id="as-n" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field>
-                <Field label="Age group" id="as-a"><Select id="as-a" value={draft.age_band} onChange={(e) => setDraft({ ...draft, age_band: e.target.value as AssignDraft['age_band'] })}><option value="">Choose</option><option value="13-15">13 to 15</option><option value="16-17">16 or 17</option><option value="18+">18 or over</option></Select></Field>
-                {draft.age_band && draft.age_band !== '18+' && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Guardian’s name" id="as-gn"><Input id="as-gn" value={draft.guardian_name} onChange={(e) => setDraft({ ...draft, guardian_name: e.target.value })} /></Field>
-                    <Field label="Guardian’s email" id="as-ge"><Input id="as-ge" type="email" value={draft.guardian_email} onChange={(e) => setDraft({ ...draft, guardian_email: e.target.value })} /></Field>
-                  </div>
-                )}
-              </>
-            )}
+            <p className="text-sm text-ink-soft">{draft.person.email}</p>
             <Field label="School" id="as-o"><Select id="as-o" value={draft.org_id} onChange={(e) => setDraft({ ...draft, org_id: e.target.value })}><option value="">Choose a school</option>{schools.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Role" id="as-r"><Select id="as-r" value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as RoleKey })}>{STUDENT_ROLES_ASSIGNABLE.filter((r) => r !== 'auditor' || schools.find((o) => o.id === draft.org_id)?.audit_school).map((r) => <option key={r} value={r}>{ROLES[r].label}</option>)}</Select></Field>
-              <Field label="What the school calls it (optional)" id="as-t"><Input id="as-t" value={draft.local_title} onChange={(e) => setDraft({ ...draft, local_title: e.target.value })} placeholder="e.g. Eco Club President" /></Field>
-            </div>
-            {draft.independent && <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 accent-leaf" checked={draft.move_projects} onChange={(e) => setDraft({ ...draft, move_projects: e.target.checked })} /><span>Move the projects they started on their own into this school</span></label>}
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 accent-leaf" checked={draft.move_projects} onChange={(e) => setDraft({ ...draft, move_projects: e.target.checked })} /><span>Move the projects they started on their own into this school</span></label>
+            <p className="text-xs text-ink-mute">They join as a team member. A teacher at the school can change their role in My school.</p>
             <ErrorNote>{act.error}</ErrorNote>
             <Button variant="dark" busy={act.busy} onClick={() => act.run(async () => {
               if (!draft.org_id) throw new Error('Choose a school.');
-              await api.assignStudent({ ...draft });
-              await api.audit(auth.person!.id, `assigned ${draft.role}`, 'people', draft.email);
+              await api.assignStudent({
+                email: draft.person.email, name: draft.person.display_name, age_band: draft.person.age_band ?? '', org_id: draft.org_id,
+                role: 'implementation_team', local_title: '', guardian_name: '', guardian_email: '', move_projects: draft.move_projects,
+              });
+              await api.audit(auth.person!.id, 'moved student to school', 'people', draft.person.email);
               setDraft(null);
               reload();
-            })}>Assign role</Button>
+            })}>Move to school</Button>
           </div>
         )}
       </Modal>
