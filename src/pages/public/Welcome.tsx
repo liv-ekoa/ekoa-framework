@@ -17,7 +17,7 @@ export default function Welcome() {
 
   const [name, setName] = useState('');
   const [age, setAge] = useState<Person['age_band']>('13-15');
-  const [school, setSchool] = useState({ name: '', country: '', city: '', adult: false });
+  const [school, setSchool] = useState({ name: '', country: '', city: '', adult: false, kind: 'high_school' as 'high_school' | 'university' });
   const [q, setQ] = useState('');
   const [code, setCode] = useState('');
   const [hits, setHits] = useState<SchoolHit[]>([]);
@@ -41,8 +41,8 @@ export default function Welcome() {
   const SchoolStep = (
     <div className="space-y-4 rounded-panel border border-paper-line bg-white p-5">
       <div>
-        <h2 className="text-lg font-bold">Your school</h2>
-        <p className="mt-1 text-sm text-ink-soft">Search for your school so a teacher can see your work and confirm you. If it isn’t on Ekoa yet, type its name below so we know where to place you.</p>
+        <h2 className="text-lg font-bold">Your high school or university</h2>
+        <p className="mt-1 text-sm text-ink-soft">Search for your high school or university so a teacher can see your work and confirm you. If it isn’t on Ekoa yet, type its name below so we know where to place you.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="School name" id="w-q"><Input id="w-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Start typing" /></Field>
@@ -65,8 +65,8 @@ export default function Welcome() {
       {picked && <p className="text-xs text-ink-mute">A teacher at {picked.name} will be asked to confirm you before you can see anything of the school’s.</p>}
       {!picked && !joinOnly && (
         <div className="space-y-3 border-t border-paper-line pt-4">
-          <p className="text-sm font-bold">School not listed? Tell us about it.</p>
-          <Field label="School name" id="w-tn"><Input id="w-tn" value={typed.name} onChange={(e) => setTyped({ ...typed, name: e.target.value })} placeholder="The name of your school" /></Field>
+          <p className="text-sm font-bold">Not listed? Tell us about it.</p>
+          <Field label="High school or university name" id="w-tn"><Input id="w-tn" value={typed.name} onChange={(e) => setTyped({ ...typed, name: e.target.value })} placeholder="The name of your school" /></Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="City (optional)" id="w-tci"><Input id="w-tci" value={typed.city} onChange={(e) => setTyped({ ...typed, city: e.target.value })} /></Field>
             <Field label="Country (optional)" id="w-tco"><Input id="w-tco" value={typed.country} onChange={(e) => setTyped({ ...typed, country: e.target.value })} /></Field>
@@ -89,7 +89,7 @@ export default function Welcome() {
 
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-14">
-      <h1 className="text-3xl">{kind === 'school' ? 'Set up your school' : 'Welcome to Ekoa'}</h1>
+      <h1 className="text-3xl">{kind === 'school' ? 'Set up your high school or university' : 'Welcome to Ekoa'}</h1>
       <p className="text-ink-soft">Signed in as {auth.authEmail}. Two quick details and you’re in.</p>
       <Field label="Your full name" id="w-name"><Input id="w-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
       {kind === 'student' ? (
@@ -101,19 +101,20 @@ export default function Welcome() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2"><Field label="School name" id="w-sn"><Input id="w-sn" value={school.name} onChange={(e) => setSchool({ ...school, name: e.target.value })} /></Field></div>
+            <div className="sm:col-span-2"><Field label="Type" id="w-sk"><Select id="w-sk" value={school.kind} onChange={(e) => setSchool({ ...school, kind: e.target.value as 'high_school' | 'university' })}><option value="high_school">High school</option><option value="university">University</option></Select></Field></div>
+            <div className="sm:col-span-2"><Field label="Name" id="w-sn"><Input id="w-sn" value={school.name} onChange={(e) => setSchool({ ...school, name: e.target.value })} /></Field></div>
             <Field label="Country" id="w-sc"><Input id="w-sc" value={school.country} onChange={(e) => setSchool({ ...school, country: e.target.value })} /></Field>
             <Field label="City" id="w-sci"><Input id="w-sci" value={school.city} onChange={(e) => setSchool({ ...school, city: e.target.value })} /></Field>
           </div>
-          <Checkbox checked={school.adult} onChange={(v) => setSchool({ ...school, adult: v })} label="I am 18 or over and work at this school" />
-          <Notice tone="sky">Your school starts unverified. An Ekoa steward will check it. Meanwhile you get a join code to share, and students you confirm can start working.</Notice>
+          <Checkbox checked={school.adult} onChange={(v) => setSchool({ ...school, adult: v })} label="I am 18 or over and work at this high school or university" />
+          <Notice tone="sky">Your high school or university starts unverified. An Ekoa steward will check it. Meanwhile you get a join code to share, and students you confirm can start working.</Notice>
         </>
       )}
       <ErrorNote>{act.error}</ErrorNote>
       <Button variant="dark" size="lg" busy={act.busy} className="w-full" onClick={() => act.run(async () => {
         if (kind === 'school') {
-          if (!school.adult) throw new Error('School accounts are for adults. Students: choose “I’m a student”.');
-          await signupSchool(name, school.name, school.country, school.city);
+          if (!school.adult) throw new Error('This account type is for adults who work at a high school or university. Students: choose “I’m a student”.');
+          await signupSchool(name, school.name, school.country, school.city, school.kind);
         } else {
           const schoolName = picked?.name ?? typed.name.trim();
           if (schoolName.length < 2) throw new Error('Tell us which school you go to. Pick it from the list, or type its name.');

@@ -41,6 +41,7 @@ export interface Organisation {
   id: UUID;
   name: string;
   org_type: OrgType;
+  school_kind?: 'high_school' | 'university';
   country: string;
   city: string;
   lat: number | null;

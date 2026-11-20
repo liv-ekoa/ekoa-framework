@@ -825,9 +825,11 @@ select t('declined: no seat is given', (select count(*) from role_assignments r 
 
 -- A school registers itself
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a3',false);
-select signup_school('Head New', 'Unverified Academy', 'Kenya', 'Nairobi');
+select signup_school('Head New', 'Unverified Academy', 'Kenya', 'Nairobi', 'university');
 reset role;
 select t('school signup: unverified and private', (select status = 'onboarding' and not public_visible and length(join_code) = 10 from organisations where name = 'Unverified Academy'));
+select t('school signup: the kind (high school or university) is stored', (select school_kind = 'university' from organisations where name = 'Unverified Academy'));
+select t('school signup: schools default to high school', (select school_kind = 'high_school' from organisations where name <> 'Unverified Academy' and org_type = 'school' limit 1));
 select t('school signup: the registrant is its teacher (faculty liaison)', (select count(*) from role_assignments r join people p on p.id = r.person_id join organisations o on o.id = r.org_id where p.email = 'head.new@x.org' and o.name = 'Unverified Academy' and r.role = 'faculty_liaison') = 1);
 select id as unv from organisations where name = 'Unverified Academy' \gset
 select join_code as unvcode from organisations where name = 'Unverified Academy' \gset

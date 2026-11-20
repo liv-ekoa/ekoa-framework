@@ -19,8 +19,8 @@ export default function SignUp() {
   if (!auth.loading && auth.authEmail) return <Navigate to={`/welcome?as=${kind}`} replace />;
 
   const options: { key: Kind; title: string; text: string; icon: typeof School }[] = [
-    { key: 'student', title: 'I’m a student', text: 'Start your own project now. Add classmates and a teacher whenever you like.', icon: GraduationCap },
-    { key: 'school', title: 'I’m a teacher or school', text: 'Set up your school and bring your eco club or student council.', icon: School },
+    { key: 'student', title: 'I’m a student', text: 'Start your own project now, at a high school or university. Add classmates and a teacher whenever you like.', icon: GraduationCap },
+    { key: 'school', title: 'I’m staff at a high school or university', text: 'Set up your high school or university and bring your eco club or student council.', icon: School },
   ];
 
   return (
@@ -41,7 +41,7 @@ export default function SignUp() {
         <div className="mt-6"><Notice tone="leaf">Check {email} for your link. It works once and expires in an hour. Open it on this device to finish setting up.</Notice></div>
       ) : (
         <form className="mt-6 space-y-4" onSubmit={(e) => { e.preventDefault(); void act.run(async () => { await auth.sendMagicLink(email.trim().toLowerCase(), `/welcome?as=${kind}`); setSent(true); }); }}>
-          <Field label="Your email" id="su-email" hint={kind === 'student' ? 'A personal or school email both work.' : undefined}>
+          <Field label="Your email" id="su-email" hint={kind === 'student' ? 'A personal, school or university email all work.' : undefined}>
             <Input id="su-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
           </Field>
           <ErrorNote>{act.error}</ErrorNote>
