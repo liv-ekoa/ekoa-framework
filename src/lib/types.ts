@@ -71,6 +71,7 @@ export interface Person {
   locale: string;
   consent_status: ConsentStatus;
   draft_until?: string | null;
+  removed_at?: string | null;
   created_at: string;
 }
 

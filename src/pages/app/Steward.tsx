@@ -30,7 +30,7 @@ export default function Steward() {
   if (!auth.isSteward) return <Empty title="Admins only">This console is for the Ekoa core team.</Empty>;
   if (!data) return <Loading />;
   const openFlags = data.flags.filter((f) => f.status === 'open').length;
-  const independents = independentStudents(data);
+  const independents = activeStudents(data);
   const openReports = data.reports.filter((r) => r.status !== 'resolved');
   return (
     <div>
@@ -287,6 +287,9 @@ function independentStudents(d: { people: Person[]; roles: RoleAssignment[]; org
     .filter((x): x is { role: RoleAssignment; person: Person; org: Organisation } => !!x.person);
 }
 
+const activeStudents = (d: { people: Person[]; roles: RoleAssignment[]; orgs: Organisation[] }) => independentStudents(d).filter((x) => !x.person.removed_at);
+const removedStudents = (d: { people: Person[]; roles: RoleAssignment[]; orgs: Organisation[] }) => independentStudents(d).filter((x) => !!x.person.removed_at);
+
 type MoveDraft = { person: Person; org_id: string; move_projects: boolean };
 
 /**
@@ -300,7 +303,9 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
   const [draft, setDraft] = useState<MoveDraft | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const schools = d.orgs.filter((o) => o.org_type === 'school');
-  const independents = independentStudents(d);
+  const independents = activeStudents(d);
+  const removed = removedStudents(d);
+  const [confirmRemove, setConfirmRemove] = useState<Person | null>(null);
   const consentLink = (personId: string) => {
     const c = d.consents.find((x) => x.person_id === personId && !x.granted_at);
     return c ? `${window.location.origin}/consent/${c.token}` : null;
@@ -326,6 +331,7 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
                     {link && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(link).catch(() => undefined); setCopied(link); }}><Copy className="h-4 w-4" /> Consent link</Button>}
                     {waiting && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.extendDraftAccess(p.id, 30); reload(); })}>Extend draft time</Button>}
                     <Button size="sm" variant="dark" onClick={() => setDraft({ person: p, org_id: '', move_projects: true })}>Move to a school</Button>
+                    <Button size="sm" variant="danger" onClick={() => setConfirmRemove(p)}>Remove</Button>
                   </div>
                 </li>
               );
@@ -335,6 +341,32 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
         {copied && <p className="mt-3 break-all text-sm text-ink-soft">Consent link copied: <span className="font-bold">{copied}</span>. Send it to a guardian, never to the student.</p>}
         <ErrorNote>{act.error}</ErrorNote>
       </Panel>
+      {removed.length > 0 && (
+        <Panel title={`Removed students (${removed.length})`}>
+          <ul className="divide-y divide-paper-line">
+            {removed.map(({ person: p }) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <p className="min-w-0 font-bold">{p.display_name} <span className="font-normal text-ink-mute">{p.email}. Removed {p.removed_at ? fmtDate(p.removed_at) : ''}.</span></p>
+                <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.restoreStudent(p.id); reload(); })}>Restore</Button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm text-ink-mute">Their work is kept. Restoring gives them back their access.</p>
+        </Panel>
+      )}
+      <Modal open={!!confirmRemove} onClose={() => setConfirmRemove(null)} title={`Remove ${confirmRemove?.display_name ?? 'this student'}?`}>
+        {confirmRemove && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink-soft">{confirmRemove.email}</p>
+            <Notice tone="clay">They lose access straight away and any request to join a school is declined. Their account and work are kept, and you can restore them from the Removed students list.</Notice>
+            <ErrorNote>{act.error}</ErrorNote>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="danger" busy={act.busy} onClick={() => act.run(async () => { await api.removeStudent(confirmRemove.id); setConfirmRemove(null); reload(); })}>Remove student</Button>
+              <Button variant="ghost" onClick={() => setConfirmRemove(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
       <Modal open={!!draft} onClose={() => setDraft(null)} title={`Move ${draft?.person.display_name || 'this student'} to a school`}>
         {draft && (
           <div className="space-y-4">
