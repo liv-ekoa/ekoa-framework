@@ -636,7 +636,7 @@ const rpc = async <T,>(fn: string, args: Record<string, unknown>) => {
   if (error) throw new Error(error.message);
   return data as T;
 };
-export const signupStudent = (name: string, ageBand: string) => rpc<string>('signup_student', { p_name: name, p_age_band: ageBand });
+export const signupStudent = (name: string, ageBand: string, school: string, country = '', city = '') => rpc<string>('signup_student', { p_name: name, p_age_band: ageBand, p_school_name: school, p_country: country, p_city: city });
 export const signupSchool = (name: string, school: string, country: string, city: string) => rpc<string>('signup_school', { p_name: name, p_school: school, p_country: country, p_city: city });
 export const findSchools = (q: string) => rpc<SchoolHit[]>('find_schools', { p_query: q });
 export const schoolByCode = (code: string) => rpc<SchoolHit[]>('school_by_code', { p_code: code });

@@ -290,7 +290,9 @@ function independentStudents(d: { people: Person[]; roles: RoleAssignment[]; org
 const activeStudents = (d: { people: Person[]; roles: RoleAssignment[]; orgs: Organisation[] }) => independentStudents(d).filter((x) => !x.person.removed_at);
 const removedStudents = (d: { people: Person[]; roles: RoleAssignment[]; orgs: Organisation[] }) => independentStudents(d).filter((x) => !!x.person.removed_at);
 
-type MoveDraft = { person: Person; org_id: string; move_projects: boolean };
+type MoveDraft = { person: Person; org_id: string; move_projects: boolean; said: string };
+
+const saidSchool = (o: Organisation) => [o.school_name, o.city, o.country].filter(Boolean).join(', ');
 
 /**
  * Students sign up on their own and a teacher at their school confirms them, so this list is only for
@@ -306,6 +308,8 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
   const independents = activeStudents(d);
   const removed = removedStudents(d);
   const [confirmRemove, setConfirmRemove] = useState<Person | null>(null);
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const matchSchool = (said: string) => (said && schools.find((o) => norm(o.name) === norm(said))?.id) || '';
   const consentLink = (personId: string) => {
     const c = d.consents.find((x) => x.person_id === personId && !x.granted_at);
     return c ? `${window.location.origin}/consent/${c.token}` : null;
@@ -330,7 +334,7 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
                     {waiting ? <Badge tone="clay">Waiting for guardian</Badge> : <Badge tone="leaf">Active</Badge>}
                     {link && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(link).catch(() => undefined); setCopied(link); }}><Copy className="h-4 w-4" /> Consent link</Button>}
                     {waiting && <Button size="sm" variant="ghost" busy={act.busy} onClick={() => act.run(async () => { await api.extendDraftAccess(p.id, 30); reload(); })}>Extend draft time</Button>}
-                    <Button size="sm" variant="dark" onClick={() => setDraft({ person: p, org_id: '', move_projects: true })}>Move to a school</Button>
+                    <Button size="sm" variant="dark" onClick={() => setDraft({ person: p, org_id: matchSchool(org.school_name ?? ''), move_projects: true, said: saidSchool(org) })}>Move to a school</Button>
                     <Button size="sm" variant="danger" onClick={() => setConfirmRemove(p)}>Remove</Button>
                   </div>
                 </li>
@@ -371,6 +375,7 @@ function Students({ d, reload }: { d: D; reload: () => void }) {
         {draft && (
           <div className="space-y-4">
             <p className="text-sm text-ink-soft">{draft.person.email}</p>
+            <p className="rounded-field bg-paper-deep px-3 py-2 text-sm">{draft.said ? <>They said their school is <span className="font-bold">{draft.said}</span>.</> : 'They did not say which school they go to.'}</p>
             <Field label="School" id="as-o"><Select id="as-o" value={draft.org_id} onChange={(e) => setDraft({ ...draft, org_id: e.target.value })}><option value="">Choose a school</option>{schools.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></Field>
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 accent-leaf" checked={draft.move_projects} onChange={(e) => setDraft({ ...draft, move_projects: e.target.checked })} /><span>Move the projects they started on their own into this school</span></label>
             <p className="text-xs text-ink-mute">They join as a team member. A teacher at the school can change their role in My school.</p>
