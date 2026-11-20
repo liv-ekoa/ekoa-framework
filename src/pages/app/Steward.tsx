@@ -150,7 +150,7 @@ function Schools({ d, reload }: { d: D; reload: () => void }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-lg font-semibold">{s.org.name}{s.org.audit_school && <Badge tone="leaf" className="ml-2 align-middle">Audit school</Badge>}</h2>
-                <p className="text-sm text-ink-mute">{[s.org.city, s.org.country].filter(Boolean).join(', ')}. {s.org.status}. Liaison: {liaison?.person.display_name ?? 'none'}.</p>
+                <p className="text-sm text-ink-mute">{s.org.school_kind === 'university' ? 'University' : 'High school'}. {[s.org.city, s.org.country].filter(Boolean).join(', ')}. {s.org.status}. Liaison: {liaison?.person.display_name ?? 'none'}.</p>
                 {!liaison && <Button size="sm" variant="dark" className="mt-2" onClick={() => setInviteFor({ id: s.org.id, name: s.org.name })}>Invite faculty liaison</Button>}
               </div>
               <div className="w-48 text-xs text-ink-mute"><p className="mb-1">Weeks with data: {act.length ? `${Math.round(comp * 100)}%` : '—'}</p><Meter value={comp} label="completeness" tone={comp >= 0.85 ? 'leaf' : 'clay'} /></div>
