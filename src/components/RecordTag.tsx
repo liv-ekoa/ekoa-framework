@@ -17,6 +17,12 @@ const ISO: Record<string, string> = {
   Portugal: 'PT', 'United Kingdom': 'GB', 'United States': 'US', Malaysia: 'MY', Thailand: 'TH', 'Sri Lanka': 'LK', Bangladesh: 'BD',
 };
 
+/** The first full sentence, so cards never stop mid-sentence. */
+const firstSentence = (t: string) => {
+  const m = t.match(/^.+?[.!?](?=\s|$)/);
+  return m ? m[0] : t;
+};
+
 export function catalogue(r: ImplementationRecord) {
   const c = r.context?.country ?? '';
   const country = ISO[c] ?? (c.slice(0, 2).toUpperCase() || 'XX');
@@ -44,7 +50,7 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
       </div>
       <h3 className={cx('mt-2 font-display font-semibold leading-snug text-ink', compact ? 'text-base' : 'text-lg')}>{r.title}</h3>
       {showSchool && where && <p className="mt-1 text-sm text-ink-mute">{where}</p>}
-      {!compact && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft">{r.summary}</p>}
+      {!compact && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft">{firstSentence(r.summary)}</p>}
       <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-4">
         {lead && def ? (
           <div>
@@ -64,7 +70,7 @@ export function RecordTag({ r, href, compact = false, showSchool = true, schoolN
         <div className="flex flex-col items-end gap-1">
           <span className={cx('rounded-tag px-2 py-0.5 text-xs font-bold text-white', band[r.outcome_class])}>{o.label}</span>
           <span className="rounded-tag border border-clay-600/50 bg-clay-100 px-2 py-0.5 text-xs font-bold text-clay-700">Tier {r.tier}</span>
-          {r.tier < 2 && <span className="rounded-tag border border-paper-line bg-paper-deep px-2 py-0.5 text-xs font-bold text-ink-soft">Unverified</span>}
+          {r.example_source ? <span className="rounded-tag border border-paper-line bg-paper-deep px-2 py-0.5 text-xs font-bold text-ink-soft">Example</span> : r.tier < 2 && <span className="rounded-tag border border-paper-line bg-paper-deep px-2 py-0.5 text-xs font-bold text-ink-soft">Unverified</span>}
         </div>
       </div>
     </article>

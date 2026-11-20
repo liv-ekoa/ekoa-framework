@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { GitFork } from 'lucide-react';
 import { OUTCOMES, TIERS, budgetCategoryLabel, metricByCode, obstacleLabel } from '@/lib/ekoa';
@@ -43,7 +43,8 @@ export function RecordDetail({
         <p className="mt-2 text-ink-mute">{where}</p>
         <p className="mt-5 max-w-prose text-lg leading-relaxed text-ink-soft">{r.summary}</p>
         {r.key_result && <p className="mt-4 max-w-prose rounded-field bg-paper px-4 py-3 text-sm"><span className="font-bold text-ink">Key result: </span><span className="text-ink-soft">{r.key_result}</span></p>}
-        {r.example_source && <p className="mt-3 text-sm text-ink-mute">Example record, written up from {r.example_source}. Use it to see what a good record contains.</p>}
+        {r.example_source && <p className="mt-3 text-sm text-ink-mute">Example record, written up from {r.example_source}. Use it to see what a good record contains. Self-reported and not audited. Spot a mistake, or want credit changed or the record removed? See <Link to="/copyright" className="font-bold text-leaf-600 underline">copyright and takedowns</Link>.</p>}
+        {r.source_url && <SourceVideo url={r.source_url} />}
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <span className={cx('rounded-tag px-2.5 py-1 text-sm font-bold text-white', band[r.outcome_class])}>{o.label}</span>
           <span className="rounded-tag border border-clay-600/50 bg-clay-100 px-2.5 py-1 text-sm font-bold text-clay-700">{TIERS[r.tier].label}</span>
@@ -222,5 +223,27 @@ function BudgetBox({ r }: { r: ImplementationRecord }) {
         </>
       ) : <p className="text-ink-soft">{r.budget_summary || 'Not recorded.'}</p>}
     </section>
+  );
+}
+
+/** The talk the record was written from. YouTube links load only after a click, so nothing is sent to YouTube until the visitor chooses. */
+function SourceVideo({ url }: { url: string }) {
+  const [play, setPlay] = useState(false);
+  const id = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/)?.[1];
+  if (!id) return <p className="mt-3 text-sm"><a href={url} target="_blank" rel="noopener noreferrer" className="font-bold text-leaf-600 underline">Watch the original talk</a></p>;
+  return (
+    <div className="mt-5 max-w-prose">
+      <p className="mb-2 text-sm font-bold text-ink">Watch the original talk</p>
+      <div className="aspect-video overflow-hidden rounded-panel border border-paper-line bg-paper-deep">
+        {play ? (
+          <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`} title="Original talk" allow="autoplay" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
+            <button type="button" onClick={() => setPlay(true)} className="rounded-full bg-ink px-5 py-2 text-sm font-bold text-white">Load video</button>
+            <p className="text-xs text-ink-soft">Loading the video connects your browser to YouTube (Google). <a href={url} target="_blank" rel="noopener noreferrer" className="underline">Or open it on YouTube</a>.</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

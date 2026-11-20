@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import { listCohortMembers, listCohorts, listOrgs, listPublicRecords } from '@/lib/api';
 import { useData } from '@/lib/hooks';
 import { Loading } from '@/components/ui';
 
 export default function NetworkMap() {
+  const [showMap, setShowMap] = useState(false);
   const { data, loading } = useData(async () => {
     const [orgs, records, cohorts, members] = await Promise.all([listOrgs(), listPublicRecords(), listCohorts(), listCohortMembers()]);
     return { orgs: orgs.filter((o) => o.public_visible && o.lat !== null), records, cohorts, members };
@@ -17,6 +19,12 @@ export default function NetworkMap() {
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="h-[460px] overflow-hidden rounded-panel border border-paper-line">
+            {!showMap ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 bg-paper-deep p-6 text-center">
+                <button type="button" onClick={() => setShowMap(true)} className="rounded-full bg-ink px-5 py-2 text-sm font-bold text-white">Load map</button>
+                <p className="max-w-sm text-xs text-ink-soft">The map uses tiles from OpenStreetMap, so loading it sends your IP address to their servers. The schools and partners are also listed beside it.</p>
+              </div>
+            ) : (
             <MapContainer center={[15, 60]} zoom={2} minZoom={2} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
               <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               {data.orgs.map((o) => (
@@ -28,6 +36,7 @@ export default function NetworkMap() {
                 </CircleMarker>
               ))}
             </MapContainer>
+            )}
           </div>
           <div className="space-y-4">
             {data.cohorts.map((c) => (

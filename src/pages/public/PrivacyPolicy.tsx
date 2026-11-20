@@ -1,6 +1,6 @@
 import { config } from '@/lib/config';
 
-const updated = 'October 2026';
+const updated = 'November 2026';
 
 export default function PrivacyPolicy() {
   return (
@@ -54,6 +54,7 @@ export default function PrivacyPolicy() {
             <li><strong>Within Ekoa</strong> — stewards and safeguarding leads have access to data they need to run and protect the platform.</li>
             <li><strong>With your school</strong> — a school's faculty liaison can manage the members of their own school and see that school's data. Schools own the data of their own members and projects.</li>
             <li><strong>With service providers</strong> — we use trusted providers to host and serve the platform. The site runs on Cloudflare's global network, and data is stored with Supabase. These providers act on our instructions and have obligations to protect data.</li>
+            <li><strong>Third-party content you choose to load</strong> — the network map loads map tiles from OpenStreetMap only after you press “Load map”; once you do, your IP address and browser details are sent to the OpenStreetMap servers. Some Library records include an embedded video from YouTube (Google). It does not load until you press “Load video”; once you do, YouTube may receive your IP address and set cookies under its own policy. Fonts and images are hosted by us, not by Google or other outside providers.</li>
             <li><strong>With authorities</strong> — where local law requires it, including mandatory reporting of safeguarding concerns, we may share data with schools and authorities. In India, this includes the POCSO Act, 2012.</li>
           </ul>
 
