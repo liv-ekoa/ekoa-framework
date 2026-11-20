@@ -441,6 +441,11 @@ select assign_student('listed.kid@x.org','Listed Kid','13-15','11111111-0000-000
 reset role;
 select t('an admin moves an independent student and their project into the school', (select org_id = '11111111-0000-0000-0000-000000000001' from projects where title = 'My solo audit'));
 select t('a listed student is created waiting for consent', (select consent_status = 'pending' from people where email = 'listed.kid@x.org'));
+set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a5',false);
+do $$ begin perform assign_student('indy.adult@x.org','','', '11111111-0000-0000-0000-000000000001','implementation_team','','','',true); perform t('moving a student who already holds a role at the school does not fail', true);
+exception when others then perform t('moving a student who already holds a role at the school does not fail', false); end $$;
+reset role;
+select t('moving such a student does not give them a second role', (select count(*) from role_assignments r join people p on p.id = r.person_id where p.email = 'indy.adult@x.org' and r.org_id = '11111111-0000-0000-0000-000000000001' and r.status <> 'alumni') = 1);
 
 -- School registrations with student emails
 set role anon; select set_config('request.jwt.claim.sub','',false);
