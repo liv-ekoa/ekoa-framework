@@ -23,6 +23,7 @@ export default function Welcome() {
   const [hits, setHits] = useState<SchoolHit[]>([]);
   const [picked, setPicked] = useState<SchoolHit | null>(null);
   const [searched, setSearched] = useState(false);
+  const [typed, setTyped] = useState({ name: '', city: '', country: '' });
 
   if (auth.loading) return <div className="mx-auto max-w-lg p-10"><Loading /></div>;
   if (!auth.authEmail) return <Navigate to="/signup" replace />;
@@ -40,8 +41,8 @@ export default function Welcome() {
   const SchoolStep = (
     <div className="space-y-4 rounded-panel border border-paper-line bg-white p-5">
       <div>
-        <h2 className="text-lg font-bold">Your school (optional)</h2>
-        <p className="mt-1 text-sm text-ink-soft">Find your school so a teacher can see your work and confirm you. You can skip this and do it later.</p>
+        <h2 className="text-lg font-bold">Your school</h2>
+        <p className="mt-1 text-sm text-ink-soft">Search for your school so a teacher can see your work and confirm you. If it isn’t on Ekoa yet, type its name below so we know where to place you.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="School name" id="w-q"><Input id="w-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Start typing" /></Field>
@@ -62,6 +63,16 @@ export default function Welcome() {
         </ul>
       )}
       {picked && <p className="text-xs text-ink-mute">A teacher at {picked.name} will be asked to confirm you before you can see anything of the school’s.</p>}
+      {!picked && !joinOnly && (
+        <div className="space-y-3 border-t border-paper-line pt-4">
+          <p className="text-sm font-bold">School not listed? Tell us about it.</p>
+          <Field label="School name" id="w-tn"><Input id="w-tn" value={typed.name} onChange={(e) => setTyped({ ...typed, name: e.target.value })} placeholder="The name of your school" /></Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="City (optional)" id="w-tci"><Input id="w-tci" value={typed.city} onChange={(e) => setTyped({ ...typed, city: e.target.value })} /></Field>
+            <Field label="Country (optional)" id="w-tco"><Input id="w-tco" value={typed.country} onChange={(e) => setTyped({ ...typed, country: e.target.value })} /></Field>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -104,7 +115,9 @@ export default function Welcome() {
           if (!school.adult) throw new Error('School accounts are for adults. Students: choose “I’m a student”.');
           await signupSchool(name, school.name, school.country, school.city);
         } else {
-          await signupStudent(name, age);
+          const schoolName = picked?.name ?? typed.name.trim();
+          if (schoolName.length < 2) throw new Error('Tell us which school you go to. Pick it from the list, or type its name.');
+          await signupStudent(name, age, schoolName, picked ? '' : typed.country.trim(), picked ? '' : typed.city.trim());
           if (picked) {
             try { await requestToJoinSchool(picked.id, code.trim() || undefined); } catch (e) { await auth.refresh(); throw new Error(`Your account is ready, but we could not send the request: ${e instanceof Error ? e.message : ''} You can try again from the home page.`); }
           }

@@ -764,19 +764,22 @@ insert into auth.users (id,email) values
 
 -- A student signs up directly
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a1',false);
-select signup_student('Nia Student', '13-15');
-do $$ begin perform signup_student('Nia Again', '13-15'); perform t('signup: a second signup is refused', false);
+select signup_student('Nia Student', '13-15', 'Valley High', 'India', 'Delhi');
+do $$ begin perform signup_student('Nia Again', '13-15', 'Valley High'); perform t('signup: a second signup is refused', false);
 exception when others then perform t('signup: a second signup is refused', true); end $$;
 reset role;
 select t('signup: student starts pending with a consent link ready', (select p.consent_status = 'pending' and p.is_minor and exists (select 1 from consent_records c where c.person_id = p.id and length(c.token) > 10) from people p where p.email = 'nia.student@x.org'));
 select t('signup: student gets a private independent workspace', (select o.org_type = 'independent' and not o.public_visible from role_assignments r join organisations o on o.id = r.org_id join people p on p.id = r.person_id where p.email = 'nia.student@x.org'));
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a2',false);
-do $$ begin perform signup_student('Bad Age', '9'); perform t('signup: an invalid age group is refused', false);
+do $$ begin perform signup_student('Bad Age', '9', 'Valley High'); perform t('signup: an invalid age group is refused', false);
 exception when others then perform t('signup: an invalid age group is refused', true); end $$;
-select signup_student('Omar Student', '16-17');
+do $$ begin perform signup_student('No School', '16-17', ''); perform t('signup: a student must say which school they go to', false);
+exception when others then perform t('signup: a student must say which school they go to', true); end $$;
+select signup_student('Omar Student', '16-17', 'Hill School');
 reset role;
+select t('signup: the school the student named is kept on their workspace', (select o.school_name = 'Valley High' and o.country = 'India' and o.city = 'Delhi' from role_assignments r join organisations o on o.id = r.org_id join people p on p.id = r.person_id where p.email = 'nia.student@x.org'));
 set role anon; select set_config('request.jwt.claim.sub','',false);
-do $$ begin perform signup_student('Anon', '13-15'); perform t('signup: visitors who are not signed in cannot sign up', false);
+do $$ begin perform signup_student('Anon', '13-15', 'Valley High'); perform t('signup: visitors who are not signed in cannot sign up', false);
 exception when others then perform t('signup: visitors who are not signed in cannot sign up', true); end $$;
 select t('signup: independent workspaces are invisible to visitors', (select count(*) from organisations where org_type = 'independent') = 0);
 reset role;
@@ -850,7 +853,7 @@ reset role;
 
 -- A project with attachments stays put
 set role authenticated; select set_config('request.jwt.claim.sub','aaaaaaaa-0000-0000-0000-0000000000a4',false);
-select signup_student('Adult Learner', '18+');
+select signup_student('Adult Learner', '18+', 'Night School');
 insert into projects (id, org_id, title, category) values ('33333333-0000-0000-0000-0000000000f2', (select org_id from role_assignments limit 1), 'Adult project', 'Water');
 insert into evidence (org_id, project_id, file_name, file_type) values ((select org_id from role_assignments limit 1), '33333333-0000-0000-0000-0000000000f2', 'tap.jpg', 'image/jpeg');
 select request_to_join_school('11111111-0000-0000-0000-000000000001');
